@@ -1,0 +1,27 @@
+[package]
+name = "lsp-asm"
+version = "0.1.0"
+authors = ["Jamie Cunliffe <Jamie.Cunliffe@outlook.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+log = "0.4"
+pretty_env_logger = "0.4"
+lazy_static = "*"
+regex = "*"
+either = "1.6.1"
+lsp-server = "0.4.1"
+lsp-types = { version = "0.85.0", features = ["proposed"] }
+serde_json = "1.0.34"
+serde = { version = "1.0.83", features = ["derive"] }
+nom = "5.0.0"
+actix = "0.10"
+actix-rt = "1.0"
+rowan = "*"
+
+[dev-dependencies]
+pretty_assertions = "*"
+
+[features]
