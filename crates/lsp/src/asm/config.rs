@@ -8,6 +8,9 @@ pub(crate) struct ParserConfig {
     /// The characters that signal the start of a comment
     pub comment_start: String,
 
+    /// The filetype of this parser
+    pub file_type: FileType,
+
     /// The registers that are allowed for this parser
     pub registers: Option<&'static [Register]>,
 }
@@ -16,6 +19,7 @@ impl Default for ParserConfig {
     fn default() -> Self {
         ParserConfig {
             comment_start: "#".to_string(),
+            file_type: Default::default(),
             registers: None,
         }
     }
@@ -35,5 +39,17 @@ impl ParserConfig {
             },
             Architecture::Unknown => Self::default(),
         }
+    }
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub(crate) enum FileType {
+    Assembly,
+    ObjDump,
+}
+
+impl Default for FileType {
+    fn default() -> Self {
+        Self::Assembly
     }
 }

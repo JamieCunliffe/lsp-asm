@@ -1,4 +1,4 @@
-An LSP for various Assembly Languages, this has mostly been designed to improve reading of assembly output from compilers (think -S option).
+An LSP for various Assembly Languages, this has mostly been designed to improve reading of assembly output from compilers (-S option). It also supports objdump disassembly.
 
 It currently supports the following LSP messages:
 * Goto definition (label)

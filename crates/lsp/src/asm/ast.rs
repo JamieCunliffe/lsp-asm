@@ -1,3 +1,5 @@
+use std::iter;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
 #[allow(clippy::upper_case_acronyms)]
@@ -9,6 +11,8 @@ pub(crate) enum SyntaxKind {
     R_SQ,
     L_CURLY,
     R_CURLY,
+    L_ANGLE,
+    R_ANGLE,
 
     MNEMONIC,
     REGISTER,
@@ -26,6 +30,7 @@ pub(crate) enum SyntaxKind {
     DIRECTIVE,
     BRACKETS,
 
+    METADATA,
     // ROOT should be the last element
     ROOT,
 }
@@ -39,6 +44,11 @@ impl From<SyntaxKind> for rowan::SyntaxKind {
     fn from(kind: SyntaxKind) -> Self {
         Self(kind as u16)
     }
+}
+
+pub(crate) fn find_parent(token: &SyntaxToken, syntax_kind: SyntaxKind) -> Option<SyntaxNode> {
+    iter::successors(Some(token.parent()), |parent| parent.parent())
+        .find(|e| e.kind() == syntax_kind)
 }
 
 /// Second, implementing the `Language` trait teaches rowan to convert between

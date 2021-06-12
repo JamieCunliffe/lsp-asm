@@ -117,6 +117,8 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             | SyntaxKind::R_SQ
             | SyntaxKind::L_CURLY
             | SyntaxKind::R_CURLY
+            | SyntaxKind::L_ANGLE
+            | SyntaxKind::R_ANGLE
             | SyntaxKind::MNEMONIC
             | SyntaxKind::REGISTER
             | SyntaxKind::TOKEN
@@ -130,6 +132,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             | SyntaxKind::INSTRUCTION
             | SyntaxKind::DIRECTIVE
             | SyntaxKind::BRACKETS
+            | SyntaxKind::METADATA
             | SyntaxKind::ROOT => None,
         };
 
@@ -217,12 +220,18 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                     SyntaxKind::LABEL | SyntaxKind::LOCAL_LABEL => {
                         Some(*crate::handler::semantic::LABEL_INDEX)
                     }
+                    SyntaxKind::METADATA => Some(*crate::handler::semantic::METADATA_INDEX),
+                    _ if crate::asm::ast::find_parent(&token, SyntaxKind::METADATA).is_some() => {
+                        Some(*crate::handler::semantic::METADATA_INDEX)
+                    }
                     SyntaxKind::L_PAREN
                     | SyntaxKind::R_PAREN
                     | SyntaxKind::L_SQ
                     | SyntaxKind::R_SQ
                     | SyntaxKind::L_CURLY
                     | SyntaxKind::R_CURLY
+                    | SyntaxKind::L_ANGLE
+                    | SyntaxKind::R_ANGLE
                     | SyntaxKind::TOKEN
                     | SyntaxKind::WHITESPACE
                     | SyntaxKind::COMMA

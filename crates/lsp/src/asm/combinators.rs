@@ -1,5 +1,7 @@
 use std::num::ParseIntError;
 
+use crate::asm::config::FileType;
+
 use super::config::ParserConfig;
 
 use super::ast::SyntaxKind;
@@ -7,6 +9,7 @@ use super::ast::SyntaxKind;
 use either::Either;
 
 use nom::bytes::complete::{is_not, tag, take_while};
+use nom::character::is_hex_digit;
 use nom::error::ErrorKind;
 use nom::multi::many0;
 use nom::sequence::delimited;
@@ -70,19 +73,83 @@ pub(crate) fn parse<'a>(
     data: &'a str,
     config: &'a ParserConfig,
 ) -> Vec<NodeOrToken<GreenNode, GreenToken>> {
-    let lookup = create_syntax_lookup();
+    let lookup = create_syntax_lookup(&config);
     let internal = InternalSpanConfig::new(config, &lookup);
     let data = Span::new(data, &internal);
 
+    let (data, mut additional) = match config.file_type {
+        crate::asm::config::FileType::Assembly => (data, Vec::new()),
+        crate::asm::config::FileType::ObjDump => parse_objdump_header(data).unwrap(),
+    };
+
     let result = many0(parse_next)(data);
-    let (remaining, nodes) = match result {
+    let (remaining, mut nodes) = match result {
         Ok(a) => a,
         Err(e) => panic!("Failed to parse due to error: {:#?}", e),
     };
 
     debug!("Parsed assembly with data remaining: {:#?}", remaining);
 
-    nodes
+    additional.append(&mut nodes);
+    additional
+}
+
+fn parse_objdump_header(expr: Span) -> nom::IResult<Span, Vec<NodeOrToken<GreenNode, GreenToken>>> {
+    let (remaining, whitespace) = skip_whitespace(expr, true)?;
+    let (remaining, format) = take_while(|a| a != '\n')(remaining)?;
+
+    let format = GreenToken::new(SyntaxKind::METADATA.into(), format.as_str());
+    Ok((remaining, vec![whitespace, format.into()]))
+}
+
+fn parse_objdump_line_start(
+    expr: Span,
+) -> nom::IResult<Span, Vec<NodeOrToken<GreenNode, GreenToken>>> {
+    let (remaining, whitespace) = skip_whitespace(expr, true)?;
+    let (remaining, offset) = take_while(is_hex)(remaining)?;
+
+    let mut tokens = Vec::new();
+    if whitespace.text_len() > 0.into() {
+        tokens.push(whitespace);
+    }
+
+    tokens.push(GreenToken::new(SyntaxKind::METADATA.into(), offset.as_str()).into());
+
+    // If the next char is a : then we will be parsing the instruction encoding
+    let remaining = if remaining.as_str().starts_with(':') {
+        let (remaining, colon) = take_while(|a| a == ':')(remaining)?;
+        tokens.push(GreenToken::new(SyntaxKind::METADATA.into(), colon.as_str()).into());
+
+        let (remaining, whitespace) = skip_whitespace(remaining, false)?;
+        tokens.push(whitespace);
+
+        let (remaining, encoding) = take_while(|a| is_hex(a) || a == ' ')(remaining)?;
+        tokens.push(GreenToken::new(SyntaxKind::METADATA.into(), encoding.as_str()).into());
+
+        let (remaining, whitespace) = skip_whitespace(remaining, false)?;
+        tokens.push(whitespace);
+
+        remaining
+    } else {
+        let (remaining, ws) = skip_whitespace(remaining, false)?;
+        tokens.push(ws);
+        remaining
+    };
+
+    Ok((remaining, tokens))
+}
+
+fn objdump_angle_brackets(expr: Span) -> NomResultElement {
+    if expr.as_str().ends_with(':') {
+        let (remaining, token) = take_while(|a| a != '\n')(expr)?;
+        Ok((remaining, span_to_token(&token).into()))
+    } else {
+        let (remaining, brackets) =
+            parse_brackets(expr, (SyntaxKind::L_ANGLE, SyntaxKind::R_ANGLE))?;
+
+        let meta = GreenNode::new(SyntaxKind::METADATA.into(), vec![brackets]);
+        Ok((remaining, meta.into()))
+    }
 }
 
 /// To be called by a many0 function to perform the processing.
@@ -97,10 +164,22 @@ fn parse_next(expr: Span) -> NomResultElement {
         '\n' => skip_whitespace(expr, true),
         '\t' => skip_whitespace(expr, true),
         // '\0' => nom::lib::std::result::Result::Err(nom::Err::Error((expr, ErrorKind::Many0))),
+        'D' if expr.config().file_type == FileType::ObjDump
+            && expr.as_str().starts_with("Disassembly of section ") =>
+        {
+            let (remaining, token) = take_while(|a| a != '\n')(expr)?;
+            let token = GreenToken::new(SyntaxKind::METADATA.into(), token.as_str());
+            Ok((remaining, token.into()))
+        }
         _ => {
             // Extract the current line from the input for processing
             process_comment!(expr);
             let (remaining, expr) = take_while(|a| a != '\n')(expr)?;
+
+            let (expr, mut additional) = match expr.config().file_type {
+                FileType::Assembly => (expr, Vec::new()),
+                FileType::ObjDump => parse_objdump_line_start(expr)?,
+            };
 
             let (_, mut tokens) = match many0(parse_line)(expr) {
                 Ok(a) => a,
@@ -130,7 +209,8 @@ fn parse_next(expr: Span) -> NomResultElement {
                     }
                 }
             }
-            let token = GreenNode::new(kind.into(), tokens);
+            additional.append(&mut tokens);
+            let token = GreenNode::new(kind.into(), additional);
             Ok((remaining, token.into()))
         }
     }
@@ -212,6 +292,7 @@ fn parse_brackets(remaining: Span, tokens: (SyntaxKind, SyntaxKind)) -> NomResul
         (SyntaxKind::L_PAREN, SyntaxKind::R_PAREN) => ("(", ")"),
         (SyntaxKind::L_SQ, SyntaxKind::R_SQ) => ("[", "]"),
         (SyntaxKind::L_CURLY, SyntaxKind::R_CURLY) => ("{", "}"),
+        (SyntaxKind::L_ANGLE, SyntaxKind::R_ANGLE) => ("<", ">"),
         _ => panic!("Unexpected bracket type"),
     };
 
@@ -343,8 +424,8 @@ macro_rules! hashmap {
     };
 }
 
-fn create_syntax_lookup() -> SyntaxLookupMap {
-    hashmap! { SyntaxLookupMap;
+fn create_syntax_lookup(config: &ParserConfig) -> SyntaxLookupMap {
+    let mut map = hashmap! { SyntaxLookupMap;
                ',' => Either::Left(SyntaxKind::COMMA),
                '-' => Either::Right(Box::new(parse_minus)),
                ' ' => Either::Right(Box::new(|expr| skip_whitespace(expr, false))),
@@ -366,5 +447,13 @@ fn create_syntax_lookup() -> SyntaxLookupMap {
                        GreenToken::new(SyntaxKind::STRING.into(), &str).into(),
                    ))
                })),
+    };
+    if config.file_type == FileType::ObjDump {
+        map.insert('<', Either::Right(Box::new(objdump_angle_brackets)));
     }
+    map
+}
+
+fn is_hex(data: char) -> bool {
+    is_hex_digit(data as u8)
 }

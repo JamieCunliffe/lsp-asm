@@ -21,8 +21,15 @@
   "Face used for semantic highlighting registers."
   :group 'lsp-faces)
 
+(defface lsp-face-semhl-metadata
+  '((t (:inherit font-lock-comment-face)))
+  "Face used for semantic highlighting metadata."
+  :group 'lsp-faces)
+
 (add-to-list 'lsp-semantic-token-faces
              '("register" . lsp-face-semhl-register))
+(add-to-list 'lsp-semantic-token-faces
+             '("metadata" . lsp-face-semhl-metadata))
 
 (provide 'lsp-asm)
 ;;; lsp-asm.el ends here

@@ -10,7 +10,7 @@ edition = "2018"
 log = "0.4"
 pretty_env_logger = "0.4"
 lazy_static = "*"
-regex = "*"
+regex = "1.5.3"
 either = "1.6.1"
 lsp-server = "0.4.1"
 lsp-types = { version = "0.85.0", features = ["proposed"] }
@@ -19,7 +19,7 @@ serde = { version = "1.0.83", features = ["derive"] }
 nom = "5.0.0"
 actix = "0.10"
 actix-rt = "1.0"
-rowan = "*"
+rowan = "0.12.6"
 
 [dev-dependencies]
 pretty_assertions = "*"

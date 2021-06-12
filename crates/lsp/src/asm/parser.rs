@@ -26,7 +26,9 @@ impl Parser {
     /// Create a parser from the given data.
     /// * data: The assembly listing to parse
     pub fn from(data: &str) -> Self {
-        let config = ParserConfig::new(&Self::determine_architecture(data));
+        let mut config = ParserConfig::new(&Self::determine_architecture(data));
+        config.file_type = Self::determine_filetype(data);
+
         let root = Self::parse_asm(data, &config);
         info!("Syntax tree: {:#?}", root);
         Self {
@@ -104,6 +106,8 @@ impl Parser {
             | SyntaxKind::R_SQ
             | SyntaxKind::L_CURLY
             | SyntaxKind::R_CURLY
+            | SyntaxKind::L_ANGLE
+            | SyntaxKind::R_ANGLE
             | SyntaxKind::MNEMONIC
             | SyntaxKind::WHITESPACE
             | SyntaxKind::COMMA
@@ -114,6 +118,7 @@ impl Parser {
             | SyntaxKind::INSTRUCTION
             | SyntaxKind::DIRECTIVE
             | SyntaxKind::BRACKETS
+            | SyntaxKind::METADATA
             | SyntaxKind::ROOT => None,
         }
     }
@@ -184,13 +189,31 @@ impl Parser {
         }
     }
 
+    fn determine_filetype(filedata: &str) -> super::config::FileType {
+        use super::config::FileType;
+        use regex::Regex;
+
+        lazy_static! {
+            static ref OBJDUMP_DETECTION: Regex =
+                Regex::new(r#".*:[\t ]+file format .*\n\n\nDisassembly of section .*:"#).unwrap();
+        }
+
+        if OBJDUMP_DETECTION.is_match(filedata) {
+            FileType::ObjDump
+        } else {
+            Default::default()
+        }
+    }
+
     /// Attempt to determine the architecture that the assembly data is for.
     fn determine_architecture(filedata: &str) -> Architecture {
         use regex::Regex;
         lazy_static! {
-            static ref ARCH_DETECTION: [Regex; 2] = [
+            static ref ARCH_DETECTION: [Regex; 4] = [
                 Regex::new(r#"lsp-asm-architecture: (.*) ?"#).unwrap(),
                 Regex::new(r#"^\s*\.arch (.*)"#).unwrap(),
+                Regex::new(r#".*:[\t ]+file format elf64-(.*)"#).unwrap(),
+                Regex::new(r#".*:[\t ]+file format Mach-O (.*)"#).unwrap(),
             ];
         }
         let arch = *ARCH_DETECTION

@@ -11,6 +11,7 @@ lazy_static! {
         SemanticTokenType::COMMENT,
         SemanticTokenType::new("register"),
         SemanticTokenType::new("label"),
+        SemanticTokenType::new("metadata"),
     ];
     pub static ref OPCODE_INDEX: u32 = 0;
     pub static ref STRING_INDEX: u32 = 1;
@@ -19,6 +20,7 @@ lazy_static! {
     pub static ref COMMENT_INDEX: u32 = 4;
     pub static ref REGISTER_INDEX: u32 = 5;
     pub static ref LABEL_INDEX: u32 = 6;
+    pub static ref METADATA_INDEX: u32 = 7;
 }
 
 pub(crate) fn semantic_delta_transform(tokens: &[SemanticToken]) -> Vec<SemanticToken> {
