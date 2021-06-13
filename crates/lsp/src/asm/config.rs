@@ -8,6 +8,8 @@ pub(crate) struct ParserConfig {
     /// The characters that signal the start of a comment
     pub comment_start: String,
 
+    pub architecture: Architecture,
+
     /// The filetype of this parser
     pub file_type: FileType,
 
@@ -19,6 +21,7 @@ impl Default for ParserConfig {
     fn default() -> Self {
         ParserConfig {
             comment_start: "#".to_string(),
+            architecture: Architecture::Unknown,
             file_type: Default::default(),
             registers: None,
         }
@@ -31,10 +34,12 @@ impl ParserConfig {
             Architecture::AArch64 => Self {
                 comment_start: String::from("//"),
                 registers: Some(&super::registers::AARCH64_REGISTERS),
+                architecture: *arch,
                 ..Self::default()
             },
             Architecture::X86_64 => Self {
                 registers: Some(&super::registers::X86_64_REGISTERS),
+                architecture: *arch,
                 ..Self::default()
             },
             Architecture::Unknown => Self::default(),

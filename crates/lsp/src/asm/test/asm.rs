@@ -299,3 +299,30 @@ fn test_curly_brace() {
         ParserConfig::new(&Architecture::AArch64)
     );
 }
+
+#[test]
+fn test_negative_imm() {
+    assert_listing!(
+        r#"stp x29, x30, [sp, #-32]!"#,
+        r##"ROOT@0..25
+  INSTRUCTION@0..25
+    MNEMONIC@0..3 "stp"
+    WHITESPACE@3..4 " "
+    REGISTER@4..7 "x29"
+    COMMA@7..8 ","
+    WHITESPACE@8..9 " "
+    REGISTER@9..12 "x30"
+    COMMA@12..13 ","
+    WHITESPACE@13..14 " "
+    BRACKETS@14..24
+      L_SQ@14..15 "["
+      REGISTER@15..17 "sp"
+      COMMA@17..18 ","
+      WHITESPACE@18..19 " "
+      NUMBER@19..23 "#-32"
+      R_SQ@23..24 "]"
+    TOKEN@24..25 "!"
+"##,
+        ParserConfig::new(&Architecture::AArch64)
+    );
+}

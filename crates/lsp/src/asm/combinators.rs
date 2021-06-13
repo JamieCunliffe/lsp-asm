@@ -1,6 +1,7 @@
 use std::num::ParseIntError;
 
 use crate::asm::config::FileType;
+use crate::types::Architecture;
 
 use super::config::ParserConfig;
 
@@ -412,12 +413,14 @@ fn parse_minus(expr: Span) -> NomResultElement {
 }
 
 macro_rules! hashmap {
-    ($t:ty; $($key:expr => $value:expr,)+) => { hashmap!( $t; $($key => $value),+) };
-    ($t:ty; $($key:expr => $value:expr),*) => {
+    ($t:ty; $($([$cond:expr])? $key:literal => $value:expr,)+) => { hashmap!( $t; $( $($cond &&),* true, $key => $value),+) };
+    ($t:ty; $($cond:expr, $key:expr => $value:expr),*) => {
         {
             let mut _map: $t = ::std::collections::HashMap::new();
             $(
-                let _ = _map.insert($key, $value);
+                if $cond {
+                    let _ = _map.insert($key, $value);
+                }
             )*
             _map
         }
@@ -425,36 +428,51 @@ macro_rules! hashmap {
 }
 
 fn create_syntax_lookup(config: &ParserConfig) -> SyntaxLookupMap {
-    let mut map = hashmap! { SyntaxLookupMap;
-                             ',' => Either::Left(SyntaxKind::COMMA),
-                             '+' => Either::Left(SyntaxKind::OPERATOR),
-                             '-' => Either::Right(Box::new(parse_minus)),
-                             ' ' => Either::Right(Box::new(|expr| skip_whitespace(expr, false))),
-                             '\t' => Either::Right(Box::new(|expr| skip_whitespace(expr, false))),
-                             '\n' => Either::Right(Box::new(|expr| skip_whitespace(expr, false))),
-                             '(' => Either::Right(Box::new(|expr| {
-                                 parse_brackets(expr, (SyntaxKind::L_PAREN, SyntaxKind::R_PAREN))
-                             })),
-                             '[' => Either::Right(Box::new(|expr| {
-                                 parse_brackets(expr, (SyntaxKind::L_SQ, SyntaxKind::R_SQ))
-                             })),
-                             '{' => Either::Right(Box::new(|expr| {
-                                 parse_brackets(expr, (SyntaxKind::L_CURLY, SyntaxKind::R_CURLY))
-                             })),
-                             '"' => Either::Right(Box::new(|expr| {
-                                 let (remaining, str) = parse_string(expr)?;
-                                 Ok((
-                                     remaining,
-                                     GreenToken::new(SyntaxKind::STRING.into(), &str).into(),
-                                 ))
-                             })),
-    };
-    if config.file_type == FileType::ObjDump {
-        map.insert('<', Either::Right(Box::new(objdump_angle_brackets)));
+    hashmap! { SyntaxLookupMap;
+               ',' => Either::Left(SyntaxKind::COMMA),
+               '+' => Either::Left(SyntaxKind::OPERATOR),
+               '-' => Either::Right(Box::new(parse_minus)),
+               ' ' => Either::Right(Box::new(|expr| skip_whitespace(expr, false))),
+               '\t' => Either::Right(Box::new(|expr| skip_whitespace(expr, false))),
+               '\n' => Either::Right(Box::new(|expr| skip_whitespace(expr, false))),
+               '(' => Either::Right(Box::new(|expr| {
+                   parse_brackets(expr, (SyntaxKind::L_PAREN, SyntaxKind::R_PAREN))
+               })),
+               '[' => Either::Right(Box::new(|expr| {
+                   parse_brackets(expr, (SyntaxKind::L_SQ, SyntaxKind::R_SQ))
+               })),
+               '{' => Either::Right(Box::new(|expr| {
+                   parse_brackets(expr, (SyntaxKind::L_CURLY, SyntaxKind::R_CURLY))
+               })),
+               '"' => Either::Right(Box::new(|expr| {
+                   let (remaining, str) = parse_string(expr)?;
+                   Ok((
+                       remaining,
+                       GreenToken::new(SyntaxKind::STRING.into(), &str).into(),
+                   ))
+               })),
+               [config.file_type == FileType::ObjDump] '<' => Either::Right(Box::new(objdump_angle_brackets)),
+               [config.architecture == Architecture::AArch64] '#' => Either::Right(Box::new(|expr| {
+                   let (remaining, str) = take_while(|a| a != ' ' && a != ',')(expr)?;
+                   let token = span_to_token(&str);
+                   Ok((remaining, token.into()))
+               })),
     }
-    map
 }
 
 fn is_hex(data: char) -> bool {
     is_hex_digit(data as u8)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_is_numeric() {
+        assert_eq!(true, is_numeric("#-42"));
+        assert_eq!(true, is_numeric("0x123456789ABCDEF"));
+        assert_eq!(true, is_numeric("0x123456789abcdef"));
+    }
 }
