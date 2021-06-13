@@ -216,16 +216,14 @@ impl Parser {
                 Regex::new(r#".*:[\t ]+file format Mach-O (.*)"#).unwrap(),
             ];
         }
-        let arch = *ARCH_DETECTION
+        let arch = ARCH_DETECTION
             .iter()
             .filter_map(|regex| regex.captures(filedata))
-            .filter_map(|captures| match captures.get(1) {
+            .find_map(|captures| match captures.get(1) {
                 Some(arch) => Some(Architecture::from(arch.as_str())),
                 None => None,
             })
-            .collect::<Vec<_>>()
-            .first()
-            .unwrap_or(&Architecture::Unknown);
+            .unwrap_or(Architecture::Unknown);
 
         debug!("Architecture detected: {:?}", arch);
 

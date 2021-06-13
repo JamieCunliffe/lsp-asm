@@ -426,27 +426,28 @@ macro_rules! hashmap {
 
 fn create_syntax_lookup(config: &ParserConfig) -> SyntaxLookupMap {
     let mut map = hashmap! { SyntaxLookupMap;
-               ',' => Either::Left(SyntaxKind::COMMA),
-               '-' => Either::Right(Box::new(parse_minus)),
-               ' ' => Either::Right(Box::new(|expr| skip_whitespace(expr, false))),
-               '\t' => Either::Right(Box::new(|expr| skip_whitespace(expr, false))),
-               '\n' => Either::Right(Box::new(|expr| skip_whitespace(expr, false))),
-               '(' => Either::Right(Box::new(|expr| {
-                   parse_brackets(expr, (SyntaxKind::L_PAREN, SyntaxKind::R_PAREN))
-               })),
-               '[' => Either::Right(Box::new(|expr| {
-                   parse_brackets(expr, (SyntaxKind::L_SQ, SyntaxKind::R_SQ))
-               })),
-               '{' => Either::Right(Box::new(|expr| {
-                   parse_brackets(expr, (SyntaxKind::L_CURLY, SyntaxKind::R_CURLY))
-               })),
-               '"' => Either::Right(Box::new(|expr| {
-                   let (remaining, str) = parse_string(expr)?;
-                   Ok((
-                       remaining,
-                       GreenToken::new(SyntaxKind::STRING.into(), &str).into(),
-                   ))
-               })),
+                             ',' => Either::Left(SyntaxKind::COMMA),
+                             '+' => Either::Left(SyntaxKind::OPERATOR),
+                             '-' => Either::Right(Box::new(parse_minus)),
+                             ' ' => Either::Right(Box::new(|expr| skip_whitespace(expr, false))),
+                             '\t' => Either::Right(Box::new(|expr| skip_whitespace(expr, false))),
+                             '\n' => Either::Right(Box::new(|expr| skip_whitespace(expr, false))),
+                             '(' => Either::Right(Box::new(|expr| {
+                                 parse_brackets(expr, (SyntaxKind::L_PAREN, SyntaxKind::R_PAREN))
+                             })),
+                             '[' => Either::Right(Box::new(|expr| {
+                                 parse_brackets(expr, (SyntaxKind::L_SQ, SyntaxKind::R_SQ))
+                             })),
+                             '{' => Either::Right(Box::new(|expr| {
+                                 parse_brackets(expr, (SyntaxKind::L_CURLY, SyntaxKind::R_CURLY))
+                             })),
+                             '"' => Either::Right(Box::new(|expr| {
+                                 let (remaining, str) = parse_string(expr)?;
+                                 Ok((
+                                     remaining,
+                                     GreenToken::new(SyntaxKind::STRING.into(), &str).into(),
+                                 ))
+                             })),
     };
     if config.file_type == FileType::ObjDump {
         map.insert('<', Either::Right(Box::new(objdump_angle_brackets)));

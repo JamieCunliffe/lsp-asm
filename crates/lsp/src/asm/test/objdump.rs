@@ -138,3 +138,43 @@ target/debug/tests:	file format mach-o arm64
         }
     );
 }
+
+#[test]
+fn test_objdump_plus() {
+    assert_listing!(
+        r#"
+a.out:     file format elf64-littleaarch64
+
+
+  210640:	b4000040 	cbz	x0, 210648 <call_weak_fn+0x10>"#,
+        r#"ROOT@0..100
+  WHITESPACE@0..1 "\n"
+  METADATA@1..43 "a.out:     file forma ..."
+  WHITESPACE@43..48 "\n\n\n  "
+  INSTRUCTION@48..100
+    METADATA@48..54 "210640"
+    METADATA@54..55 ":"
+    WHITESPACE@55..56 "\t"
+    METADATA@56..65 "b4000040 "
+    WHITESPACE@65..66 "\t"
+    MNEMONIC@66..69 "cbz"
+    WHITESPACE@69..70 "\t"
+    REGISTER@70..72 "x0"
+    COMMA@72..73 ","
+    WHITESPACE@73..74 " "
+    NUMBER@74..80 "210648"
+    WHITESPACE@80..81 " "
+    METADATA@81..100
+      BRACKETS@81..100
+        L_ANGLE@81..82 "<"
+        TOKEN@82..94 "call_weak_fn"
+        OPERATOR@94..95 "+"
+        NUMBER@95..99 "0x10"
+        R_ANGLE@99..100 ">"
+"#,
+        ParserConfig {
+            file_type: FileType::ObjDump,
+            ..ParserConfig::new(&Architecture::AArch64)
+        }
+    );
+}
