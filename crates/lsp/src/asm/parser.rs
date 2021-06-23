@@ -1,7 +1,7 @@
 use crate::types::{Architecture, DocumentPosition, DocumentRange, LineNumber};
 
-use super::ast::{SyntaxKind, SyntaxNode, SyntaxToken};
-use super::config::ParserConfig;
+use super::ast::{AstToken, LabelToken, SyntaxKind, SyntaxNode, SyntaxToken};
+use super::config::{FileType, ParserConfig};
 use rowan::{GreenNode, GreenToken, NodeOrToken, TextRange, TextSize};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -52,6 +52,13 @@ impl Parser {
         &self.root
     }
 
+    pub(crate) fn token<'st, 'c, T>(&'c self, token: &'st SyntaxToken) -> Option<T>
+    where
+        T: AstToken<'st, 'c>,
+    {
+        T::cast(token, &self.config)
+    }
+
     /// Gets the positional information that can be used with tokens.
     pub(crate) fn position(&self) -> &PositionInfo {
         &self.line_index
@@ -99,7 +106,9 @@ impl Parser {
             )?)),
             SyntaxKind::TOKEN => Some(SemanticEq::String(token.text())),
             SyntaxKind::NUMBER => Some(SemanticEq::Numeric(token.text().parse::<i128>().ok()?)),
-            SyntaxKind::LABEL => Some(SemanticEq::String(token.text().strip_suffix(':')?)),
+            SyntaxKind::LABEL => self
+                .token::<LabelToken>(token)
+                .map(|t| SemanticEq::String(t.name())),
             SyntaxKind::L_PAREN
             | SyntaxKind::R_PAREN
             | SyntaxKind::L_SQ
@@ -190,7 +199,6 @@ impl Parser {
     }
 
     fn determine_filetype(filedata: &str) -> super::config::FileType {
-        use super::config::FileType;
         use regex::Regex;
 
         lazy_static! {

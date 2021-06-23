@@ -13,6 +13,7 @@ use crate::handler::semantic::semantic_delta_transform;
 use crate::handler::{LanguageServerProtocol, LanguageServerProtocolConfig};
 use crate::types::DocumentPosition;
 
+use super::ast::LabelToken;
 use super::ast::{SyntaxKind, SyntaxNode, SyntaxToken};
 use super::error::{lsp_error_map, ErrorCode};
 use super::parser::{Parser, PositionInfo};
@@ -50,10 +51,9 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             .filter_map(|d| d.into_token())
             .filter(|token| token.kind() == SyntaxKind::LABEL.into())
             .filter(|label| {
-                label
-                    .text()
-                    .strip_suffix(':')
-                    .map(|name| name == token.text())
+                self.parser
+                    .token::<LabelToken>(label)
+                    .map(|name| name.name() == token.text())
                     .unwrap_or(false)
             })
             .filter_map(|token| {

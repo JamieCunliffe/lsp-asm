@@ -1,4 +1,7 @@
+use std::fmt::Debug;
 use std::iter;
+
+use super::config::{FileType, ParserConfig};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
@@ -73,3 +76,44 @@ pub(crate) type SyntaxNode = rowan::SyntaxNode<AssemblyLanguage>;
 pub(crate) type SyntaxToken = rowan::SyntaxToken<AssemblyLanguage>;
 #[allow(unused)]
 pub(crate) type SyntaxElement = rowan::NodeOrToken<SyntaxNode, SyntaxToken>;
+
+pub(crate) trait AstToken<'st, 'c> {
+    fn cast(token: &'st SyntaxToken, config: &'c ParserConfig) -> Option<Self>
+    where
+        Self: Sized;
+
+    fn syntax(&self) -> &'st SyntaxToken;
+}
+
+pub struct LabelToken<'st, 'ft> {
+    token: &'st SyntaxToken,
+    file_type: &'ft FileType,
+}
+
+impl<'st, 'ft> AstToken<'st, 'ft> for LabelToken<'st, 'ft> {
+    fn cast(token: &'st SyntaxToken, config: &'ft ParserConfig) -> Option<Self> {
+        if matches!(token.kind(), SyntaxKind::LABEL | SyntaxKind::LOCAL_LABEL) {
+            Some(LabelToken {
+                token,
+                file_type: &config.file_type,
+            })
+        } else {
+            None
+        }
+    }
+
+    fn syntax(&self) -> &'st SyntaxToken {
+        &self.token
+    }
+}
+
+impl<'st, 'ft> LabelToken<'st, 'ft> {
+    pub(crate) fn name(&self) -> &'st str {
+        let text = self.token.text().trim_end_matches(':');
+
+        match self.file_type {
+            FileType::Assembly => text,
+            FileType::ObjDump => text.trim_start_matches('<').trim_end_matches('>'),
+        }
+    }
+}
