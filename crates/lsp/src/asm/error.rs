@@ -4,6 +4,7 @@ pub(crate) enum ErrorCode {
     NoRoot,
     TokenNotFound,
     InvalidPosition,
+    CastFailed,
 }
 
 pub(crate) fn lsp_error_map(error: ErrorCode) -> ResponseError {
@@ -21,6 +22,11 @@ pub(crate) fn lsp_error_map(error: ErrorCode) -> ResponseError {
         ErrorCode::InvalidPosition => ResponseError {
             code: 3,
             message: String::from("Invalid position requested"),
+            data: None,
+        },
+        ErrorCode::CastFailed => ResponseError {
+            code: 4,
+            message: String::from("Failed to cast syntax token"),
             data: None,
         },
     }

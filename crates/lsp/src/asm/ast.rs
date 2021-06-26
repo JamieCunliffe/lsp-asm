@@ -1,6 +1,9 @@
 use std::fmt::Debug;
 use std::iter;
 
+use symbolic::common::{Name, NameMangling};
+use symbolic::demangle::{Demangle, DemangleOptions};
+
 use super::config::{FileType, ParserConfig};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -115,5 +118,17 @@ impl<'st, 'ft> LabelToken<'st, 'ft> {
             FileType::Assembly => text,
             FileType::ObjDump => text.trim_start_matches('<').trim_end_matches('>'),
         }
+    }
+
+    pub(crate) fn demangle(&self) -> Option<(String, String)> {
+        let name = Name::new(
+            self.name(),
+            NameMangling::Mangled,
+            symbolic::common::Language::Unknown,
+        );
+
+        let lang = name.detect_language();
+        name.demangle(DemangleOptions::complete())
+            .map(|sym| (sym, lang.to_string()))
     }
 }

@@ -3,12 +3,12 @@
 use lsp_server::ResponseError;
 use lsp_types::{
     DocumentHighlight, DocumentHighlightKind, DocumentSymbol, DocumentSymbolResponse,
-    GotoDefinitionResponse, HoverContents, Location, Position, Range, SemanticToken,
+    GotoDefinitionResponse, HoverContents, Location, MarkupContent, Position, Range, SemanticToken,
     SemanticTokens, SemanticTokensResult, SymbolKind, Url,
 };
 use rowan::TextRange;
 
-use crate::asm::combinators;
+use crate::asm::{combinators, error};
 use crate::handler::semantic::semantic_delta_transform;
 use crate::handler::{LanguageServerProtocol, LanguageServerProtocolConfig};
 use crate::types::DocumentPosition;
@@ -111,6 +111,12 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
 
         let hover = match token.kind() {
             SyntaxKind::NUMBER => get_numeric_hover(token),
+            SyntaxKind::LABEL => get_label_hover(
+                &self
+                    .parser
+                    .token(&token)
+                    .ok_or_else(|| error::lsp_error_map(ErrorCode::CastFailed))?,
+            ),
             SyntaxKind::L_PAREN
             | SyntaxKind::R_PAREN
             | SyntaxKind::L_SQ
@@ -126,7 +132,6 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             | SyntaxKind::COMMA
             | SyntaxKind::OPERATOR
             | SyntaxKind::STRING
-            | SyntaxKind::LABEL
             | SyntaxKind::LOCAL_LABEL
             | SyntaxKind::COMMENT
             | SyntaxKind::INSTRUCTION
@@ -139,12 +144,10 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         debug!("hover: {:#?}", hover);
 
         Ok(hover.map(|mut hover| lsp_types::Hover {
-            contents: HoverContents::Array(
-                hover
-                    .drain(..)
-                    .map(lsp_types::MarkedString::String)
-                    .collect(),
-            ),
+            contents: HoverContents::Markup(MarkupContent {
+                kind: lsp_types::MarkupKind::Markdown,
+                value: hover.join("\n"),
+            }),
             range: None,
         }))
     }
@@ -304,10 +307,21 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
 fn get_numeric_hover(token: SyntaxToken) -> Option<Vec<String>> {
     let value = combinators::parse_number(token.text()).ok()?;
     Some(vec![
-        "Number".to_string(),
+        "# Number".to_string(),
         format!("Decimal: {}", value),
         format!("Hex: {:#X}", value),
     ])
+}
+
+fn get_label_hover(label: &LabelToken) -> Option<Vec<String>> {
+    let mut symbols = Vec::new();
+
+    if let Some((sym, lang)) = label.demangle() {
+        symbols.push(String::from("# Demangled Symbol\n"));
+        symbols.push(format!("**{}**: `{}`", lang, sym));
+    }
+
+    Some(symbols)
 }
 
 fn find_references<'a>(
@@ -591,11 +605,13 @@ end:
             })
             .unwrap();
         let response = Some(Hover {
-            contents: lsp_types::HoverContents::Array(vec![
-                MarkedString::String(String::from("Number")),
-                MarkedString::String(String::from("Decimal: -32")),
-                MarkedString::String(String::from("Hex: 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE0")),
-            ]),
+            contents: lsp_types::HoverContents::Markup(MarkupContent {
+                value: r#"# Number
+Decimal: -32
+Hex: 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE0"#
+                    .to_string(),
+                kind: lsp_types::MarkupKind::Markdown,
+            }),
             range: None,
         });
 

@@ -4,12 +4,10 @@ version = "0.1.0"
 authors = ["Jamie Cunliffe <Jamie.Cunliffe@outlook.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 log = "0.4"
 pretty_env_logger = "0.4"
-lazy_static = "*"
+lazy_static = "1.4.0"
 regex = "1.5.3"
 either = "1.6.1"
 lsp-server = "0.4.1"
@@ -21,7 +19,7 @@ actix = "0.10"
 actix-rt = "1.0"
 rowan = "0.12.6"
 
-[dev-dependencies]
-pretty_assertions = "*"
+symbolic = { version = "8.2.1", features = ["demangle"] }
 
-[features]
+[dev-dependencies]
+pretty_assertions = "0.7.2"
