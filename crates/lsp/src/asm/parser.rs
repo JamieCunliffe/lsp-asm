@@ -303,12 +303,8 @@ impl PositionInfo {
 
     /// Helper function to get the line and column for a text size
     fn get_position_for_size(&self, ts: &TextSize) -> Option<DocumentPosition> {
-        let (line, pos) = self
-            .lines
-            .iter()
-            .enumerate()
-            .filter(|(_, pos)| ts >= (*pos))
-            .last()?;
+        let line = self.lines.partition_point(|l| l <= ts) - 1;
+        let pos = self.lines.get(line)?;
 
         let column = ts.checked_sub(*pos).map(|c| c.into()).unwrap_or(0);
         Some(DocumentPosition {
