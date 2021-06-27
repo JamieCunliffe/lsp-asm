@@ -30,7 +30,6 @@ impl Parser {
         config.file_type = Self::determine_filetype(data);
 
         let root = Self::parse_asm(data, &config);
-        info!("Syntax tree: {:#?}", root);
         Self {
             line_index: PositionInfo::new(&root),
             root,
@@ -253,7 +252,6 @@ impl PositionInfo {
     /// Construct a position info structure from a `SyntaxNode`
     pub fn new(data: &SyntaxNode) -> Self {
         let lines = Self::build_lines(data);
-        info!("Build line map: {:#?}", lines);
         Self { lines }
     }
 

@@ -3,10 +3,6 @@ extern crate log;
 #[macro_use]
 extern crate lazy_static;
 
-use std::error::Error;
-
-use actix::Actor;
-
 use lsp_server::{Connection, Message, Notification, Request, RequestId, Response, ResponseError};
 
 use lsp_types::notification::{DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument};
@@ -22,18 +18,18 @@ use lsp_types::{
 
 use serde_json::Value;
 
+use std::error::Error;
+
 mod asm;
 mod handler;
 mod types;
 
-use handler::handlers::{
-    DocChangedNotification, DocClosedNotification, DocOpenNotification, DocumentHighlightMessage,
-    DocumentSymbolMessage, FindReferencesMessage, GotoDefinitionMessage, HoverRequestMessage,
-    LangServerHandler, LangServerResult, SemanticTokensMessage,
-};
+use crate::handler::handlers::LangServerHandler;
+use crate::handler::types::SemanticTokensMessage;
 
-#[actix_rt::main]
-async fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
+pub(crate) type LangServerResult = Result<Value, ResponseError>;
+
+fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
     pretty_env_logger::init();
     debug!("Starting lsp-asm");
 
@@ -66,19 +62,19 @@ async fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
     let server_capabilities = serde_json::to_value(&capabilities).unwrap();
     let initialization_params = connection.initialize(server_capabilities)?;
 
-    lsp_loop(&connection, initialization_params).await?;
+    lsp_loop(&connection, initialization_params)?;
     io_threads.join()?;
 
     debug!("Shutting server down");
     Ok(())
 }
 
-async fn lsp_loop(
+fn lsp_loop(
     connection: &Connection,
     _params: serde_json::Value,
 ) -> Result<(), Box<dyn Error + Sync + Send>> {
     debug!("Starting lsp loop");
-    let handler = LangServerHandler::default().start();
+    let mut handler = LangServerHandler::default();
 
     for msg in &connection.receiver {
         match msg {
@@ -93,46 +89,41 @@ async fn lsp_loop(
                 let result = match request.method.as_str() {
                     "textDocument/definition" => {
                         let (_, data) = get_message::<GotoDefinition>(request).unwrap();
-                        handler.send(GotoDefinitionMessage { data }).await?
+                        make_result(handler.goto_definition(data.into()))
                     }
                     "textDocument/references" => {
                         let (_, data) = get_message::<References>(request).unwrap();
-                        handler.send(FindReferencesMessage { data }).await?
+                        make_result(handler.find_references(data.into()))
                     }
                     "textDocument/hover" => {
                         let (_, data) = get_message::<HoverRequest>(request).unwrap();
-                        handler.send(HoverRequestMessage { data }).await?
+                        make_result(handler.hover(data.into()))
                     }
                     "textDocument/documentSymbol" => {
                         let (_, data) = get_message::<DocumentSymbolRequest>(request).unwrap();
-                        handler.send(DocumentSymbolMessage { data }).await?
+                        make_result(handler.document_symbols(data.text_document.uri))
                     }
                     "textDocument/documentHighlight" => {
                         let (_, data) = get_message::<DocumentHighlightRequest>(request).unwrap();
-                        handler.send(DocumentHighlightMessage { data }).await?
+                        make_result(handler.document_highlight(data.into()))
                     }
                     "textDocument/semanticTokens/full" => {
                         let (_, data) = get_message::<SemanticTokensFullRequest>(request).unwrap();
-                        handler
-                            .send(SemanticTokensMessage {
-                                text_document: data.text_document,
-                                range: None,
-                            })
-                            .await?
+                        let msg = SemanticTokensMessage::new(data.text_document.uri, None);
+                        make_result(handler.get_semantic_tokens(msg))
                     }
                     "textDocument/semanticTokens/range" => {
                         let (_, data) = get_message::<SemanticTokensRangeRequest>(request).unwrap();
-                        handler
-                            .send(SemanticTokensMessage {
-                                text_document: data.text_document,
-                                range: Some(data.range),
-                            })
-                            .await?
+                        let msg = SemanticTokensMessage::new(
+                            data.text_document.uri,
+                            Some(data.range.into()),
+                        );
+                        make_result(handler.get_semantic_tokens(msg))
                     }
                     _ => panic!("Unknown method: {:?}", request.method),
                 };
 
-                let response = make_response(req_id, &result);
+                let response = make_response(req_id, result);
                 connection.sender.send(Message::Response(response))?;
             }
             Message::Notification(notification) => {
@@ -140,21 +131,17 @@ async fn lsp_loop(
                 match notification.method.as_str() {
                     "textDocument/didOpen" => {
                         let data = get_notification::<DidOpenTextDocument>(notification).unwrap();
-
-                        handler
-                            .send(DocOpenNotification {
-                                data: data.text_document,
-                            })
-                            .await?;
+                        let data = data.text_document;
+                        handler.open_file(&data.language_id, data.uri, &data.text)
                     }
                     "textDocument/didChange" => {
                         let data = get_notification::<DidChangeTextDocument>(notification).unwrap();
-                        handler.send(DocChangedNotification { data }).await?;
+                        handler.update_file(data)
                     }
                     "textDocument/didSave" => {}
                     "textDocument/didClose" => {
                         let data = get_notification::<DidCloseTextDocument>(notification).unwrap();
-                        handler.send(DocClosedNotification { data }).await?;
+                        handler.close_file(data.text_document.uri);
                     }
                     "$/cancelRequest" => debug!("Received cancel request - Ignoring"),
                     _ => panic!("Unknown notification: {:?}", notification.method),
@@ -167,24 +154,28 @@ async fn lsp_loop(
     Ok(())
 }
 
-fn make_response(id: RequestId, result: &LangServerResult) -> Response {
+fn make_result<T>(result: Result<T, ResponseError>) -> LangServerResult
+where
+    T: serde::Serialize,
+{
     match result {
-        Ok(result) => {
-            let result: Value = serde_json::from_str(result).unwrap();
-            Response {
-                id,
-                result: Some(result),
-                error: None,
-            }
-        }
-        Err(err) => {
-            let result: ResponseError = serde_json::from_str(err).unwrap();
-            Response {
-                id,
-                result: None,
-                error: Some(result),
-            }
-        }
+        Ok(result) => Ok(serde_json::to_value(&result).unwrap()),
+        Err(result) => Err(result),
+    }
+}
+
+fn make_response(id: RequestId, result: LangServerResult) -> Response {
+    match result {
+        Ok(result) => Response {
+            id,
+            result: Some(result),
+            error: None,
+        },
+        Err(err) => Response {
+            id,
+            result: None,
+            error: Some(err),
+        },
     }
 }
 

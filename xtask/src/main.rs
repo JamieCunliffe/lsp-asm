@@ -37,6 +37,7 @@ fn try_main() -> Result<(), DynError> {
     Ok(())
 }
 
+#[allow(unused)]
 fn project_root() -> String {
     Path::new(&env!("CARGO_MANIFEST_DIR"))
         .ancestors()

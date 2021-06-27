@@ -8,14 +8,14 @@ use lsp_types::{
 };
 use rowan::TextRange;
 
-use crate::asm::{combinators, error};
+use crate::asm::combinators;
+use crate::handler::error::{lsp_error_map, ErrorCode};
 use crate::handler::semantic::semantic_delta_transform;
 use crate::handler::{LanguageServerProtocol, LanguageServerProtocolConfig};
 use crate::types::DocumentPosition;
 
 use super::ast::LabelToken;
 use super::ast::{SyntaxKind, SyntaxNode, SyntaxToken};
-use super::error::{lsp_error_map, ErrorCode};
 use super::parser::{Parser, PositionInfo};
 
 pub struct AssemblyLanguageServerProtocol {
@@ -115,7 +115,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                 &self
                     .parser
                     .token(&token)
-                    .ok_or_else(|| error::lsp_error_map(ErrorCode::CastFailed))?,
+                    .ok_or_else(|| lsp_error_map(ErrorCode::CastFailed))?,
             ),
             SyntaxKind::L_PAREN
             | SyntaxKind::R_PAREN

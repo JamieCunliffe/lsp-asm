@@ -5,6 +5,7 @@ pub(crate) enum ErrorCode {
     TokenNotFound,
     InvalidPosition,
     CastFailed,
+    FileNotFound,
 }
 
 pub(crate) fn lsp_error_map(error: ErrorCode) -> ResponseError {
@@ -27,6 +28,11 @@ pub(crate) fn lsp_error_map(error: ErrorCode) -> ResponseError {
         ErrorCode::CastFailed => ResponseError {
             code: 4,
             message: String::from("Failed to cast syntax token"),
+            data: None,
+        },
+        ErrorCode::FileNotFound => ResponseError {
+            code: 5,
+            message: String::from("The file specified in the request is not known"),
             data: None,
         },
     }

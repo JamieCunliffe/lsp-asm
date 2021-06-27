@@ -15,8 +15,6 @@ lsp-types = { version = "0.85.0", features = ["proposed"] }
 serde_json = "1.0.34"
 serde = { version = "1.0.83", features = ["derive"] }
 nom = "5.0.0"
-actix = "0.10"
-actix-rt = "1.0"
 rowan = "0.12.6"
 
 symbolic = { version = "8.2.1", features = ["demangle"] }
