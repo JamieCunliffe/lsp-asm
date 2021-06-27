@@ -14,7 +14,7 @@ use crate::handler::semantic::semantic_delta_transform;
 use crate::handler::{LanguageServerProtocol, LanguageServerProtocolConfig};
 use crate::types::DocumentPosition;
 
-use super::ast::LabelToken;
+use super::ast::{LabelToken, NumericToken};
 use super::ast::{SyntaxKind, SyntaxNode, SyntaxToken};
 use super::parser::{Parser, PositionInfo};
 
@@ -110,7 +110,12 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             .ok_or_else(|| lsp_error_map(ErrorCode::TokenNotFound))?;
 
         let hover = match token.kind() {
-            SyntaxKind::NUMBER => get_numeric_hover(token),
+            SyntaxKind::NUMBER => get_numeric_hover(
+                &self
+                    .parser
+                    .token(&token)
+                    .ok_or_else(|| lsp_error_map(ErrorCode::CastFailed))?,
+            ),
             SyntaxKind::LABEL => get_label_hover(
                 &self
                     .parser
@@ -304,8 +309,8 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
     }
 }
 
-fn get_numeric_hover(token: SyntaxToken) -> Option<Vec<String>> {
-    let value = combinators::parse_number(token.text()).ok()?;
+fn get_numeric_hover(value: &NumericToken) -> Option<Vec<String>> {
+    let value = value.value();
     Some(vec![
         "# Number".to_string(),
         format!("Decimal: {}", value),

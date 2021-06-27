@@ -132,3 +132,28 @@ impl<'st, 'ft> LabelToken<'st, 'ft> {
             .map(|sym| (sym, lang.to_string()))
     }
 }
+
+pub struct NumericToken<'st> {
+    token: &'st SyntaxToken,
+}
+impl<'st, 'c> AstToken<'st, 'c> for NumericToken<'st> {
+    fn cast(token: &'st SyntaxToken, _: &'c ParserConfig) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        if matches!(token.kind(), SyntaxKind::NUMBER) {
+            Some(Self { token })
+        } else {
+            None
+        }
+    }
+
+    fn syntax(&self) -> &'st SyntaxToken {
+        self.token
+    }
+}
+impl<'st> NumericToken<'st> {
+    pub(crate) fn value(&self) -> i128 {
+        super::combinators::parse_number(self.token.text()).unwrap()
+    }
+}
