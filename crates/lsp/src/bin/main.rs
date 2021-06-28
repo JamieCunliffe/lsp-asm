@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate log;
-#[macro_use]
-extern crate lazy_static;
+
+use std::error::Error;
 
 use lsp_server::{Connection, Message, Notification, Request, RequestId, Response, ResponseError};
 
@@ -18,14 +18,8 @@ use lsp_types::{
 
 use serde_json::Value;
 
-use std::error::Error;
-
-mod asm;
-mod handler;
-mod types;
-
-use crate::handler::handlers::LangServerHandler;
-use crate::handler::types::SemanticTokensMessage;
+use lsp_asm::handler::handlers::LangServerHandler;
+use lsp_asm::handler::types::SemanticTokensMessage;
 
 pub(crate) type LangServerResult = Result<Value, ResponseError>;
 
@@ -48,7 +42,7 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
                     work_done_progress: None,
                 },
                 legend: SemanticTokensLegend {
-                    token_types: handler::semantic::TOKEN_TYPES.to_vec(),
+                    token_types: lsp_asm::handler::semantic::TOKEN_TYPES.to_vec(),
                     token_modifiers: vec![],
                 },
 

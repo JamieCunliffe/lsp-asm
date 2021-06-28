@@ -11,11 +11,13 @@ use rowan::TextRange;
 use crate::asm::combinators;
 use crate::handler::error::{lsp_error_map, ErrorCode};
 use crate::handler::semantic::semantic_delta_transform;
-use crate::handler::{LanguageServerProtocol, LanguageServerProtocolConfig};
+use crate::handler::LanguageServerProtocol;
 use crate::types::DocumentPosition;
 
 use super::ast::{LabelToken, NumericToken};
 use super::ast::{SyntaxKind, SyntaxNode, SyntaxToken};
+use super::config::ParserConfig;
+
 use super::parser::{Parser, PositionInfo};
 
 pub struct AssemblyLanguageServerProtocol {

@@ -95,7 +95,10 @@ fn test(generate_coverage: bool) -> Result<(), DynError> {
         clean(&env)?;
 
         env.insert("CARGO_INCREMENTAL", "0");
-        env.insert("RUSTFLAGS", "-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort");
+        env.insert(
+            "RUSTFLAGS",
+            "-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off",
+        );
         env.insert("RUSTDOCFLAGS", "-Cpanic=abort");
         env.insert("RUSTC_BOOTSTRAP", "1");
     }
@@ -103,6 +106,11 @@ fn test(generate_coverage: bool) -> Result<(), DynError> {
     let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
     build(&env)?;
     run_command(format!("{} test --color always", cargo).as_str(), &env)?;
-
+    if generate_coverage {
+        run_command(
+            r#"grcov . -s . --binary-path ./target/debug/ -t html --branch --ignore-not-existing -o ./target/debug/coverage/ --ignore "xtask/*""#,
+            &env,
+        )?;
+    }
     Ok(())
 }

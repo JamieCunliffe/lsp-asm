@@ -1,0 +1,19 @@
+[package]
+name = "bdd-tests"
+version = "0.1.0"
+edition = "2018"
+
+[[test]]
+name = "bdd-tests"
+path = "src/runner.rs"
+harness = false
+
+[dev-dependencies]
+lsp-asm = { path = "../lsp" }
+cucumber_rust = { version = "0.8.4", features = ["macros"] }
+tokio = { version = "1.6.1", features = ["macros", "rt-multi-thread"] }
+lsp-types = { version = "0.85.0", features = ["proposed"] }
+lsp-server = "0.4.1"
+serde_json = "1.0.34"
+serde = { version = "1.0.83", features = ["derive"] }
+pretty_assertions = "0.7.2"

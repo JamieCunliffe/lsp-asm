@@ -1,3 +1,4 @@
+use std::iter;
 use std::num::ParseIntError;
 
 use crate::asm::config::FileType;
@@ -298,14 +299,14 @@ fn parse_brackets(remaining: Span, tokens: (SyntaxKind, SyntaxKind)) -> NomResul
     };
 
     let (remaining, inner) = get_bracket_span(remaining, pair)?;
-    let (_, inner) = many0(parse_line)(inner)?;
+    let (_, mut inner) = many0(parse_line)(inner)?;
 
     let open = GreenToken::new(tokens.0.into(), pair.0).into();
     let close = GreenToken::new(tokens.1.into(), pair.1).into();
-    let inner = vec![vec![open], inner, vec![close]]
-        .iter()
-        .flatten()
-        .cloned()
+
+    let inner = iter::once(open)
+        .chain(inner.drain(..))
+        .chain(iter::once(close))
         .collect::<Vec<_>>();
 
     let root = GreenNode::new(SyntaxKind::BRACKETS.into(), inner);

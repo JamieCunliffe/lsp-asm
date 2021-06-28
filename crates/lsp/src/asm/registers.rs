@@ -14,7 +14,7 @@ impl Register {
     }
 }
 
-pub const X86_64_REGISTERS: [Register; 8] = [
+pub const X86_64_REGISTERS: [Register; 9] = [
     Register::new(&["rax", "eax", "ax", "ah", "al"]),
     Register::new(&["rbx", "ebx", "bx", "bh", "bl"]),
     Register::new(&["rcx", "ecx", "cx", "ch", "cl"]),
@@ -23,6 +23,7 @@ pub const X86_64_REGISTERS: [Register; 8] = [
     Register::new(&["rsp"]),
     Register::new(&["rsi"]),
     Register::new(&["rdi", "edi"]),
+    Register::new(&["rip"]),
 ];
 
 pub const AARCH64_REGISTERS: [Register; 64] = [

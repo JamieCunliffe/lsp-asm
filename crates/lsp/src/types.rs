@@ -3,14 +3,14 @@ pub type ColumnNumber = u32;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct DocumentPosition {
-    pub(crate) line: LineNumber,
-    pub(crate) column: ColumnNumber,
+    pub line: LineNumber,
+    pub column: ColumnNumber,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct DocumentRange {
-    pub(crate) start: DocumentPosition,
-    pub(crate) end: DocumentPosition,
+    pub start: DocumentPosition,
+    pub end: DocumentPosition,
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]

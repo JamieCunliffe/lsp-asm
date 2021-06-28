@@ -4,23 +4,12 @@ use lsp_types::{
     SemanticTokensResult,
 };
 
-use crate::types::{DocumentPosition, LineNumber};
+use crate::types::DocumentPosition;
 
 pub mod error;
 pub mod handlers;
-pub(crate) mod semantic;
+pub mod semantic;
 pub mod types;
-
-#[derive(Debug, PartialEq)]
-pub struct LanguageServerProtocolConfig {
-    pub(crate) visible_lines: LineNumber,
-}
-
-impl Default for LanguageServerProtocolConfig {
-    fn default() -> Self {
-        Self { visible_lines: 200 }
-    }
-}
 
 pub trait LanguageServerProtocol {
     fn update(&mut self, data: &str);
