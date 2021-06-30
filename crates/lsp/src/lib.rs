@@ -4,5 +4,6 @@ extern crate log;
 extern crate lazy_static;
 
 pub mod asm;
+pub mod config;
 pub mod handler;
 pub mod types;

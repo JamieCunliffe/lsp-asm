@@ -1,6 +1,7 @@
 #![allow(deprecated)]
+use lsp_asm::config::LSPConfig;
 use lsp_asm::handler::semantic;
-use lsp_asm::types::{DocumentPosition, DocumentRange};
+use lsp_asm::types::{Architecture, DocumentPosition, DocumentRange};
 
 use lsp_server::ResponseError;
 use lsp_types::{
@@ -10,6 +11,19 @@ use lsp_types::{
 
 use serde_json::Value;
 use std::collections::HashMap;
+
+pub(crate) fn parse_config(rows: &Vec<Vec<String>>) -> LSPConfig {
+    let mut config: LSPConfig = Default::default();
+    for row in rows.iter().skip(1) {
+        let key = row[0].as_str();
+        let value = row[1].as_str();
+        match key {
+            "architecture" => config.architecture = Architecture::from(value),
+            x => panic!("Unknown configuration parameter: {}", x),
+        }
+    }
+    config
+}
 
 pub(crate) fn get_doc_position(pos: &str) -> DocumentPosition {
     let mut pos = pos.split(':');

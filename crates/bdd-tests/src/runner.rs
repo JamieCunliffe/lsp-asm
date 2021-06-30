@@ -3,13 +3,13 @@ use std::path::Path;
 use std::convert::Infallible;
 
 use cucumber_rust::gherkin::Step;
-use cucumber_rust::{async_trait, then, when, World, WorldInit};
+use cucumber_rust::{World, WorldInit, async_trait, given, then, when};
 
 use lsp_asm::handler::types::{FindReferencesMessage, LocationMessage, SemanticTokensMessage};
 use lsp_types::{MarkupContent, SemanticTokens, SemanticTokensResult, Url};
 use pretty_assertions::assert_eq;
 use serde_json::Value;
-use util::get_doc_position;
+use util::{get_doc_position, parse_config};
 
 use lsp_asm::handler::handlers::LangServerHandler;
 
@@ -53,10 +53,16 @@ impl World for LSPWorld {
 
     async fn new() -> Result<Self, Self::Error> {
         Ok(LSPWorld {
-            handler: Default::default(),
+            handler: LangServerHandler::new(Default::default()),
             last_response: Default::default(),
         })
     }
+}
+
+#[given("an lsp initialized with the following parameters")]
+async fn init_lsp(state: &mut LSPWorld, step: &Step) {
+    let config = parse_config(&step.table.as_ref().unwrap().rows);
+    state.handler = LangServerHandler::new(config);
 }
 
 #[when(regex = r#"I open the file "(.*)""#)]

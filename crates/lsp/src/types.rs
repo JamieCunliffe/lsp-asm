@@ -32,6 +32,12 @@ impl From<&str> for Architecture {
     }
 }
 
+impl Default for Architecture {
+    fn default() -> Self {
+        Architecture::from(std::env::consts::ARCH)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

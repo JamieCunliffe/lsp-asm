@@ -1,5 +1,8 @@
 Feature: Testing semantic tokens
   Scenario: Request semantic tokens for a range
+    Given an lsp initialized with the following parameters
+      | key          | value  |
+      | architecture | x86-64 |
     When I open the file "./features/test-files/multiple-functions.s"
     When I run "semantic tokens" on the file "./features/test-files/multiple-functions.s" at position "1:0-5:0"
     Then I expect the following response

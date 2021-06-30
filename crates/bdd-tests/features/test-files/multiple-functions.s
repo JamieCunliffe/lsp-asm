@@ -1,4 +1,4 @@
-# lsp-asm-architecture: x86-64
+# multiple-functions test file
 	.text
 	.file	"test.c"
 	.globl	process                 # -- Begin function process

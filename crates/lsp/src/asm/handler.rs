@@ -9,6 +9,7 @@ use lsp_types::{
 use rowan::TextRange;
 
 use crate::asm::combinators;
+use crate::config::LSPConfig;
 use crate::handler::error::{lsp_error_map, ErrorCode};
 use crate::handler::semantic::semantic_delta_transform;
 use crate::handler::LanguageServerProtocol;
@@ -23,11 +24,12 @@ use super::parser::{Parser, PositionInfo};
 pub struct AssemblyLanguageServerProtocol {
     parser: Parser,
     uri: Url,
+    config: LSPConfig,
 }
 
 impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
     fn update(&mut self, data: &str) {
-        self.parser = Parser::from(data);
+        self.parser = Parser::from(data, &self.config);
     }
 
     fn goto_definition(
@@ -383,9 +385,13 @@ fn find_nodes(node: &SyntaxNode, kind: SyntaxKind) -> impl std::iter::Iterator<I
 }
 
 impl AssemblyLanguageServerProtocol {
-    pub fn new(data: &str, uri: Url) -> Self {
-        let parser = Parser::from(data);
-        Self { parser, uri }
+    pub fn new(data: &str, uri: Url, config: LSPConfig) -> Self {
+        let parser = Parser::from(data, &config);
+        Self {
+            parser,
+            uri,
+            config,
+        }
     }
 }
 
@@ -404,6 +410,7 @@ mod tests {
             r#"stp	x29, x30, [sp, -32]!
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            Default::default(),
         );
 
         let orig_data = actor.parser.clone();
@@ -418,6 +425,7 @@ mod tests {
     b entry
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            Default::default(),
         );
 
         let actual = GotoDefinitionResponse::Array(vec![Location {
@@ -443,6 +451,7 @@ entry:
     b entry
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            Default::default(),
         );
 
         let actual = GotoDefinitionResponse::Array(vec![Location {
@@ -467,6 +476,7 @@ entry:
     b somewhere
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            Default::default(),
         );
 
         let actual = GotoDefinitionResponse::Array(vec![]);
@@ -485,6 +495,7 @@ entry:
     stp x20, x21, [sp, -32]!
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            Default::default(),
         );
 
         let actual = GotoDefinitionResponse::Array(vec![]);
@@ -503,6 +514,7 @@ entry:
     stp x20, x21, [sp, -32]!
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            Default::default(),
         );
 
         let actual = GotoDefinitionResponse::Array(vec![]);
@@ -521,6 +533,7 @@ entry:
     b entry
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            Default::default(),
         );
 
         let actual = vec![Location {
@@ -551,6 +564,7 @@ end:
 
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            Default::default(),
         );
 
         let actual = actor
@@ -580,6 +594,7 @@ end:
 
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            Default::default(),
         );
 
         let actual = actor
@@ -603,6 +618,7 @@ end:
 
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            Default::default(),
         );
 
         let actual = actor
@@ -638,6 +654,7 @@ end:
 
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            Default::default(),
         );
 
         let actual = DocumentSymbolResponse::Nested(
@@ -741,6 +758,7 @@ end:
     b entry
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            Default::default(),
         );
 
         let actual = vec![
@@ -776,6 +794,7 @@ end:
     b entry
 // lsp-asm-architecture: AArch64"#,
                 Url::parse("file://temp").unwrap(),
+                Default::default(),
             );
 
             let actual = SemanticTokensResult::Tokens(SemanticTokens {

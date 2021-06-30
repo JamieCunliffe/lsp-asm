@@ -1,3 +1,4 @@
+use crate::config::LSPConfig;
 use crate::types::{Architecture, DocumentPosition, DocumentRange, LineNumber};
 
 use super::ast::{AstToken, LabelToken, SyntaxKind, SyntaxNode, SyntaxToken};
@@ -25,20 +26,10 @@ enum SemanticEq<'a> {
 impl Parser {
     /// Create a parser from the given data.
     /// * data: The assembly listing to parse
-    pub fn from(data: &str) -> Self {
-        let mut config = ParserConfig::new(&Self::determine_architecture(data));
+    pub fn from(data: &str, config: &LSPConfig) -> Self {
+        let mut config = ParserConfig::new(&Self::determine_architecture(data, config));
         config.file_type = Self::determine_filetype(data);
 
-        let root = Self::parse_asm(data, &config);
-        Self {
-            line_index: PositionInfo::new(&root),
-            root,
-            config,
-        }
-    }
-
-    #[cfg(test)]
-    pub(crate) fn from_test(data: &str, config: ParserConfig) -> Self {
         let root = Self::parse_asm(data, &config);
         Self {
             line_index: PositionInfo::new(&root),
@@ -137,7 +128,7 @@ impl Parser {
         let nodes = Self::indent_labels(nodes, SyntaxKind::LABEL);
         let root = GreenNode::new(SyntaxKind::ROOT.into(), nodes);
         let root = SyntaxNode::new_root(root);
-        debug!("Data: {:#?}", root);
+
         root
     }
 
@@ -213,7 +204,7 @@ impl Parser {
     }
 
     /// Attempt to determine the architecture that the assembly data is for.
-    fn determine_architecture(filedata: &str) -> Architecture {
+    fn determine_architecture(filedata: &str, config: &LSPConfig) -> Architecture {
         use regex::Regex;
         lazy_static! {
             static ref ARCH_DETECTION: [Regex; 4] = [
@@ -230,7 +221,7 @@ impl Parser {
                 Some(arch) => Some(Architecture::from(arch.as_str())),
                 None => None,
             })
-            .unwrap_or(Architecture::Unknown);
+            .unwrap_or(config.architecture);
 
         debug!("Architecture detected: {:?}", arch);
 

@@ -1,5 +1,8 @@
 Feature: Testing document symbols
   Scenario: Request document symbols
+    Given an lsp initialized with the following parameters
+      | key          | value  |
+      | architecture | x86-64 |
     When I open the file "./features/test-files/multiple-functions.s"
     When I run "document symbols" on the file "./features/test-files/multiple-functions.s" at position "1:0"
     Then I expect the following response

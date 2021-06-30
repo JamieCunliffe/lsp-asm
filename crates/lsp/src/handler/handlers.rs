@@ -2,6 +2,7 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
 use crate::asm::handler::AssemblyLanguageServerProtocol;
+use crate::config::LSPConfig;
 
 use super::error::{lsp_error_map, ErrorCode};
 use super::types::{FindReferencesMessage, LocationMessage, SemanticTokensMessage};
@@ -12,21 +13,21 @@ use lsp_types::{DidChangeTextDocumentParams, Url};
 
 pub struct LangServerHandler {
     actors: HashMap<Url, Box<dyn LanguageServerProtocol>>,
-}
-
-impl Default for LangServerHandler {
-    fn default() -> Self {
-        Self {
-            actors: HashMap::new(),
-        }
-    }
+    config: LSPConfig,
 }
 
 impl LangServerHandler {
+    pub fn new(config: LSPConfig) -> Self {
+        Self {
+            actors: HashMap::new(),
+            config,
+        }
+    }
+
     pub fn open_file(&mut self, lang_id: &str, url: Url, text: &str) {
         let actor = match lang_id.to_lowercase().as_str() {
-            "asm" => AssemblyLanguageServerProtocol::new(&text, url.clone()),
-            "assembly" => AssemblyLanguageServerProtocol::new(&text, url.clone()),
+            "asm" => AssemblyLanguageServerProtocol::new(&text, url.clone(), self.config.clone()),
+            "assembly" => AssemblyLanguageServerProtocol::new(&text, url.clone(), self.config.clone()),
             _ => panic!("Unknown language: {}", lang_id),
         };
 

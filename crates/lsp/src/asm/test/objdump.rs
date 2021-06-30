@@ -1,6 +1,4 @@
-use crate::asm::config::{FileType, ParserConfig};
 use crate::assert_listing;
-use crate::types::Architecture;
 
 #[test]
 fn test_parse_objdump() {
@@ -96,11 +94,7 @@ Disassembly of section .text:
       COMMA@385..386 ","
       REGISTER@386..390 "%rsp"
     WHITESPACE@390..391 "\n"
-"#,
-        ParserConfig {
-            file_type: FileType::ObjDump,
-            ..ParserConfig::new(&Architecture::X86_64)
-        }
+"#
     );
 }
 
@@ -111,31 +105,31 @@ fn test_objdump_hex_first() {
 target/debug/tests:	file format mach-o arm64
 
 
+Disassembly of section .text:
+
 10000102c: 9d 03 00 94 	bl	0x100001ea0 <__ZN4core3ptr6unique15Unique$LT$T$GT$6as_ptr17h08df014b8a084fd5E>"#,
-        r#"ROOT@0..153
+        r#"ROOT@0..184
   WHITESPACE@0..1 "\n"
   METADATA@1..45 "target/debug/tests:\tf ..."
   WHITESPACE@45..48 "\n\n\n"
-  INSTRUCTION@48..153
-    METADATA@48..57 "10000102c"
-    METADATA@57..58 ":"
-    WHITESPACE@58..59 " "
-    METADATA@59..71 "9d 03 00 94 "
-    WHITESPACE@71..72 "\t"
-    MNEMONIC@72..74 "bl"
-    WHITESPACE@74..75 "\t"
-    NUMBER@75..86 "0x100001ea0"
-    WHITESPACE@86..87 " "
-    METADATA@87..153
-      BRACKETS@87..153
-        L_ANGLE@87..88 "<"
-        TOKEN@88..152 "__ZN4core3ptr6unique1 ..."
-        R_ANGLE@152..153 ">"
-"#,
-        ParserConfig {
-            file_type: FileType::ObjDump,
-            ..ParserConfig::new(&Architecture::AArch64)
-        }
+  METADATA@48..77 "Disassembly of sectio ..."
+  WHITESPACE@77..79 "\n\n"
+  INSTRUCTION@79..184
+    METADATA@79..88 "10000102c"
+    METADATA@88..89 ":"
+    WHITESPACE@89..90 " "
+    METADATA@90..102 "9d 03 00 94 "
+    WHITESPACE@102..103 "\t"
+    MNEMONIC@103..105 "bl"
+    WHITESPACE@105..106 "\t"
+    NUMBER@106..117 "0x100001ea0"
+    WHITESPACE@117..118 " "
+    METADATA@118..184
+      BRACKETS@118..184
+        L_ANGLE@118..119 "<"
+        TOKEN@119..183 "__ZN4core3ptr6unique1 ..."
+        R_ANGLE@183..184 ">"
+"#
     );
 }
 
@@ -146,35 +140,35 @@ fn test_objdump_plus() {
 a.out:     file format elf64-littleaarch64
 
 
+Disassembly of section .text:
+
   210640:	b4000040 	cbz	x0, 210648 <call_weak_fn+0x10>"#,
-        r#"ROOT@0..100
+        r#"ROOT@0..131
   WHITESPACE@0..1 "\n"
   METADATA@1..43 "a.out:     file forma ..."
-  WHITESPACE@43..48 "\n\n\n  "
-  INSTRUCTION@48..100
-    METADATA@48..54 "210640"
-    METADATA@54..55 ":"
-    WHITESPACE@55..56 "\t"
-    METADATA@56..65 "b4000040 "
-    WHITESPACE@65..66 "\t"
-    MNEMONIC@66..69 "cbz"
-    WHITESPACE@69..70 "\t"
-    REGISTER@70..72 "x0"
-    COMMA@72..73 ","
-    WHITESPACE@73..74 " "
-    NUMBER@74..80 "210648"
-    WHITESPACE@80..81 " "
-    METADATA@81..100
-      BRACKETS@81..100
-        L_ANGLE@81..82 "<"
-        TOKEN@82..94 "call_weak_fn"
-        OPERATOR@94..95 "+"
-        NUMBER@95..99 "0x10"
-        R_ANGLE@99..100 ">"
-"#,
-        ParserConfig {
-            file_type: FileType::ObjDump,
-            ..ParserConfig::new(&Architecture::AArch64)
-        }
+  WHITESPACE@43..46 "\n\n\n"
+  METADATA@46..75 "Disassembly of sectio ..."
+  WHITESPACE@75..79 "\n\n  "
+  INSTRUCTION@79..131
+    METADATA@79..85 "210640"
+    METADATA@85..86 ":"
+    WHITESPACE@86..87 "\t"
+    METADATA@87..96 "b4000040 "
+    WHITESPACE@96..97 "\t"
+    MNEMONIC@97..100 "cbz"
+    WHITESPACE@100..101 "\t"
+    REGISTER@101..103 "x0"
+    COMMA@103..104 ","
+    WHITESPACE@104..105 " "
+    NUMBER@105..111 "210648"
+    WHITESPACE@111..112 " "
+    METADATA@112..131
+      BRACKETS@112..131
+        L_ANGLE@112..113 "<"
+        TOKEN@113..125 "call_weak_fn"
+        OPERATOR@125..126 "+"
+        NUMBER@126..130 "0x10"
+        R_ANGLE@130..131 ">"
+"#
     );
 }

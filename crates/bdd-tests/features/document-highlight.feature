@@ -1,5 +1,8 @@
 Feature: Testing document highlight
   Scenario: Request highlight for label
+    Given an lsp initialized with the following parameters
+      | key          | value  |
+      | architecture | x86-64 |
     When I open the file "./features/test-files/multiple-functions.s"
     When I run "document highlight" on the file "./features/test-files/multiple-functions.s" at position "21:3"
     Then I expect the following response
@@ -8,6 +11,9 @@ Feature: Testing document highlight
       | 22:16-22:27 | text |
 
   Scenario: Request highlight for register
+    Given an lsp initialized with the following parameters
+      | key          | value  |
+      | architecture | x86-64 |
     When I open the file "./features/test-files/multiple-functions.s"
     When I run "document highlight" on the file "./features/test-files/multiple-functions.s" at position "16:18"
     Then I expect the following response
@@ -19,6 +25,9 @@ Feature: Testing document highlight
       |  40:6-40:10 | text |
 
   Scenario: Request highlight for number
+    Given an lsp initialized with the following parameters
+      | key          | value  |
+      | architecture | x86-64 |
     When I open the file "./features/test-files/multiple-functions.s"
     When I run "document highlight" on the file "./features/test-files/multiple-functions.s" at position "36:7"
     Then I expect the following response

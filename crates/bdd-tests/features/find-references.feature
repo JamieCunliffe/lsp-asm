@@ -1,5 +1,8 @@
 Feature: Testing find references
   Scenario: Find references
+    Given an lsp initialized with the following parameters
+      | key          | value  |
+      | architecture | x86-64 |
     When I open the file "./features/test-files/multiple-functions.s"
     When I run "find references" on the file "./features/test-files/multiple-functions.s" at position "6:12"
     Then I expect the following response
@@ -12,6 +15,9 @@ Feature: Testing find references
       | 78:14 | 78:21 |
 
   Scenario: Find references including decl
+    Given an lsp initialized with the following parameters
+      | key          | value  |
+      | architecture | x86-64 |
     When I open the file "./features/test-files/multiple-functions.s"
     When I run "find references" on the file "./features/test-files/multiple-functions.s" at position "6:12" including decl
     Then I expect the following response

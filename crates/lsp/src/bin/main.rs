@@ -50,12 +50,12 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
                 range: Some(true),
             },
         )),
-        ..ServerCapabilities::default()
+        ..Default::default()
     };
 
     let server_capabilities = serde_json::to_value(&capabilities).unwrap();
     let initialization_params = connection.initialize(server_capabilities)?;
-
+    let initialization_params = serde_json::from_value(initialization_params)?;
     lsp_loop(&connection, initialization_params)?;
     io_threads.join()?;
 
@@ -65,10 +65,19 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
 
 fn lsp_loop(
     connection: &Connection,
-    _params: serde_json::Value,
+    params: lsp_types::InitializeParams,
 ) -> Result<(), Box<dyn Error + Sync + Send>> {
     debug!("Starting lsp loop");
-    let mut handler = LangServerHandler::default();
+    info!("Initialization params: {:#?}", params);
+
+    let params = params
+        .initialization_options
+        .map(|opts| serde_json::from_value(opts).ok())
+        .flatten()
+        .unwrap_or_default();
+
+    debug!("Config: {:#?}", params);
+    let mut handler = LangServerHandler::new(params);
 
     for msg in &connection.receiver {
         match msg {

@@ -1,4 +1,3 @@
-use crate::asm::config::ParserConfig;
 use crate::assert_listing;
 use crate::types::Architecture;
 
@@ -20,7 +19,7 @@ popq %rbp"#,
     WHITESPACE@16..17 " "
     REGISTER@17..21 "%rbp"
 "#,
-        ParserConfig::new(&Architecture::X86_64)
+        Architecture::X86_64
     );
 }
 
@@ -47,7 +46,7 @@ fn test_directive() {
     WHITESPACE@33..34 " "
     NUMBER@34..38 "0x90"
 "#,
-        ParserConfig::new(&Architecture::X86_64)
+        Architecture::X86_64
     );
 }
 
@@ -74,7 +73,7 @@ fn test_sq_brackets() {
       R_SQ@22..23 "]"
     TOKEN@23..24 "!"
 "#,
-        ParserConfig::new(&Architecture::AArch64)
+        Architecture::AArch64
     );
 }
 
@@ -111,7 +110,7 @@ popq %rbp"#,
       WHITESPACE@21..22 " "
       REGISTER@22..26 "%rbp"
 "#,
-        ParserConfig::new(&Architecture::X86_64)
+        Architecture::X86_64
     );
 }
 
@@ -140,7 +139,7 @@ popq %rbp"#,
         WHITESPACE@34..35 " "
         REGISTER@35..39 "%rbp"
 "#,
-            ParserConfig::new(&Architecture::X86_64)
+            Architecture::X86_64
         );
     }
 }
@@ -159,7 +158,7 @@ pushq %rbp # This is a comment"#,
     WHITESPACE@11..12 " "
     COMMENT@12..31 "# This is a comment"
 "##,
-        ParserConfig::new(&Architecture::X86_64)
+        Architecture::X86_64
     );
 }
 
@@ -179,7 +178,8 @@ fn test_comment_like_label() {
       MNEMONIC@52..66 ".cfi_startproc"
     WHITESPACE@66..67 "\n"
     COMMENT@67..75 "# %bb.0:"
-"##
+"##,
+        Architecture::X86_64
     );
 }
 
@@ -200,7 +200,7 @@ fn test_register_brackets() {
       REGISTER@15..19 "%rbp"
       R_PAREN@19..20 ")"
 "#,
-        ParserConfig::new(&Architecture::X86_64)
+        Architecture::X86_64
     );
 }
 
@@ -268,7 +268,7 @@ end:
     DIRECTIVE@71..83
       MNEMONIC@71..83 ".cfi_endproc"
 "#,
-        ParserConfig::new(&Architecture::AArch64)
+        Architecture::AArch64
     );
 }
 
@@ -296,7 +296,7 @@ fn test_curly_brace() {
     WHITESPACE@30..31 " "
     REGISTER@31..36 "v2.8b"
 "#,
-        ParserConfig::new(&Architecture::AArch64)
+        Architecture::AArch64
     );
 }
 
@@ -323,6 +323,6 @@ fn test_negative_imm() {
       R_SQ@23..24 "]"
     TOKEN@24..25 "!"
 "##,
-        ParserConfig::new(&Architecture::AArch64)
+        Architecture::AArch64
     );
 }
