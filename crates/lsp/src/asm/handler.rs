@@ -8,10 +8,11 @@ use lsp_types::{
 };
 use rowan::TextRange;
 
+use crate::asm::ast::RegisterToken;
 use crate::asm::combinators;
 use crate::config::LSPConfig;
 use crate::handler::error::{lsp_error_map, ErrorCode};
-use crate::handler::semantic::semantic_delta_transform;
+use crate::handler::semantic::{self, semantic_delta_transform};
 use crate::handler::LanguageServerProtocol;
 use crate::types::DocumentPosition;
 
@@ -20,6 +21,7 @@ use super::ast::{SyntaxKind, SyntaxNode, SyntaxToken};
 use super::config::ParserConfig;
 
 use super::parser::{Parser, PositionInfo};
+use super::registers::{registers_for_architecture, RegisterKind, Registers};
 
 pub struct AssemblyLanguageServerProtocol {
     parser: Parser,
@@ -216,25 +218,40 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
 
         let position = self.parser.position();
         let tokens = self.parser.tokens_in_range(&range);
+
         let tokens = tokens
             .iter()
             .filter_map(|token| {
                 if let Some(index) = match token.kind() {
+                    _ if crate::asm::ast::find_parent(&token, SyntaxKind::METADATA).is_some() => {
+                        Some(crate::handler::semantic::METADATA_INDEX)
+                    }
+                    SyntaxKind::METADATA => Some(crate::handler::semantic::METADATA_INDEX),
                     SyntaxKind::MNEMONIC => match token.parent().kind() {
-                        SyntaxKind::INSTRUCTION => Some(*crate::handler::semantic::OPCODE_INDEX),
-                        SyntaxKind::DIRECTIVE => Some(*crate::handler::semantic::DIRECTIVE_INDEX),
+                        SyntaxKind::INSTRUCTION => Some(crate::handler::semantic::OPCODE_INDEX),
+                        SyntaxKind::DIRECTIVE => Some(crate::handler::semantic::DIRECTIVE_INDEX),
                         _ => unreachable!("Parent should be instruction or directive"),
                     },
-                    SyntaxKind::COMMENT => Some(*crate::handler::semantic::COMMENT_INDEX),
-                    SyntaxKind::NUMBER => Some(*crate::handler::semantic::NUMERIC_INDEX),
-                    SyntaxKind::STRING => Some(*crate::handler::semantic::STRING_INDEX),
-                    SyntaxKind::REGISTER => Some(*crate::handler::semantic::REGISTER_INDEX),
+                    SyntaxKind::COMMENT => Some(crate::handler::semantic::COMMENT_INDEX),
+                    SyntaxKind::NUMBER => Some(crate::handler::semantic::NUMERIC_INDEX),
+                    SyntaxKind::STRING => Some(crate::handler::semantic::STRING_INDEX),
+                    SyntaxKind::REGISTER => self
+                        .parser
+                        .token::<RegisterToken>(token)
+                        .map(|register| {
+                            let kind = register.register_kind();
+
+                            if kind.contains(RegisterKind::GENERAL_PURPOSE) {
+                                crate::handler::semantic::GP_REGISTER_INDEX
+                            } else if kind.contains(RegisterKind::FLOATING_POINT) {
+                                crate::handler::semantic::FP_REGISTER_INDEX
+                            } else {
+                                crate::handler::semantic::REGISTER_INDEX
+                            }
+                        })
+                        .or(Some(crate::handler::semantic::REGISTER_INDEX)),
                     SyntaxKind::LABEL | SyntaxKind::LOCAL_LABEL => {
-                        Some(*crate::handler::semantic::LABEL_INDEX)
-                    }
-                    SyntaxKind::METADATA => Some(*crate::handler::semantic::METADATA_INDEX),
-                    _ if crate::asm::ast::find_parent(&token, SyntaxKind::METADATA).is_some() => {
-                        Some(*crate::handler::semantic::METADATA_INDEX)
+                        Some(crate::handler::semantic::LABEL_INDEX)
                     }
                     SyntaxKind::L_PAREN
                     | SyntaxKind::R_PAREN
@@ -818,14 +835,14 @@ end:
                         delta_line: 0,
                         delta_start: 4,
                         length: 3,
-                        token_type: 5,
+                        token_type: 8,
                         token_modifiers_bitset: 0,
                     },
                     SemanticToken {
                         delta_line: 0,
                         delta_start: 5,
                         length: 3,
-                        token_type: 5,
+                        token_type: 8,
                         token_modifiers_bitset: 0,
                     },
                     SemanticToken {

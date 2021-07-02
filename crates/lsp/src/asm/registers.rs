@@ -1,4 +1,8 @@
+use crate::types::Architecture;
+
+use super::ast::SyntaxToken;
 use super::config::ParserConfig;
+use bitflags::bitflags;
 
 /// A register
 #[derive(Debug, PartialEq)]
@@ -14,7 +18,86 @@ impl Register {
     }
 }
 
-pub const X86_64_REGISTERS: [Register; 9] = [
+bitflags! {
+    pub struct RegisterKind : u32 {
+        const NONE            = 0b00000000;
+        const GENERAL_PURPOSE = 0b00000001;
+        const FLOATING_POINT  = 0b00000010;
+        const SIMD            = 0b00000100;
+
+        const SIMD_FP         = Self::FLOATING_POINT.bits | Self::SIMD.bits;
+    }
+}
+
+pub(crate) trait Registers {
+    fn get_kind(&self, token: &SyntaxToken) -> RegisterKind;
+}
+
+pub struct AArch64 {}
+impl Registers for AArch64 {
+    fn get_kind(&self, token: &SyntaxToken) -> RegisterKind {
+        let name = register_name(token.text());
+        match name.get(0..=0).unwrap_or("\0") {
+            "x" | "r" => RegisterKind::GENERAL_PURPOSE,
+            "w" => RegisterKind::GENERAL_PURPOSE,
+            "d" => RegisterKind::SIMD_FP,
+            "s" if token.text() != "sp" => RegisterKind::SIMD_FP,
+            "v" => {
+                let size = name.split('.').next().unwrap_or("\0");
+                match size {
+                    "8b" | "16b" => RegisterKind::SIMD_FP,
+                    "4h" | "8h" => RegisterKind::SIMD_FP,
+                    "2s" | "4s" => RegisterKind::SIMD_FP,
+                    "2d" => RegisterKind::SIMD_FP,
+                    _ => RegisterKind::SIMD_FP,
+                }
+            }
+            _ => RegisterKind::NONE,
+        }
+    }
+}
+
+pub(crate) fn registers_for_architecture(arch: &Architecture) -> Option<impl Registers> {
+    match arch {
+        Architecture::X86_64 => None,
+        Architecture::AArch64 => Some(AArch64 {}),
+        Architecture::Unknown => None,
+    }
+}
+
+/// Determine if `name` is a valid register
+pub(crate) fn is_register(name: &str, config: &ParserConfig) -> bool {
+    if let Some(registers) = config.registers {
+        let name = register_name(name);
+        registers
+            .iter()
+            .any(|register| register.names.contains(&name))
+    } else {
+        false
+    }
+}
+
+/// Gets an index for this register that can be used for comparisons, the id
+/// that is returned should only be considered valid for the given parser config
+/// when comparing.
+pub(crate) fn register_id(name: &str, config: &ParserConfig) -> Option<i8> {
+    if let Some(registers) = config.registers {
+        let name = register_name(name);
+        registers
+            .iter()
+            .enumerate()
+            .find(|(_, register)| register.names.contains(&name))
+            .map(|(idx, _)| idx as _)
+    } else {
+        None
+    }
+}
+
+fn register_name(name: &str) -> &str {
+    name.strip_prefix('%').unwrap_or(name)
+}
+
+pub(crate) const X86_64_REGISTERS: [Register; 9] = [
     Register::new(&["rax", "eax", "ax", "ah", "al"]),
     Register::new(&["rbx", "ebx", "bx", "bh", "bl"]),
     Register::new(&["rcx", "ecx", "cx", "ch", "cl"]),
@@ -26,7 +109,7 @@ pub const X86_64_REGISTERS: [Register; 9] = [
     Register::new(&["rip"]),
 ];
 
-pub const AARCH64_REGISTERS: [Register; 64] = [
+pub(crate) const AARCH64_REGISTERS: [Register; 64] = [
     Register::new(&["r0", "x0", "w0"]),
     Register::new(&["r1", "x1", "w1"]),
     Register::new(&["r2", "x2", "w2"]),
@@ -156,32 +239,3 @@ pub const AARCH64_REGISTERS: [Register; 64] = [
         "v31", "v31.8b", "v31.16b", "v31.4h", "v31.8h", "v31.2s", "v31.4s", "v31.2d", "d31", "s31",
     ]),
 ];
-
-/// Determine if `name` is a valid register
-pub(crate) fn is_register(name: &str, config: &ParserConfig) -> bool {
-    if let Some(registers) = config.registers {
-        let name = name.strip_prefix('%').unwrap_or(name);
-        registers
-            .iter()
-            .find(|register| register.names.contains(&name))
-            .is_some()
-    } else {
-        false
-    }
-}
-
-/// Gets an index for this register that can be used for comparisons, the id
-/// that is returned should only be considered valid for the given parser config
-/// when comparing.
-pub(crate) fn register_id(name: &str, config: &ParserConfig) -> Option<i8> {
-    if let Some(registers) = config.registers {
-        let name = name.strip_prefix('%').unwrap_or(name);
-        registers
-            .iter()
-            .enumerate()
-            .find(|(_, register)| register.names.contains(&name))
-            .map(|(idx, _)| idx as _)
-    } else {
-        None
-    }
-}

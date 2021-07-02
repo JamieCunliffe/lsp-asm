@@ -766,6 +766,7 @@ dependencies = [
 name = "lsp-asm"
 version = "0.1.0"
 dependencies = [
+ "bitflags",
  "either",
  "lazy_static",
  "log",

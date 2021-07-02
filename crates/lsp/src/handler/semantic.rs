@@ -12,16 +12,21 @@ lazy_static! {
         SemanticTokenType::new("register"),
         SemanticTokenType::new("label"),
         SemanticTokenType::new("metadata"),
+        SemanticTokenType::new("gp-register"),
+        SemanticTokenType::new("fp-register"),
     ];
-    pub static ref OPCODE_INDEX: u32 = 0;
-    pub static ref STRING_INDEX: u32 = 1;
-    pub static ref NUMERIC_INDEX: u32 = 2;
-    pub static ref DIRECTIVE_INDEX: u32 = 3;
-    pub static ref COMMENT_INDEX: u32 = 4;
-    pub static ref REGISTER_INDEX: u32 = 5;
-    pub static ref LABEL_INDEX: u32 = 6;
-    pub static ref METADATA_INDEX: u32 = 7;
 }
+
+pub const OPCODE_INDEX: u32 = 0;
+pub const STRING_INDEX: u32 = 1;
+pub const NUMERIC_INDEX: u32 = 2;
+pub const DIRECTIVE_INDEX: u32 = 3;
+pub const COMMENT_INDEX: u32 = 4;
+pub const REGISTER_INDEX: u32 = 5;
+pub const LABEL_INDEX: u32 = 6;
+pub const METADATA_INDEX: u32 = 7;
+pub const GP_REGISTER_INDEX: u32 = 8;
+pub const FP_REGISTER_INDEX: u32 = 9;
 
 pub(crate) fn semantic_delta_transform(tokens: &[SemanticToken]) -> Vec<SemanticToken> {
     let prev = tokens.iter();

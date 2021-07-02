@@ -5,6 +5,7 @@ use symbolic::common::{Name, NameMangling};
 use symbolic::demangle::{Demangle, DemangleOptions};
 
 use super::config::{FileType, ParserConfig};
+use super::registers::{registers_for_architecture, RegisterKind, Registers};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
@@ -155,5 +156,29 @@ impl<'st, 'c> AstToken<'st, 'c> for NumericToken<'st> {
 impl<'st> NumericToken<'st> {
     pub(crate) fn value(&self) -> i128 {
         super::combinators::parse_number(self.token.text()).unwrap()
+    }
+}
+
+pub struct RegisterToken<'st, 'c> {
+    token: &'st SyntaxToken,
+    config: &'c ParserConfig,
+}
+impl<'st, 'c> AstToken<'st, 'c> for RegisterToken<'st, 'c> {
+    fn cast(token: &'st SyntaxToken, config: &'c ParserConfig) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        matches!(token.kind(), SyntaxKind::REGISTER).then(|| Self { token, config })
+    }
+
+    fn syntax(&self) -> &'st SyntaxToken {
+        self.token
+    }
+}
+impl<'st, 'c> RegisterToken<'st, 'c> {
+    pub(crate) fn register_kind(&self) -> RegisterKind {
+        registers_for_architecture(&self.config.architecture)
+            .map(|r| r.get_kind(self.token))
+            .unwrap_or(RegisterKind::NONE)
     }
 }

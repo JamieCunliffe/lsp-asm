@@ -3,7 +3,7 @@ use std::path::Path;
 use std::convert::Infallible;
 
 use cucumber_rust::gherkin::Step;
-use cucumber_rust::{World, WorldInit, async_trait, given, then, when};
+use cucumber_rust::{async_trait, given, then, when, World, WorldInit};
 
 use lsp_asm::handler::types::{FindReferencesMessage, LocationMessage, SemanticTokensMessage};
 use lsp_types::{MarkupContent, SemanticTokens, SemanticTokensResult, Url};
@@ -63,6 +63,14 @@ impl World for LSPWorld {
 async fn init_lsp(state: &mut LSPWorld, step: &Step) {
     let config = parse_config(&step.table.as_ref().unwrap().rows);
     state.handler = LangServerHandler::new(config);
+}
+
+#[when(regex = r#"I open the temporary file "(.*)""#)]
+async fn open_temp_file(state: &mut LSPWorld, step: &Step, name: String) {
+    let data = step.docstring.as_ref().unwrap().trim_matches('\n');
+    let url = Url::parse(&format!("file://{}", name)).unwrap();
+
+    state.handler.open_file("asm", url, &data);
 }
 
 #[when(regex = r#"I open the file "(.*)""#)]

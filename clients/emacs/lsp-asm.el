@@ -45,6 +45,16 @@
   "Face used for semantic highlighting registers."
   :group 'lsp-faces)
 
+(defface lsp-face-semhl-gp-register
+  '((t (:inherit lsp-face-semhl-register)))
+  "Face used for general purpose register"
+  :group 'lsp-faces)
+
+(defface lsp-face-semhl-fp-register
+  '((t (:inherit lsp-face-semhl-register)))
+  "Face used for floating point register"
+  :group 'lsp-faces)
+
 (defface lsp-face-semhl-metadata
   '((t (:inherit font-lock-comment-face)))
   "Face used for semantic highlighting metadata."
@@ -52,6 +62,10 @@
 
 (add-to-list 'lsp-semantic-token-faces
              '("register" . lsp-face-semhl-register))
+(add-to-list 'lsp-semantic-token-faces
+             '("gp-register" . lsp-face-semhl-gp-register))
+(add-to-list 'lsp-semantic-token-faces
+             '("fp-register" . lsp-face-semhl-fp-register))
 (add-to-list 'lsp-semantic-token-faces
              '("metadata" . lsp-face-semhl-metadata))
 
