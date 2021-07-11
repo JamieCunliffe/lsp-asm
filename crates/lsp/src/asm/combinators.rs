@@ -79,8 +79,8 @@ pub(crate) fn parse<'a>(
     let internal = InternalSpanConfig::new(config, &lookup);
     let data = Span::new(data, &internal);
 
-    let (data, mut additional) = match config.file_type {
-        crate::asm::config::FileType::Assembly => (data, Vec::new()),
+    let (data, additional) = match config.file_type {
+        crate::asm::config::FileType::Assembly => (data, None),
         crate::asm::config::FileType::ObjDump => parse_objdump_header(data).unwrap(),
     };
 
@@ -92,21 +92,27 @@ pub(crate) fn parse<'a>(
 
     debug!("Parsed assembly with data remaining: {:#?}", remaining);
 
-    additional.append(&mut nodes);
-    additional
+    if let Some(mut additional) = additional {
+        additional.append(&mut nodes);
+        additional
+    } else {
+        nodes
+    }
 }
 
-fn parse_objdump_header(expr: Span) -> nom::IResult<Span, Vec<NodeOrToken<GreenNode, GreenToken>>> {
+fn parse_objdump_header(
+    expr: Span,
+) -> nom::IResult<Span, Option<Vec<NodeOrToken<GreenNode, GreenToken>>>> {
     let (remaining, whitespace) = skip_whitespace(expr, true)?;
     let (remaining, format) = take_while(|a| a != '\n')(remaining)?;
 
     let format = GreenToken::new(SyntaxKind::METADATA.into(), format.as_str());
-    Ok((remaining, vec![whitespace, format.into()]))
+    Ok((remaining, Some(vec![whitespace, format.into()])))
 }
 
 fn parse_objdump_line_start(
     expr: Span,
-) -> nom::IResult<Span, Vec<NodeOrToken<GreenNode, GreenToken>>> {
+) -> nom::IResult<Span, Option<Vec<NodeOrToken<GreenNode, GreenToken>>>> {
     let (remaining, whitespace) = skip_whitespace(expr, true)?;
     let (remaining, offset) = take_while(is_hex)(remaining)?;
 
@@ -138,7 +144,7 @@ fn parse_objdump_line_start(
         remaining
     };
 
-    Ok((remaining, tokens))
+    Ok((remaining, Some(tokens)))
 }
 
 fn objdump_angle_brackets(expr: Span) -> NomResultElement {
@@ -177,9 +183,8 @@ fn parse_next(expr: Span) -> NomResultElement {
             // Extract the current line from the input for processing
             process_comment!(expr);
             let (remaining, expr) = take_while(|a| a != '\n')(expr)?;
-
-            let (expr, mut additional) = match expr.config().file_type {
-                FileType::Assembly => (expr, Vec::new()),
+            let (expr, additional) = match expr.config().file_type {
+                FileType::Assembly => (expr, None),
                 FileType::ObjDump => parse_objdump_line_start(expr)?,
             };
 
@@ -211,8 +216,15 @@ fn parse_next(expr: Span) -> NomResultElement {
                     }
                 }
             }
-            additional.append(&mut tokens);
-            let token = GreenNode::new(kind.into(), additional);
+
+            let tokens = if let Some(mut additional) = additional {
+                additional.append(&mut tokens);
+                additional
+            } else {
+                tokens
+            };
+
+            let token = GreenNode::new(kind.into(), tokens);
             Ok((remaining, token.into()))
         }
     }
