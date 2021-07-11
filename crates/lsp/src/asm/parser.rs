@@ -32,7 +32,7 @@ impl Parser {
 
         let root = Self::parse_asm(data, &config);
         Self {
-            line_index: PositionInfo::new(&root),
+            line_index: PositionInfo::new(&data),
             root,
             config,
         }
@@ -241,7 +241,7 @@ pub(crate) struct PositionInfo {
 
 impl PositionInfo {
     /// Construct a position info structure from a `SyntaxNode`
-    pub fn new(data: &SyntaxNode) -> Self {
+    pub fn new(data: &str) -> Self {
         let lines = Self::build_lines(data);
         Self { lines }
     }
@@ -304,30 +304,15 @@ impl PositionInfo {
 
     /// Build a vector with an item for each line in in the data, the item will
     /// contain the `TextSize` for the start of the line.
-    fn build_lines(data: &SyntaxNode) -> Vec<TextSize> {
+    fn build_lines(data: &str) -> Vec<TextSize> {
         std::iter::once(TextSize::default())
-            .chain(
-                data.descendants_with_tokens()
-                    .filter_map(|x| x.into_token())
-                    .filter(|token| token.kind() == SyntaxKind::WHITESPACE)
-                    .flat_map(|token| {
-                        token
-                            .text()
-                            .char_indices()
-                            .filter_map(|(pos, c)| {
-                                if c == '\n' {
-                                    token
-                                        .text_range()
-                                        .start()
-                                        .checked_add(1.into())?
-                                        .checked_add(TextSize::from(pos as u32))
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect::<Vec<_>>()
-                    }),
-            )
-            .collect::<Vec<_>>()
+            .chain(data.char_indices().filter_map(|(pos, c)| {
+                if c == '\n' {
+                    Some(((pos + 1) as u32).into())
+                } else {
+                    None
+                }
+            }))
+            .collect()
     }
 }
