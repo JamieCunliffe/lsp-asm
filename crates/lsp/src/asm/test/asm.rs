@@ -326,3 +326,26 @@ fn test_negative_imm() {
         Architecture::AArch64
     );
 }
+
+#[test]
+fn test_two_instructions_line_break() {
+    assert_listing!(
+        r#"
+pushq %rbp
+
+popq %rbp"#,
+        r#"ROOT@0..22
+  WHITESPACE@0..1 "\n"
+  INSTRUCTION@1..11
+    MNEMONIC@1..6 "pushq"
+    WHITESPACE@6..7 " "
+    REGISTER@7..11 "%rbp"
+  WHITESPACE@11..13 "\n\n"
+  INSTRUCTION@13..22
+    MNEMONIC@13..17 "popq"
+    WHITESPACE@17..18 " "
+    REGISTER@18..22 "%rbp"
+"#,
+        Architecture::X86_64
+    );
+}

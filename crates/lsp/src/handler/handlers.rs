@@ -54,10 +54,9 @@ impl LangServerHandler {
     }
 
     fn get_actor(&self, url: &Url) -> Result<&Box<dyn LanguageServerProtocol>, ResponseError> {
-        Ok(self
-            .actors
+        self.actors
             .get(url)
-            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?)
+            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))
     }
 
     pub fn goto_definition(

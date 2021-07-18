@@ -1,4 +1,5 @@
 mod ast;
+mod builder;
 mod combinators;
 mod config;
 pub mod handler;

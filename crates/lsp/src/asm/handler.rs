@@ -55,7 +55,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             .tree()
             .descendants_with_tokens()
             .filter_map(|d| d.into_token())
-            .filter(|token| token.kind() == SyntaxKind::LABEL.into())
+            .filter(|token| token.kind() == SyntaxKind::LABEL)
             .filter(|label| {
                 self.parser
                     .token::<LabelToken>(label)
@@ -87,10 +87,9 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             return Ok(Vec::new());
         }
 
-        let references = find_references(&self.parser, &token)?;
+        let references = find_references(&self.parser, &token);
         let position = self.parser.position();
         let locations = references
-            .iter()
             .filter(|t| {
                 include_decl
                     || !(t.kind() == SyntaxKind::LABEL || t.kind() == SyntaxKind::LOCAL_LABEL)
@@ -181,9 +180,8 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             position.line.saturating_add(200),
         );
 
-        let references = find_references(&self.parser, &token)?;
+        let references = find_references(&self.parser, &token);
         let locations = references
-            .iter()
             .filter(|token| range.contains(token.text_range().start()))
             .filter_map(|token| {
                 Some(lsp_types::DocumentHighlight {
@@ -351,15 +349,14 @@ fn get_label_hover(label: &LabelToken) -> Option<Vec<String>> {
 }
 
 fn find_references<'a>(
-    parser: &Parser,
-    token: &SyntaxToken,
-) -> Result<Vec<SyntaxToken>, ResponseError> {
-    Ok(parser
+    parser: &'a Parser,
+    token: &'a SyntaxToken,
+) -> impl Iterator<Item = SyntaxToken> + 'a {
+    parser
         .tree()
         .descendants_with_tokens()
         .filter_map(|d| d.into_token())
-        .filter(|t| parser.token_text_equal(token, t))
-        .collect())
+        .filter(move |t| parser.token_text_equal(token, t))
 }
 
 fn node_to_document_symbol(

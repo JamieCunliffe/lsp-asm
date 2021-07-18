@@ -3,7 +3,9 @@ use crate::types::{Architecture, DocumentPosition, DocumentRange, LineNumber};
 
 use super::ast::{AstToken, LabelToken, SyntaxKind, SyntaxNode, SyntaxToken};
 use super::config::{FileType, ParserConfig};
-use rowan::{GreenNode, GreenToken, NodeOrToken, TextRange, TextSize};
+
+use rayon::prelude::*;
+use rowan::{TextRange, TextSize};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Parser {
@@ -125,67 +127,7 @@ impl Parser {
     /// Helper function to perform the parsing of data
     fn parse_asm(data: &str, config: &ParserConfig) -> SyntaxNode {
         let nodes = super::combinators::parse(data, config);
-        let nodes = Self::indent_labels(nodes, SyntaxKind::LABEL);
-        let root = GreenNode::new(SyntaxKind::ROOT.into(), nodes);
-        let root = SyntaxNode::new_root(root);
-
-        root
-    }
-
-    /// Adjusts the syntax tree to indent the labels and the local labels
-    fn indent_labels(
-        tokens: Vec<NodeOrToken<GreenNode, GreenToken>>,
-        kind: SyntaxKind,
-    ) -> Vec<NodeOrToken<GreenNode, GreenToken>> {
-        let starts_with = tokens
-            .first()
-            .map(|t| t.as_node())
-            .flatten()
-            .map(|n| n.kind() == kind.into())
-            .unwrap_or(false);
-
-        // Partition the tokens by the labels, these will be ziped to create a (vec<tokens>, label) for each token within the found labels
-        let partition = tokens.split(|t| t.kind() == kind.into()).skip(1);
-        let labels = tokens.iter().filter(|t| t.kind() == kind.into());
-        let mut partition = partition.zip(labels).collect::<Vec<_>>();
-
-        // The partition will be empty if no labels are contained within the syntax tree so just exit out with the original.
-        if partition.is_empty() {
-            return tokens;
-        }
-
-        // Create the label nodes with the child tokens
-        let mut indented_tokens = partition
-            .drain(..)
-            .map(|(tokens, label)| {
-                let mut tmp = label
-                    .as_node()
-                    .unwrap()
-                    .children()
-                    .map(|c| match c {
-                        NodeOrToken::Node(n) => NodeOrToken::Node(n.clone()),
-                        NodeOrToken::Token(t) => NodeOrToken::Token(t.clone()),
-                    })
-                    .collect::<Vec<_>>();
-                let mut tokens = Self::indent_labels(tokens.into(), SyntaxKind::LOCAL_LABEL);
-                tmp.append(&mut tokens);
-                NodeOrToken::Node(GreenNode::new(kind.into(), tmp))
-            })
-            .collect::<Vec<_>>();
-
-        // If the first node was a label then the partition will have been correct, if it didn't
-        // then the partition won't include the elements before the label so we have to add them
-        // back in
-        if starts_with {
-            indented_tokens
-        } else {
-            let pre_tokens = tokens.split(|t| t.kind() == kind.into()).next().unwrap();
-            let mut pre_tokens: Vec<NodeOrToken<GreenNode, GreenToken>> = pre_tokens.into();
-            pre_tokens
-                .drain(..)
-                .chain(indented_tokens.drain(..))
-                .collect()
-        }
+        SyntaxNode::new_root(nodes)
     }
 
     fn determine_filetype(filedata: &str) -> super::config::FileType {
@@ -215,11 +157,12 @@ impl Parser {
             ];
         }
         let arch = ARCH_DETECTION
-            .iter()
+            .par_iter()
             .filter_map(|regex| regex.captures(filedata))
-            .find_map(|captures| match captures.get(1) {
-                Some(arch) => Some(Architecture::from(arch.as_str())),
-                None => None,
+            .find_map_first(|captures| {
+                captures
+                    .get(1)
+                    .map(|arch| Architecture::from(arch.as_str()))
             })
             .unwrap_or(config.architecture);
 
