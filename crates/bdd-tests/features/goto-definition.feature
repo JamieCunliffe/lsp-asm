@@ -35,3 +35,19 @@ Feature: Testing goto definition
     When I run "goto definition" on the file "./features/test-files/multiple-functions.s" at position "15:3"
     Then I expect the following response
       | start | end |
+
+  Scenario: Goto definition on .loc directive
+    Given an lsp initialized with the following parameters
+      | key          | value  |
+      | architecture | x86-64 |
+    When I open the temporary file "t1"
+      """
+Lfunc_begin0:
+	.file	2 "./features/test-files/debugloc.txt"
+	.loc	2 1 0
+	.cfi_startproc
+      """
+    When I run "goto definition" on the file "t1" at position "3:3"
+    Then I expect the following response
+      | start | end | file                               |
+      |   1:0 | 1:0 | ./features/test-files/debugloc.txt |

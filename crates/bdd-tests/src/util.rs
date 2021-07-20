@@ -1,7 +1,7 @@
 #![allow(deprecated)]
 use lsp_asm::config::LSPConfig;
 use lsp_asm::handler::semantic;
-use lsp_asm::types::{Architecture, DocumentPosition, DocumentRange};
+use lsp_asm::types::{Architecture, DocumentLocation, DocumentPosition, DocumentRange};
 
 use lsp_server::ResponseError;
 use lsp_types::{
@@ -33,22 +33,28 @@ pub(crate) fn get_doc_position(pos: &str) -> DocumentPosition {
     DocumentPosition { line, column }
 }
 
-pub(crate) fn make_doc_range_vec(table: &Vec<Vec<String>>) -> Vec<DocumentRange> {
+pub(crate) fn make_doc_location_vec(table: &Vec<Vec<String>>, file: &Url) -> Vec<DocumentLocation> {
     table
         .iter()
         .skip(1)
-        .map(|cols| DocumentRange {
-            start: get_doc_position(cols.get(0).unwrap()),
-            end: get_doc_position(cols.get(1).unwrap()),
+        .map(|cols| DocumentLocation {
+            uri: cols
+                .get(2)
+                .map(|f| Url::parse(format!("file://{}", f).as_str()).ok())
+                .flatten()
+                .unwrap_or_else(|| file.clone()),
+            range: DocumentRange {
+                start: get_doc_position(cols.get(0).unwrap()),
+                end: get_doc_position(cols.get(1).unwrap()),
+            },
         })
         .collect::<Vec<_>>()
 }
 
 pub(crate) fn make_lsp_doc_location(file: &Url, table: &Vec<Vec<String>>) -> Vec<Location> {
-    make_doc_range_vec(table)
+    make_doc_location_vec(table, file)
         .drain(..)
-        .map(|range| Range::new(range.start.into(), range.end.into()))
-        .map(|range| Location::new(file.clone(), range))
+        .map(|range| range.into())
         .collect()
 }
 

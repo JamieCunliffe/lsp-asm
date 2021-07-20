@@ -1,5 +1,7 @@
 #![allow(deprecated)]
 #![allow(unused)]
+use std::str::FromStr;
+
 use lsp_server::ResponseError;
 use lsp_types::{
     DocumentHighlight, DocumentHighlightKind, DocumentSymbol, DocumentSymbolResponse,
@@ -42,33 +44,36 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             .parser
             .token_at_point(&position)
             .ok_or_else(|| lsp_error_map(ErrorCode::TokenNotFound))?;
-
-        // Can't jump to a definition of this token
-        if token.kind() != SyntaxKind::TOKEN {
-            return Ok(lsp_types::GotoDefinitionResponse::Array(Vec::new()));
-        }
-
         let position = self.parser.position();
 
-        let res = self
-            .parser
-            .tree()
-            .descendants_with_tokens()
-            .filter_map(|d| d.into_token())
-            .filter(|token| token.kind() == SyntaxKind::LABEL)
-            .filter(|label| {
-                self.parser
-                    .token::<LabelToken>(label)
-                    .map(|name| name.name() == token.text())
-                    .unwrap_or(false)
-            })
-            .filter_map(|token| {
-                Some(lsp_types::Location::new(
-                    self.uri.clone(),
-                    position.range_for_token(&token)?.into(),
-                ))
-            })
-            .collect();
+        let res = match token.kind() {
+            SyntaxKind::TOKEN => self
+                .parser
+                .tree()
+                .descendants_with_tokens()
+                .filter_map(|d| d.into_token())
+                .filter(|token| token.kind() == SyntaxKind::LABEL)
+                .filter(|label| {
+                    self.parser
+                        .token::<LabelToken>(label)
+                        .map(|name| name.name() == token.text())
+                        .unwrap_or(false)
+                })
+                .filter_map(|token| {
+                    Some(lsp_types::Location::new(
+                        self.uri.clone(),
+                        position.range_for_token(&token)?.into(),
+                    ))
+                })
+                .collect(),
+            SyntaxKind::MNEMONIC if token.text() == ".loc" => vec![self
+                .parser
+                .debug_map()
+                .get_file_location(&token.parent())
+                .map(|l| l.into())
+                .ok_or_else(|| lsp_error_map(ErrorCode::InvalidPosition))?],
+            _ => Vec::new(),
+        };
 
         Ok(lsp_types::GotoDefinitionResponse::Array(res))
     }

@@ -3,7 +3,9 @@ use crate::types::{Architecture, DocumentPosition, DocumentRange, LineNumber};
 
 use super::ast::{AstToken, LabelToken, SyntaxKind, SyntaxNode, SyntaxToken};
 use super::config::{FileType, ParserConfig};
+use super::debug::DebugMap;
 
+use once_cell::sync::OnceCell;
 use rayon::prelude::*;
 use rowan::{TextRange, TextSize};
 
@@ -12,6 +14,7 @@ pub struct Parser {
     root: SyntaxNode,
     config: ParserConfig,
     line_index: PositionInfo,
+    debug_map: OnceCell<DebugMap>,
 }
 
 /// Helper enum for determining if tokens should be considered equal
@@ -37,11 +40,16 @@ impl Parser {
             line_index: PositionInfo::new(&data),
             root,
             config,
+            debug_map: OnceCell::new(),
         }
     }
 
     pub(crate) fn tree(&self) -> &SyntaxNode {
         &self.root
+    }
+
+    pub(super) fn debug_map(&self) -> &DebugMap {
+        &self.debug_map.get_or_init(|| DebugMap::new(self.tree()))
     }
 
     pub(crate) fn token<'st, 'c, T>(&'c self, token: &'st SyntaxToken) -> Option<T>

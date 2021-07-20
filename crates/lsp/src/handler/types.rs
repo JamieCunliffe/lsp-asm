@@ -1,4 +1,4 @@
-use crate::types::{DocumentPosition, DocumentRange};
+use crate::types::{DocumentLocation, DocumentPosition, DocumentRange};
 use lsp_types::{TextDocumentPositionParams, Url};
 
 impl From<lsp_types::TextDocumentPositionParams> for DocumentPosition {
@@ -36,6 +36,12 @@ impl From<lsp_types::Range> for DocumentRange {
 impl From<DocumentRange> for lsp_types::Range {
     fn from(val: DocumentRange) -> Self {
         lsp_types::Range::new(val.start.into(), val.end.into())
+    }
+}
+
+impl From<DocumentLocation> for lsp_types::Location {
+    fn from(val: DocumentLocation) -> Self {
+        Self::new(val.uri, val.range.into())
     }
 }
 

@@ -2,6 +2,7 @@ mod ast;
 mod builder;
 mod combinators;
 mod config;
+mod debug;
 pub mod handler;
 pub mod parser;
 mod registers;

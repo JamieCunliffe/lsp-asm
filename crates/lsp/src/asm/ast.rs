@@ -58,6 +58,17 @@ pub(crate) fn find_parent(token: &SyntaxToken, syntax_kind: SyntaxKind) -> Optio
         .find(|e| e.kind() == syntax_kind)
 }
 
+pub(crate) fn find_kind_index(
+    node: &SyntaxNode,
+    index: i32,
+    syntax_kind: SyntaxKind,
+) -> Option<SyntaxElement> {
+    node
+        .descendants_with_tokens()
+        .filter(|d| d.kind() == syntax_kind)
+        .nth(index as _)
+}
+
 /// Second, implementing the `Language` trait teaches rowan to convert between
 /// these two SyntaxKind types, allowing for a nicer SyntaxNode API where
 /// "kinds" are values from our `enum SyntaxKind`, instead of plain u16 values.

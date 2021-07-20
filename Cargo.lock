@@ -790,6 +790,7 @@ dependencies = [
  "lsp-server",
  "lsp-types",
  "nom 5.1.2",
+ "once_cell",
  "pretty_assertions",
  "pretty_env_logger",
  "rayon",
