@@ -1,5 +1,6 @@
 #![allow(deprecated)]
 #![allow(unused)]
+use std::iter;
 use std::str::FromStr;
 
 use lsp_server::ResponseError;
@@ -18,10 +19,9 @@ use crate::handler::semantic::{self, semantic_delta_transform};
 use crate::handler::LanguageServerProtocol;
 use crate::types::DocumentPosition;
 
-use super::ast::{LabelToken, NumericToken};
+use super::ast::{find_kind_index, AstNode, LabelNode, LabelToken, LocalLabelNode, NumericToken};
 use super::ast::{SyntaxKind, SyntaxNode, SyntaxToken};
 use super::config::ParserConfig;
-
 use super::parser::{Parser, PositionInfo};
 use super::registers::{registers_for_architecture, RegisterKind, Registers};
 
@@ -297,38 +297,17 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
     fn document_symbols(
         &self,
     ) -> Result<lsp_types::DocumentSymbolResponse, lsp_server::ResponseError> {
+        let position = self.parser.position();
         Ok(DocumentSymbolResponse::Nested(
             self.parser
                 .tree()
-                .first_child()
-                .map(|root| {
-                    root.siblings_with_tokens(rowan::Direction::Next)
-                        .filter_map(|node| {
-                            node.as_node().and_then(|node| match node.kind() {
-                                SyntaxKind::LABEL => node
-                                    .descendants_with_tokens()
-                                    .find(|n| {
-                                        n.as_token().map(|n| n.kind()) == Some(SyntaxKind::LABEL)
-                                    })
-                                    .map(|t| t.into_token())
-                                    .flatten()
-                                    .map(|token| {
-                                        node_to_document_symbol(
-                                            self.parser.position(),
-                                            &node,
-                                            &token,
-                                            Some(
-                                                find_nodes(&node, SyntaxKind::LOCAL_LABEL)
-                                                    .collect(),
-                                            ),
-                                        )
-                                    }),
-                                _ => None,
-                            })
-                        })
-                        .collect()
+                .descendants()
+                .filter_map(|n| {
+                    LabelNode::cast(&n)
+                        .map(|label| label.to_document_symbol(position))
+                        .flatten()
                 })
-                .ok_or_else(|| lsp_error_map(ErrorCode::NoRoot))?,
+                .collect::<Vec<_>>(),
         ))
     }
 }
@@ -364,43 +343,47 @@ fn find_references<'a>(
         .filter(move |t| parser.token_text_equal(token, t))
 }
 
-fn node_to_document_symbol(
-    position: &PositionInfo,
-    node: &SyntaxNode,
-    token: &SyntaxToken,
-    child: Option<Vec<SyntaxNode>>,
-) -> DocumentSymbol {
-    DocumentSymbol {
-        name: token.text().to_string(),
-        detail: None,
-        kind: SymbolKind::Function,
-        tags: None,
-        deprecated: None,
-        range: position.range_for_node(node).unwrap().into(),
-        selection_range: position.range_for_node(node).unwrap().into(),
-        children: child.map(|c| {
-            c.iter()
-                .map(|node| {
-                    node_to_document_symbol(
-                        position,
-                        node,
-                        &find_token(node, SyntaxKind::LABEL).unwrap(),
-                        None,
-                    )
+impl<'s> LabelNode<'s> {
+    fn to_document_symbol(&self, position: &PositionInfo) -> Option<DocumentSymbol> {
+        let token = find_kind_index(self.syntax(), 1, SyntaxKind::LABEL)?.into_token()?;
+        let node = self.syntax();
+
+        Some(DocumentSymbol {
+            name: token.text().to_string(),
+            detail: None,
+            kind: SymbolKind::Function,
+            tags: None,
+            deprecated: None,
+            range: position.range_for_node(node).unwrap().into(),
+            selection_range: position.range_for_node(node).unwrap().into(),
+            children: self
+                .sub_labels()
+                .map(|s| {
+                    LocalLabelNode::cast(&s)
+                        .map(|s| s.to_document_symbol(position))
+                        .flatten()
                 })
-                .collect()
-        }),
+                .collect(),
+        })
     }
 }
 
-fn find_token(node: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {
-    node.children_with_tokens()
-        .filter_map(|c| c.into_token())
-        .find(|c| c.kind() == kind)
-}
+impl<'s> LocalLabelNode<'s> {
+    fn to_document_symbol(&self, position: &PositionInfo) -> Option<DocumentSymbol> {
+        let token = find_kind_index(self.syntax(), 0, SyntaxKind::LABEL)?.into_token()?;
+        let node = self.syntax();
 
-fn find_nodes(node: &SyntaxNode, kind: SyntaxKind) -> impl std::iter::Iterator<Item = SyntaxNode> {
-    node.children().filter(move |node| node.kind() == kind)
+        Some(DocumentSymbol {
+            name: token.text().to_string(),
+            detail: None,
+            kind: SymbolKind::Function,
+            tags: None,
+            deprecated: None,
+            range: position.range_for_node(node).unwrap().into(),
+            selection_range: position.range_for_node(node).unwrap().into(),
+            children: None,
+        })
+    }
 }
 
 impl AssemblyLanguageServerProtocol {

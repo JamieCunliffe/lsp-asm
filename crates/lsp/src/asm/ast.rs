@@ -63,8 +63,7 @@ pub(crate) fn find_kind_index(
     index: i32,
     syntax_kind: SyntaxKind,
 ) -> Option<SyntaxElement> {
-    node
-        .descendants_with_tokens()
+    node.descendants_with_tokens()
         .filter(|d| d.kind() == syntax_kind)
         .nth(index as _)
 }
@@ -191,5 +190,55 @@ impl<'st, 'c> RegisterToken<'st, 'c> {
         registers_for_architecture(&self.config.architecture)
             .map(|r| r.get_kind(self.token))
             .unwrap_or(RegisterKind::NONE)
+    }
+}
+
+pub(crate) trait AstNode<'s> {
+    fn cast(token: &'s SyntaxNode) -> Option<Self>
+    where
+        Self: Sized;
+
+    fn syntax(&self) -> &'s SyntaxNode;
+}
+
+pub struct LabelNode<'s> {
+    syntax: &'s SyntaxNode,
+}
+
+impl<'s> AstNode<'s> for LabelNode<'s> {
+    fn cast(node: &'s SyntaxNode) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        matches!(node.kind(), SyntaxKind::LABEL).then(|| Self { syntax: node })
+    }
+
+    fn syntax(&self) -> &'s SyntaxNode {
+        self.syntax
+    }
+}
+
+impl<'s> LabelNode<'s> {
+    pub(super) fn sub_labels(&self) -> impl Iterator<Item = SyntaxNode> {
+        self.syntax
+            .descendants()
+            .filter(|d| matches!(d.kind(), SyntaxKind::LOCAL_LABEL))
+    }
+}
+
+pub struct LocalLabelNode<'s> {
+    syntax: &'s SyntaxNode,
+}
+
+impl<'s> AstNode<'s> for LocalLabelNode<'s> {
+    fn cast(node: &'s SyntaxNode) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        matches!(node.kind(), SyntaxKind::LOCAL_LABEL).then(|| Self { syntax: node })
+    }
+
+    fn syntax(&self) -> &'s SyntaxNode {
+        self.syntax
     }
 }

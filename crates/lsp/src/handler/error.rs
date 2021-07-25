@@ -1,7 +1,6 @@
 use lsp_server::ResponseError;
 
 pub(crate) enum ErrorCode {
-    NoRoot,
     TokenNotFound,
     InvalidPosition,
     CastFailed,
@@ -10,11 +9,6 @@ pub(crate) enum ErrorCode {
 
 pub(crate) fn lsp_error_map(error: ErrorCode) -> ResponseError {
     match error {
-        ErrorCode::NoRoot => ResponseError {
-            code: 1,
-            message: String::from("Syntax tree error, no root node found"),
-            data: None,
-        },
         ErrorCode::TokenNotFound => ResponseError {
             code: 2,
             message: String::from("Token not found for position in syntax tree"),
