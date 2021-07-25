@@ -225,7 +225,6 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         let tokens = self.parser.tokens_in_range(&range);
 
         let tokens = tokens
-            .iter()
             .filter_map(|token| {
                 if let Some(index) = match token.kind() {
                     _ if crate::asm::ast::find_parent(&token, SyntaxKind::METADATA).is_some() => {
@@ -242,7 +241,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                     SyntaxKind::STRING => Some(crate::handler::semantic::STRING_INDEX),
                     SyntaxKind::REGISTER => self
                         .parser
-                        .token::<RegisterToken>(token)
+                        .token::<RegisterToken>(&token)
                         .map(|register| {
                             let kind = register.register_kind();
 
@@ -275,7 +274,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                     | SyntaxKind::BRACKETS
                     | SyntaxKind::ROOT => None,
                 } {
-                    let pos = position.get_position(token)?;
+                    let pos = position.get_position(&token)?;
                     Some(SemanticToken {
                         delta_line: pos.line,
                         delta_start: pos.column,

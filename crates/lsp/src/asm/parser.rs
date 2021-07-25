@@ -84,12 +84,12 @@ impl Parser {
     }
 
     /// Gets the tokens that are contained within `range`.
-    pub(crate) fn tokens_in_range(&self, range: &TextRange) -> Vec<SyntaxToken> {
+    pub(crate) fn tokens_in_range<'a>(&self, range: &'a TextRange) -> impl Iterator<Item = SyntaxToken> + 'a {
         self.root
             .descendants_with_tokens()
             .filter_map(|t| t.into_token())
-            .filter(|t| range.contains_inclusive(t.text_range().start()))
-            .collect()
+            .skip_while(move |token| !range.contains_inclusive(token.text_range().start()))
+            .take_while(move |token| range.contains_inclusive(token.text_range().start()))
     }
 
     /// Checks to see if the two tokens are refering to the same thing, for instance,
