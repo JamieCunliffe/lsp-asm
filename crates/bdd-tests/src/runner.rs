@@ -122,6 +122,7 @@ async fn run_command(
             util::make_result(&handler.get_semantic_tokens(req))
         }
         "document symbols" => util::make_result(&handler.document_symbols(location.url)),
+        "codelens" => util::make_result(&handler.code_lens(location.url)),
         _ => "".into(),
     };
 
@@ -162,6 +163,7 @@ fn expect_response(state: &mut LSPWorld, step: &Step) {
                 }))
             }
             "document symbols" => serde_json::to_value(util::make_doc_symbol(rows)),
+            "codelens" => serde_json::to_value(util::make_codelens(rows)),
             _ => panic!("Unknown cmd: {}", cmd),
         }
     } else {

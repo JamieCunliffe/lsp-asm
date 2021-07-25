@@ -144,6 +144,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "byte-unit"
+version = "4.0.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "063197e6eb4b775b64160dedde7a0986bb2836cce140e9492e9e96f28e18bcd8"
+dependencies = [
+ "serde",
+ "utf8-width",
+]
+
+[[package]]
 name = "byteorder"
 version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -784,6 +794,7 @@ name = "lsp-asm"
 version = "0.1.0"
 dependencies = [
  "bitflags",
+ "byte-unit",
  "either",
  "lazy_static",
  "log",
@@ -1605,6 +1616,12 @@ dependencies = [
  "percent-encoding",
  "serde",
 ]
+
+[[package]]
+name = "utf8-width"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7cf7d77f457ef8dfa11e4cd5933c5ddb5dc52a94664071951219a97710f0a32b"
 
 [[package]]
 name = "uuid"

@@ -5,25 +5,27 @@ use std::str::FromStr;
 
 use lsp_server::ResponseError;
 use lsp_types::{
-    DocumentHighlight, DocumentHighlightKind, DocumentSymbol, DocumentSymbolResponse,
-    GotoDefinitionResponse, HoverContents, Location, MarkupContent, Position, Range, SemanticToken,
-    SemanticTokens, SemanticTokensResult, SymbolKind, Url,
+    CodeLens, Command, DocumentHighlight, DocumentHighlightKind, DocumentSymbol,
+    DocumentSymbolResponse, GotoDefinitionResponse, HoverContents, Location, MarkupContent,
+    Position, Range, SemanticToken, SemanticTokens, SemanticTokensResult, SymbolKind, Url,
 };
 use rowan::TextRange;
 
-use crate::asm::ast::RegisterToken;
-use crate::asm::combinators;
 use crate::config::LSPConfig;
 use crate::handler::error::{lsp_error_map, ErrorCode};
 use crate::handler::semantic::{self, semantic_delta_transform};
 use crate::handler::LanguageServerProtocol;
-use crate::types::DocumentPosition;
+use crate::types::{DocumentLocation, DocumentPosition};
 
-use super::ast::{find_kind_index, AstNode, LabelNode, LabelToken, LocalLabelNode, NumericToken};
-use super::ast::{SyntaxKind, SyntaxNode, SyntaxToken};
+use super::ast::{
+    self, find_kind_index, AstNode, LabelNode, LabelToken, LocalLabelNode, NumericToken,
+    RegisterToken, SyntaxKind, SyntaxNode, SyntaxToken,
+};
 use super::config::ParserConfig;
+use super::debug::DebugMap;
 use super::parser::{Parser, PositionInfo};
 use super::registers::{registers_for_architecture, RegisterKind, Registers};
+use crate::asm::combinators;
 
 pub struct AssemblyLanguageServerProtocol {
     parser: Parser,
@@ -309,6 +311,47 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                 })
                 .collect::<Vec<_>>(),
         ))
+    }
+
+    fn code_lens(&self) -> Result<Option<Vec<lsp_types::CodeLens>>, ResponseError> {
+        if self.parser.filesize() > self.config.codelens.enabled_filesize {
+            info!(
+                "Skipping codelens due to filesize threshold see codelens::enabled_filesize ({}) config", self.config.codelens.enabled_filesize
+            );
+            return Ok(None);
+        }
+
+        let map = self.parser.debug_map();
+        let lens = (self.config.codelens.loc_enabled && map.has_debug_map()).then(|| {
+            self.parser
+                .tree()
+                .descendants()
+                .filter(|d| matches!(d.kind(), SyntaxKind::DIRECTIVE))
+                .filter(|d| {
+                    ast::find_kind_index(d, 0, SyntaxKind::MNEMONIC)
+                        .map(|t| t.as_token().map(|t| t.text() == ".loc"))
+                        .flatten()
+                        .unwrap_or(false)
+                })
+                .filter_map(|n| {
+                    let location = map.get_location(&n)?;
+                    let title = map.get_contents(location)?.clone();
+                    let range = self.parser.position().range_for_node(&n)?.into();
+                    let location: Location = map.get_file_location(&n).map(|l| l.into())?;
+
+                    Some(CodeLens {
+                        range,
+                        command: Some(Command {
+                            title,
+                            command: String::from("lsp-asm.loc"),
+                            arguments: Some(vec![serde_json::to_value(location).unwrap()]),
+                        }),
+                        data: None,
+                    })
+                })
+                .collect()
+        });
+        Ok(lens)
     }
 }
 

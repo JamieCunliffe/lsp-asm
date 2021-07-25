@@ -7,13 +7,13 @@ use lsp_server::{Connection, Message, Notification, Request, RequestId, Response
 
 use lsp_types::notification::{DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument};
 use lsp_types::request::{
-    DocumentHighlightRequest, DocumentSymbolRequest, GotoDefinition, HoverRequest, References,
-    SemanticTokensFullRequest, SemanticTokensRangeRequest,
+    CodeLensRequest, DocumentHighlightRequest, DocumentSymbolRequest, GotoDefinition, HoverRequest,
+    References, SemanticTokensFullRequest, SemanticTokensRangeRequest,
 };
 use lsp_types::{
-    HoverProviderCapability, OneOf, SemanticTokensFullOptions, SemanticTokensLegend,
-    SemanticTokensOptions, SemanticTokensServerCapabilities, ServerCapabilities,
-    TextDocumentSyncCapability, TextDocumentSyncKind, WorkDoneProgressOptions,
+    CodeLensOptions, HoverProviderCapability, OneOf, SemanticTokensFullOptions,
+    SemanticTokensLegend, SemanticTokensOptions, SemanticTokensServerCapabilities,
+    ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, WorkDoneProgressOptions,
 };
 
 use serde_json::Value;
@@ -36,6 +36,9 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
         references_provider: Some(OneOf::Left(true)),
         document_highlight_provider: Some(OneOf::Left(true)),
         document_symbol_provider: Some(OneOf::Left(true)),
+        code_lens_provider: Some(CodeLensOptions {
+            resolve_provider: None,
+        }),
         semantic_tokens_provider: Some(SemanticTokensServerCapabilities::SemanticTokensOptions(
             SemanticTokensOptions {
                 work_done_progress_options: WorkDoneProgressOptions {
@@ -122,6 +125,10 @@ fn lsp_loop(
                             Some(data.range.into()),
                         );
                         make_result(handler.get_semantic_tokens(msg))
+                    }
+                    "textDocument/codeLens" => {
+                        let (_, data) = get_message::<CodeLensRequest>(request).unwrap();
+                        make_result(handler.code_lens(data.text_document.uri))
                     }
                     _ => panic!("Unknown method: {:?}", request.method),
                 };

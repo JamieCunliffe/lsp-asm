@@ -5,13 +5,16 @@ use super::ast::{AstToken, LabelToken, SyntaxKind, SyntaxNode, SyntaxToken};
 use super::config::{FileType, ParserConfig};
 use super::debug::DebugMap;
 
+use byte_unit::Byte;
 use once_cell::sync::OnceCell;
 use rayon::prelude::*;
+
 use rowan::{TextRange, TextSize};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Parser {
     root: SyntaxNode,
+    filesize: Byte,
     config: ParserConfig,
     line_index: PositionInfo,
     debug_map: OnceCell<DebugMap>,
@@ -32,12 +35,15 @@ impl Parser {
     /// Create a parser from the given data.
     /// * data: The assembly listing to parse
     pub fn from(data: &str, config: &LSPConfig) -> Self {
+        let filesize = Byte::from_bytes(data.len() as _);
         let mut config = ParserConfig::new(&Self::determine_architecture(data, config));
         config.file_type = Self::determine_filetype(data);
 
         let root = Self::parse_asm(data, &config);
+
         Self {
             line_index: PositionInfo::new(&data),
+            filesize,
             root,
             config,
             debug_map: OnceCell::new(),
@@ -46,6 +52,10 @@ impl Parser {
 
     pub(crate) fn tree(&self) -> &SyntaxNode {
         &self.root
+    }
+
+    pub(crate) fn filesize(&self) -> Byte {
+        self.filesize
     }
 
     pub(super) fn debug_map(&self) -> &DebugMap {

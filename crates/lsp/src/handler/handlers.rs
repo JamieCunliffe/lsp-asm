@@ -112,4 +112,10 @@ impl LangServerHandler {
 
         handler.document_symbols()
     }
+
+    pub fn code_lens(&self, url: Url) -> Result<Option<Vec<lsp_types::CodeLens>>, ResponseError> {
+        let handler = self.get_actor(&url)?;
+
+        handler.code_lens()
+    }
 }

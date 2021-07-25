@@ -38,4 +38,6 @@ pub trait LanguageServerProtocol {
     ) -> Result<SemanticTokensResult, ResponseError>;
 
     fn document_symbols(&self) -> Result<DocumentSymbolResponse, ResponseError>;
+
+    fn code_lens(&self) -> Result<Option<Vec<lsp_types::CodeLens>>, ResponseError>;
 }

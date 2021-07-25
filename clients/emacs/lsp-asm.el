@@ -15,6 +15,15 @@
                  (const "x86-64"))
   :group 'lsp-asm)
 
+(defcustom lsp-asm-codelens-filesize-threshold "1mb"
+  "The maximum filesize that codelens are applied to."
+  :group 'lsp-asm)
+
+(defcustom lsp-asm-codelens-loc-enabled 't
+  "Provide a code lens showing the line a .loc directive refers to."
+  :type 'boolean
+  :group 'lsp-asm)
+
 (defcustom lsp-asm-log-level "error"
   "The logging level to use."
   :type '(choice (const "error")
@@ -27,7 +36,13 @@
 
 (defun lsp-asm--make-init-options ()
   "Init options for lsp-asm."
-  `(:architecture ,lsp-asm-default-architecture))
+  `(:architecture ,lsp-asm-default-architecture
+    :codelens (:enabled_filesize ,lsp-asm-codelens-filesize-threshold
+               :loc_enabled ,(lsp-json-bool lsp-asm-codelens-loc-enabled))))
+
+(lsp-defun lsp-asm--open-loc
+  ((&Command :title :arguments? [location]))
+  (lsp-show-xrefs (lsp--locations-to-xref-items location) nil nil))
 
 (add-to-list 'lsp-language-id-configuration '(asm-mode . "Assembly"))
 (lsp-register-client
@@ -36,6 +51,7 @@
                   :notification-handlers (ht ("client/registerCapability" 'ignore))
                   :priority 1
                   :initialization-options 'lsp-asm--make-init-options
+                  :action-handlers (ht ("lsp-asm.loc" #'lsp-asm--open-loc))
                   :environment-fn (lambda ()
                                     '(("RUST_LOG" . lsp-asm-log-level)))
                   :server-id 'lsp-asm))

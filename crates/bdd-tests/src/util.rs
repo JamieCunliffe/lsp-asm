@@ -5,8 +5,8 @@ use lsp_asm::types::{Architecture, DocumentLocation, DocumentPosition, DocumentR
 
 use lsp_server::ResponseError;
 use lsp_types::{
-    DocumentHighlight, DocumentHighlightKind, DocumentSymbol, Location, Range, SemanticToken,
-    SymbolKind, Url,
+    CodeLens, Command, DocumentHighlight, DocumentHighlightKind, DocumentSymbol, Location, Range,
+    SemanticToken, SymbolKind, Url,
 };
 
 use serde_json::Value;
@@ -19,6 +19,7 @@ pub(crate) fn parse_config(rows: &Vec<Vec<String>>) -> LSPConfig {
         let value = row[1].as_str();
         match key {
             "architecture" => config.architecture = Architecture::from(value),
+            "codelens::loc_enabled" => config.codelens.loc_enabled = value.parse::<bool>().unwrap(),
             x => panic!("Unknown configuration parameter: {}", x),
         }
     }
@@ -153,4 +154,22 @@ where
         Ok(result) => serde_json::to_value(&result).unwrap(),
         Err(result) => serde_json::to_value(&result).unwrap(),
     }
+}
+
+pub(crate) fn make_codelens(table: &Vec<Vec<String>>) -> Option<Vec<CodeLens>> {
+    (table.len() > 1).then(|| {
+        table
+            .iter()
+            .skip(1)
+            .map(|row| CodeLens {
+                range: make_range(row.get(0).unwrap()),
+                command: Some(Command {
+                    title: row.get(1).unwrap().into(),
+                    command: row.get(2).unwrap().into(),
+                    arguments: None,
+                }),
+                data: None,
+            })
+            .collect()
+    })
 }
