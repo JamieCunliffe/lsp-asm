@@ -93,8 +93,8 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         if !matches!(token.kind(), SyntaxKind::LABEL | SyntaxKind::TOKEN) {
             return Ok(Vec::new());
         }
-
-        let references = find_references(&self.parser, &token);
+        let range = self.parser.tree().text_range();
+        let references = find_references(&self.parser, &token, &range);
         let position = self.parser.position();
         let locations = references
             .filter(|t| {
@@ -187,9 +187,8 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             position.line.saturating_add(200),
         );
 
-        let references = find_references(&self.parser, &token);
+        let references = find_references(&self.parser, &token, &range);
         let locations = references
-            .filter(|token| range.contains(token.text_range().start()))
             .filter_map(|token| {
                 Some(lsp_types::DocumentHighlight {
                     range: position_cache.range_for_token(&token)?.into(),
@@ -381,11 +380,10 @@ fn get_label_hover(label: &LabelToken) -> Option<Vec<String>> {
 fn find_references<'a>(
     parser: &'a Parser,
     token: &'a SyntaxToken,
+    range: &'a TextRange,
 ) -> impl Iterator<Item = SyntaxToken> + 'a {
     parser
-        .tree()
-        .descendants_with_tokens()
-        .filter_map(|d| d.into_token())
+        .tokens_in_range(range)
         .filter(move |t| parser.token_text_equal(token, t))
 }
 
