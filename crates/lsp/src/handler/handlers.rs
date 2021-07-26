@@ -1,6 +1,8 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
+use tokio::sync::RwLock;
+
 use crate::asm::handler::AssemblyLanguageServerProtocol;
 use crate::config::LSPConfig;
 
@@ -12,19 +14,24 @@ use lsp_server::ResponseError;
 use lsp_types::{DidChangeTextDocumentParams, Url};
 
 pub struct LangServerHandler {
-    actors: HashMap<Url, Box<dyn LanguageServerProtocol>>,
+    actors: RwLock<HashMap<Url, RwLock<Box<dyn LanguageServerProtocol + Send + Sync>>>>,
     config: LSPConfig,
 }
 
 impl LangServerHandler {
     pub fn new(config: LSPConfig) -> Self {
         Self {
-            actors: HashMap::new(),
+            actors: RwLock::new(HashMap::new()),
             config,
         }
     }
 
-    pub fn open_file(&mut self, lang_id: &str, url: Url, text: &str) {
+    pub async fn open_file(
+        &self,
+        lang_id: &str,
+        url: Url,
+        text: &str,
+    ) -> Result<(), ResponseError> {
         let actor = match lang_id.to_lowercase().as_str() {
             "asm" => AssemblyLanguageServerProtocol::new(&text, url.clone(), self.config.clone()),
             "assembly" => {
@@ -33,10 +40,15 @@ impl LangServerHandler {
             _ => panic!("Unknown language: {}", lang_id),
         };
 
-        self.actors.insert(url, Box::new(actor));
+        self.actors
+            .write()
+            .await
+            .insert(url, RwLock::new(Box::new(actor)));
+
+        Ok(())
     }
 
-    pub fn update_file(&mut self, msg: DidChangeTextDocumentParams) {
+    pub async fn update_file(&self, msg: DidChangeTextDocumentParams) -> Result<(), ResponseError> {
         let uri = msg.text_document.uri;
         let change_params = msg.content_changes;
         if change_params.len() != 1 {
@@ -44,78 +56,121 @@ impl LangServerHandler {
         }
 
         let text = &change_params.first().unwrap().text;
-        self.actors.get_mut(&uri).unwrap().update(text);
+        self.actors
+            .read()
+            .await
+            .get(&uri)
+            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+            .write()
+            .await
+            .update(text);
+
+        Ok(())
     }
 
-    pub fn close_file(&mut self, url: Url) {
-        if let Entry::Occupied(entry) = self.actors.entry(url) {
+    pub async fn close_file(&self, url: Url) -> Result<(), ResponseError> {
+        if let Entry::Occupied(entry) = self.actors.write().await.entry(url) {
             entry.remove_entry();
         }
+
+        Ok(())
     }
 
-    fn get_actor(&self, url: &Url) -> Result<&Box<dyn LanguageServerProtocol>, ResponseError> {
-        self.actors
-            .get(url)
-            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))
-    }
-
-    pub fn goto_definition(
+    pub async fn goto_definition(
         &self,
         request: LocationMessage,
     ) -> Result<lsp_types::GotoDefinitionResponse, ResponseError> {
-        let handler = self.get_actor(&request.url)?;
-
-        handler.goto_definition(request.position)
+        self.actors
+            .read()
+            .await
+            .get(&request.url)
+            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+            .read()
+            .await
+            .goto_definition(request.position)
     }
 
-    pub fn find_references(
+    pub async fn find_references(
         &self,
         request: FindReferencesMessage,
     ) -> Result<Vec<lsp_types::Location>, ResponseError> {
-        let handler = self.get_actor(&request.location.url)?;
-
-        handler.find_references(request.location.position, request.include_decl)
+        self.actors
+            .read()
+            .await
+            .get(&request.location.url)
+            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+            .read()
+            .await
+            .find_references(request.location.position, request.include_decl)
     }
 
-    pub fn hover(
+    pub async fn hover(
         &self,
         request: LocationMessage,
     ) -> Result<Option<lsp_types::Hover>, ResponseError> {
-        let handler = self.get_actor(&request.url)?;
-
-        handler.hover(request.position)
+        self.actors
+            .read()
+            .await
+            .get(&request.url)
+            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+            .read()
+            .await
+            .hover(request.position)
     }
 
-    pub fn document_highlight(
+    pub async fn document_highlight(
         &self,
         request: LocationMessage,
     ) -> Result<Vec<lsp_types::DocumentHighlight>, ResponseError> {
-        let handler = self.get_actor(&request.url)?;
-
-        handler.document_highlight(request.position)
+        self.actors
+            .read()
+            .await
+            .get(&request.url)
+            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+            .read()
+            .await
+            .document_highlight(request.position)
     }
 
-    pub fn get_semantic_tokens(
+    pub async fn get_semantic_tokens(
         &self,
         request: SemanticTokensMessage,
     ) -> Result<lsp_types::SemanticTokensResult, ResponseError> {
-        let handler = self.get_actor(&request.url)?;
-
-        handler.get_semantic_tokens(request.range.map(|r| r.into()))
+        self.actors
+            .read()
+            .await
+            .get(&request.url)
+            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+            .read()
+            .await
+            .get_semantic_tokens(request.range.map(|r| r.into()))
     }
 
-    pub fn document_symbols(
+    pub async fn document_symbols(
         &self,
         url: Url,
     ) -> Result<lsp_types::DocumentSymbolResponse, ResponseError> {
-        let handler = self.get_actor(&url)?;
-
-        handler.document_symbols()
+        self.actors
+            .read()
+            .await
+            .get(&url)
+            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+            .read()
+            .await
+            .document_symbols()
     }
 
-    pub fn code_lens(&self, url: Url) -> Result<Option<Vec<lsp_types::CodeLens>>, ResponseError> {
-        let handler = self.get_actor(&url)?;
-
-        handler.code_lens()
+    pub async fn code_lens(
+        &self,
+        url: Url,
+    ) -> Result<Option<Vec<lsp_types::CodeLens>>, ResponseError> {
+        self.actors
+            .read()
+            .await
+            .get(&url)
+            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+            .read()
+            .await
+            .code_lens()
     }
 }

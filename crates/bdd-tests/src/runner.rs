@@ -70,7 +70,7 @@ async fn open_temp_file(state: &mut LSPWorld, step: &Step, name: String) {
     let data = step.docstring.as_ref().unwrap().trim_matches('\n');
     let url = Url::parse(&format!("file://{}", name)).unwrap();
 
-    state.handler.open_file("asm", url, &data);
+    state.handler.open_file("asm", url, &data).await.unwrap();
 }
 
 #[when(regex = r#"I open the file "(.*)""#)]
@@ -79,7 +79,7 @@ async fn open_file(state: &mut LSPWorld, file: String) {
     let data = std::fs::read_to_string(path).unwrap();
     let url = Url::parse(&format!("file://{}", file)).unwrap();
 
-    state.handler.open_file("asm", url, &data);
+    state.handler.open_file("asm", url, &data).await.unwrap();
 }
 
 #[when(regex = r#"I run "(.*)" on the file "(.*)" at position "(.*)"(.*)"#)]
@@ -104,25 +104,25 @@ async fn run_command(
     };
     let handler = &state.handler;
     let resp = match cmd.as_str() {
-        "goto definition" => util::make_result(&handler.goto_definition(location)),
+        "goto definition" => util::make_result(&handler.goto_definition(location).await),
         "find references" => {
             let req = FindReferencesMessage {
                 location,
                 include_decl: additional == "including decl",
             };
-            util::make_result(&handler.find_references(req))
+            util::make_result(&handler.find_references(req).await)
         }
-        "document highlight" => util::make_result(&handler.document_highlight(location)),
-        "document hover" => util::make_result(&handler.hover(location)),
+        "document highlight" => util::make_result(&handler.document_highlight(location).await),
+        "document hover" => util::make_result(&handler.hover(location).await),
         "semantic tokens" => {
             let req = SemanticTokensMessage {
                 url: location.url,
                 range,
             };
-            util::make_result(&handler.get_semantic_tokens(req))
+            util::make_result(&handler.get_semantic_tokens(req).await)
         }
-        "document symbols" => util::make_result(&handler.document_symbols(location.url)),
-        "codelens" => util::make_result(&handler.code_lens(location.url)),
+        "document symbols" => util::make_result(&handler.document_symbols(location.url).await),
+        "codelens" => util::make_result(&handler.code_lens(location.url).await),
         _ => "".into(),
     };
 

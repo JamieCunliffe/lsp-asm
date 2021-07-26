@@ -124,7 +124,7 @@ mod test {
 	.loc	2 2132 0
 	.cfi_startproc"#;
         let tree = Parser::from(data, &Default::default());
-        let map = DebugMap::new(tree.tree());
+        let map = DebugMap::new(&tree.tree());
 
         let values = map.map.iter().clone().collect::<Vec<_>>();
         assert_eq!(
@@ -140,7 +140,7 @@ mod test {
 
         assert_eq!(
             map.get_file_location(
-                ast::find_kind_index(tree.tree(), 1, SyntaxKind::DIRECTIVE)
+                ast::find_kind_index(&tree.tree(), 1, SyntaxKind::DIRECTIVE)
                     .unwrap()
                     .as_node()
                     .unwrap()

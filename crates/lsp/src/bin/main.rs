@@ -2,6 +2,8 @@
 extern crate log;
 
 use std::error::Error;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 
 use lsp_server::{Connection, Message, Notification, Request, RequestId, Response, ResponseError};
 
@@ -20,11 +22,12 @@ use serde_json::Value;
 
 use lsp_asm::handler::handlers::LangServerHandler;
 use lsp_asm::handler::types::SemanticTokensMessage;
+use tokio::runtime::Builder;
 
 pub(crate) type LangServerResult = Result<Value, ResponseError>;
 
 fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
-    pretty_env_logger::init();
+    pretty_env_logger::init_timed();
     debug!("Starting lsp-asm");
 
     let (connection, io_threads) = Connection::stdio();
@@ -59,7 +62,7 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
     let server_capabilities = serde_json::to_value(&capabilities).unwrap();
     let initialization_params = connection.initialize(server_capabilities)?;
     let initialization_params = serde_json::from_value(initialization_params)?;
-    lsp_loop(&connection, initialization_params)?;
+    lsp_loop(connection, initialization_params)?;
     io_threads.join()?;
 
     debug!("Shutting server down");
@@ -67,7 +70,7 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
 }
 
 fn lsp_loop(
-    connection: &Connection,
+    connection: Connection,
     params: lsp_types::InitializeParams,
 ) -> Result<(), Box<dyn Error + Sync + Send>> {
     debug!("Starting lsp loop");
@@ -80,88 +83,124 @@ fn lsp_loop(
         .unwrap_or_default();
 
     debug!("Config: {:#?}", params);
-    let mut handler = LangServerHandler::new(params);
+    let handler = Arc::new(LangServerHandler::new(params));
+    let connection = Arc::new(connection);
+    let rt = Builder::new_multi_thread()
+        .thread_name_fn(|| {
+            static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
+            let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
+            format!("lsp-asm-worker-{}", id)
+        })
+        .build()?;
 
-    for msg in &connection.receiver {
-        match msg {
-            Message::Request(request) => {
-                if connection.handle_shutdown(&request)? {
-                    debug!("Handling shutdown");
-                    return Ok(());
+    debug!("runtime: {:#?}", rt);
+
+    rt.block_on(async move {
+        for msg in &connection.receiver {
+            let connection = connection.clone();
+            let handler = handler.clone();
+            match msg {
+                Message::Request(req)
+                    if connection.clone().handle_shutdown(&req).unwrap_or(false) =>
+                {
+                    return ()
                 }
 
-                debug!("Handling request: {:#?}", request.method);
-                let req_id = request.id.clone();
-                let result = match request.method.as_str() {
-                    "textDocument/definition" => {
-                        let (_, data) = get_message::<GotoDefinition>(request).unwrap();
-                        make_result(handler.goto_definition(data.into()))
-                    }
-                    "textDocument/references" => {
-                        let (_, data) = get_message::<References>(request).unwrap();
-                        make_result(handler.find_references(data.into()))
-                    }
-                    "textDocument/hover" => {
-                        let (_, data) = get_message::<HoverRequest>(request).unwrap();
-                        make_result(handler.hover(data.into()))
-                    }
-                    "textDocument/documentSymbol" => {
-                        let (_, data) = get_message::<DocumentSymbolRequest>(request).unwrap();
-                        make_result(handler.document_symbols(data.text_document.uri))
-                    }
-                    "textDocument/documentHighlight" => {
-                        let (_, data) = get_message::<DocumentHighlightRequest>(request).unwrap();
-                        make_result(handler.document_highlight(data.into()))
-                    }
-                    "textDocument/semanticTokens/full" => {
-                        let (_, data) = get_message::<SemanticTokensFullRequest>(request).unwrap();
-                        let msg = SemanticTokensMessage::new(data.text_document.uri, None);
-                        make_result(handler.get_semantic_tokens(msg))
-                    }
-                    "textDocument/semanticTokens/range" => {
-                        let (_, data) = get_message::<SemanticTokensRangeRequest>(request).unwrap();
-                        let msg = SemanticTokensMessage::new(
-                            data.text_document.uri,
-                            Some(data.range.into()),
-                        );
-                        make_result(handler.get_semantic_tokens(msg))
-                    }
-                    "textDocument/codeLens" => {
-                        let (_, data) = get_message::<CodeLensRequest>(request).unwrap();
-                        make_result(handler.code_lens(data.text_document.uri))
-                    }
-                    _ => panic!("Unknown method: {:?}", request.method),
-                };
-
-                let response = make_response(req_id, result);
-                connection.sender.send(Message::Response(response))?;
-            }
-            Message::Notification(notification) => {
-                debug!("Handling notification: {:#?}", notification.method);
-                match notification.method.as_str() {
-                    "textDocument/didOpen" => {
-                        let data = get_notification::<DidOpenTextDocument>(notification).unwrap();
-                        let data = data.text_document;
-                        handler.open_file(&data.language_id, data.uri, &data.text)
-                    }
-                    "textDocument/didChange" => {
-                        let data = get_notification::<DidChangeTextDocument>(notification).unwrap();
-                        handler.update_file(data)
-                    }
-                    "textDocument/didSave" => {}
-                    "textDocument/didClose" => {
-                        let data = get_notification::<DidCloseTextDocument>(notification).unwrap();
-                        handler.close_file(data.text_document.uri);
-                    }
-                    "$/cancelRequest" => debug!("Received cancel request - Ignoring"),
-                    _ => panic!("Unknown notification: {:?}", notification.method),
-                };
-            }
-            _ => (),
-        };
-    }
+                m => tokio::spawn(async move {
+                    process_message(connection.clone(), handler.clone(), m).await
+                }),
+            };
+        }
+        ()
+    });
 
     Ok(())
+}
+
+async fn process_message(
+    connection: Arc<Connection>,
+    handler: Arc<LangServerHandler>,
+    msg: Message,
+) {
+    match msg {
+        Message::Request(request) => {
+            let req_id = request.id.clone();
+            info!("Handling request: {:#?}, id: {}", request.method, &req_id);
+            let result = match request.method.as_str() {
+                "textDocument/definition" => {
+                    let (_, data) = get_message::<GotoDefinition>(request).unwrap();
+                    make_result(handler.goto_definition(data.into()).await)
+                }
+                "textDocument/references" => {
+                    let (_, data) = get_message::<References>(request).unwrap();
+                    make_result(handler.find_references(data.into()).await)
+                }
+                "textDocument/hover" => {
+                    let (_, data) = get_message::<HoverRequest>(request).unwrap();
+                    make_result(handler.hover(data.into()).await)
+                }
+                "textDocument/documentSymbol" => {
+                    let (_, data) = get_message::<DocumentSymbolRequest>(request).unwrap();
+                    make_result(handler.document_symbols(data.text_document.uri).await)
+                }
+                "textDocument/documentHighlight" => {
+                    let (_, data) = get_message::<DocumentHighlightRequest>(request).unwrap();
+                    make_result(handler.document_highlight(data.into()).await)
+                }
+                "textDocument/semanticTokens/full" => {
+                    let (_, data) = get_message::<SemanticTokensFullRequest>(request).unwrap();
+                    let msg = SemanticTokensMessage::new(data.text_document.uri, None);
+                    make_result(handler.get_semantic_tokens(msg).await)
+                }
+                "textDocument/semanticTokens/range" => {
+                    let (_, data) = get_message::<SemanticTokensRangeRequest>(request).unwrap();
+                    let msg =
+                        SemanticTokensMessage::new(data.text_document.uri, Some(data.range.into()));
+                    make_result(handler.get_semantic_tokens(msg).await)
+                }
+                "textDocument/codeLens" => {
+                    let (_, data) = get_message::<CodeLensRequest>(request).unwrap();
+                    make_result(handler.code_lens(data.text_document.uri).await)
+                }
+                _ => panic!("Unknown method: {:?}", request.method),
+            };
+            info!("Responding to request: {}", &req_id);
+            let response = make_response(req_id, result);
+            let res = connection.sender.send(Message::Response(response));
+            match res {
+                Ok(_) => (),
+                Err(e) => error!("Failed to respond to request due to error: {:#?}", e),
+            };
+        }
+
+        Message::Notification(notification) => {
+            info!("Handling notification: {:#?}", notification.method);
+            let _ = match notification.method.as_str() {
+                "textDocument/didOpen" => {
+                    let data = get_notification::<DidOpenTextDocument>(notification).unwrap();
+                    let data = data.text_document;
+                    handler
+                        .open_file(&data.language_id, data.uri, &data.text)
+                        .await
+                }
+                "textDocument/didChange" => {
+                    let data = get_notification::<DidChangeTextDocument>(notification).unwrap();
+                    handler.update_file(data).await
+                }
+                "textDocument/didSave" => Ok(()),
+                "textDocument/didClose" => {
+                    let data = get_notification::<DidCloseTextDocument>(notification).unwrap();
+                    handler.close_file(data.text_document.uri).await
+                }
+                "$/cancelRequest" => {
+                    debug!("Received cancel request - Ignoring");
+                    Ok(())
+                }
+                _ => panic!("Unknown notification: {:?}", notification.method),
+            };
+        }
+        _ => (),
+    }
 }
 
 fn make_result<T>(result: Result<T, ResponseError>) -> LangServerResult

@@ -8,12 +8,11 @@ use super::debug::DebugMap;
 use byte_unit::Byte;
 use once_cell::sync::OnceCell;
 use rayon::prelude::*;
-
-use rowan::{TextRange, TextSize};
+use rowan::{GreenNode, TextRange, TextSize};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Parser {
-    root: SyntaxNode,
+    root: GreenNode,
     filesize: Byte,
     config: ParserConfig,
     line_index: PositionInfo,
@@ -50,8 +49,8 @@ impl Parser {
         }
     }
 
-    pub(crate) fn tree(&self) -> &SyntaxNode {
-        &self.root
+    pub(crate) fn tree(&self) -> SyntaxNode {
+        SyntaxNode::new_root(self.root.clone())
     }
 
     pub(crate) fn filesize(&self) -> Byte {
@@ -59,7 +58,7 @@ impl Parser {
     }
 
     pub(super) fn debug_map(&self) -> &DebugMap {
-        &self.debug_map.get_or_init(|| DebugMap::new(self.tree()))
+        &self.debug_map.get_or_init(|| DebugMap::new(&self.tree()))
     }
 
     pub(crate) fn token<'st, 'c, T>(&'c self, token: &'st SyntaxToken) -> Option<T>
@@ -84,8 +83,11 @@ impl Parser {
     }
 
     /// Gets the tokens that are contained within `range`.
-    pub(crate) fn tokens_in_range<'a>(&self, range: &'a TextRange) -> impl Iterator<Item = SyntaxToken> + 'a {
-        self.root
+    pub(crate) fn tokens_in_range<'a>(
+        &self,
+        range: &'a TextRange,
+    ) -> impl Iterator<Item = SyntaxToken> + 'a {
+        self.tree()
             .descendants_with_tokens()
             .filter_map(|t| t.into_token())
             .skip_while(move |token| !range.contains_inclusive(token.text_range().start()))
@@ -143,9 +145,8 @@ impl Parser {
     }
 
     /// Helper function to perform the parsing of data
-    fn parse_asm(data: &str, config: &ParserConfig) -> SyntaxNode {
-        let nodes = super::combinators::parse(data, config);
-        SyntaxNode::new_root(nodes)
+    fn parse_asm(data: &str, config: &ParserConfig) -> GreenNode {
+        super::combinators::parse(data, config)
     }
 
     fn determine_filetype(filedata: &str) -> super::config::FileType {
