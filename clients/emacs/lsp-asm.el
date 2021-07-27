@@ -33,6 +33,26 @@
                  (const "trace"))
   :group 'lsp-asm)
 
+(lsp-interface (asm:SyntaxTreeParams (:textDocument)))
+(define-derived-mode lsp-asm-syntax-tree-mode special-mode "Asm-Syntax-Tree"
+  "Mode for the asm syntax tree buffer.")
+(defun lsp-asm-syntax-tree ()
+  "Display the syntax tree for the current buffer."
+  (interactive)
+  (-let* ((root (lsp-workspace-root default-directory))
+          (params (lsp-make-asm-syntax-tree-params
+                   :text-document (lsp--text-document-identifier)))
+          (results (lsp-send-request (lsp-make-request
+                                      "asm/syntaxTree"
+                                      params))))
+    (let ((buf (get-buffer-create (format "*asm syntax tree %s*" root)))
+          (inhibit-read-only t))
+      (with-current-buffer buf
+        (lsp-asm-syntax-tree-mode)
+        (erase-buffer)
+        (insert results)
+        (goto-char (point-min)))
+      (pop-to-buffer buf))))
 
 (defun lsp-asm--make-init-options ()
   "Init options for lsp-asm."

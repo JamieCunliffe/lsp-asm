@@ -173,4 +173,15 @@ impl LangServerHandler {
             .await
             .code_lens()
     }
+
+    pub async fn syntax_tree(&self, url: Url) -> Result<String, ResponseError> {
+        self.actors
+            .read()
+            .await
+            .get(&url)
+            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+            .read()
+            .await
+            .syntax_tree()
+    }
 }

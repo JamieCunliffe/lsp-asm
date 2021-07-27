@@ -7,6 +7,7 @@ use lsp_types::{
 use crate::types::DocumentPosition;
 
 pub mod error;
+pub mod ext;
 pub mod handlers;
 pub mod semantic;
 pub mod types;
@@ -40,4 +41,6 @@ pub trait LanguageServerProtocol {
     fn document_symbols(&self) -> Result<DocumentSymbolResponse, ResponseError>;
 
     fn code_lens(&self) -> Result<Option<Vec<lsp_types::CodeLens>>, ResponseError>;
+
+    fn syntax_tree(&self) -> Result<String, ResponseError>;
 }

@@ -123,6 +123,7 @@ async fn run_command(
         }
         "document symbols" => util::make_result(&handler.document_symbols(location.url).await),
         "codelens" => util::make_result(&handler.code_lens(location.url).await),
+        "syntax tree" => util::make_result(&handler.syntax_tree(location.url).await),
         _ => "".into(),
     };
 
@@ -144,6 +145,7 @@ fn expect_response(state: &mut LSPWorld, step: &Step) {
                 }),
                 range: None,
             }),
+            "syntax tree" => serde_json::to_value(expected),
             _ => serde_json::from_str(expected),
         }
     } else if let Some(expected) = step.table.as_ref() {

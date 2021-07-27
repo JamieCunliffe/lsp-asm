@@ -162,6 +162,11 @@ async fn process_message(
                     let (_, data) = get_message::<CodeLensRequest>(request).unwrap();
                     make_result(handler.code_lens(data.text_document.uri).await)
                 }
+                "asm/syntaxTree" => {
+                    let (_, data) =
+                        get_message::<lsp_asm::handler::ext::SyntaxTree>(request).unwrap();
+                    make_result(handler.syntax_tree(data.text_document.uri).await)
+                }
                 _ => panic!("Unknown method: {:?}", request.method),
             };
             info!("Responding to request: {}", &req_id);

@@ -352,6 +352,10 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         });
         Ok(lens)
     }
+
+    fn syntax_tree(&self) -> Result<String, ResponseError> {
+        Ok(format!("{:#?}", self.parser.tree()))
+    }
 }
 
 fn get_numeric_hover(value: &NumericToken) -> Option<Vec<String>> {
