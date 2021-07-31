@@ -6,6 +6,8 @@ use lsp_types::{
 
 use crate::types::DocumentPosition;
 
+use self::types::DocumentChange;
+
 pub mod error;
 pub mod ext;
 pub mod handlers;
@@ -13,7 +15,7 @@ pub mod semantic;
 pub mod types;
 
 pub trait LanguageServerProtocol {
-    fn update(&mut self, data: &str);
+    fn update(&mut self, version: u32, changes: Vec<DocumentChange>) -> bool;
 
     fn goto_definition(
         &self,

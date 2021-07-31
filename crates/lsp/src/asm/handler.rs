@@ -1,41 +1,51 @@
 #![allow(deprecated)]
-#![allow(unused)]
-use std::iter;
-use std::str::FromStr;
 
 use lsp_server::ResponseError;
 use lsp_types::{
-    CodeLens, Command, DocumentHighlight, DocumentHighlightKind, DocumentSymbol,
-    DocumentSymbolResponse, GotoDefinitionResponse, HoverContents, Location, MarkupContent,
-    Position, Range, SemanticToken, SemanticTokens, SemanticTokensResult, SymbolKind, Url,
+    CodeLens, Command, DocumentHighlightKind, DocumentSymbol, DocumentSymbolResponse,
+    HoverContents, Location, MarkupContent, Range, SemanticToken, SemanticTokens,
+    SemanticTokensResult, SymbolKind, Url,
 };
 use rowan::TextRange;
 
 use crate::config::LSPConfig;
 use crate::handler::error::{lsp_error_map, ErrorCode};
-use crate::handler::semantic::{self, semantic_delta_transform};
+use crate::handler::semantic::semantic_delta_transform;
+use crate::handler::types::DocumentChange;
 use crate::handler::LanguageServerProtocol;
-use crate::types::{DocumentLocation, DocumentPosition};
+use crate::types::DocumentPosition;
 
 use super::ast::{
     self, find_kind_index, AstNode, LabelNode, LabelToken, LocalLabelNode, NumericToken,
-    RegisterToken, SyntaxKind, SyntaxNode, SyntaxToken,
+    RegisterToken, SyntaxKind, SyntaxToken,
 };
-use super::config::ParserConfig;
-use super::debug::DebugMap;
 use super::parser::{Parser, PositionInfo};
-use super::registers::{registers_for_architecture, RegisterKind, Registers};
-use crate::asm::combinators;
+use super::registers::RegisterKind;
 
 pub struct AssemblyLanguageServerProtocol {
     parser: Parser,
     uri: Url,
     config: LSPConfig,
+    version: u32,
 }
 
 impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
-    fn update(&mut self, data: &str) {
-        self.parser = Parser::from(data, &self.config);
+    fn update(&mut self, version: u32, changes: Vec<DocumentChange>) -> bool {
+        if self.version >= version {
+            error!(
+                "Invalid update requested version {} to {}",
+                self.version, version
+            );
+            return false;
+        }
+
+        let mut contents = self.parser.reconstruct_file();
+        for change in changes {
+            self.apply_change(&mut contents, change);
+        }
+        self.version = version;
+        self.parser = Parser::from(contents.as_str(), &self.config);
+        true
     }
 
     fn goto_definition(
@@ -160,7 +170,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
 
         debug!("hover: {:#?}", hover);
 
-        Ok(hover.map(|mut hover| lsp_types::Hover {
+        Ok(hover.map(|hover| lsp_types::Hover {
             contents: HoverContents::Markup(MarkupContent {
                 kind: lsp_types::MarkupKind::Markdown,
                 value: hover.join("\n"),
@@ -437,6 +447,33 @@ impl AssemblyLanguageServerProtocol {
             parser,
             uri,
             config,
+            version: 0,
+        }
+    }
+
+    fn apply_change(&self, contents: &mut String, change: DocumentChange) {
+        if let Some(range) = &change.range {
+            let range = {
+                let start_position = self
+                    .parser
+                    .position()
+                    .offset_for_line(range.start.line)
+                    .unwrap();
+                let start_offset = (start_position + range.start.column) as usize;
+
+                let end_position = self
+                    .parser
+                    .position()
+                    .offset_for_line(range.end.line)
+                    .unwrap();
+                let end_offset = (end_position + range.end.column) as usize;
+
+                start_offset..end_offset
+            };
+
+            contents.replace_range(range, &change.text);
+        } else {
+            *contents = change.text;
         }
     }
 }
@@ -444,25 +481,14 @@ impl AssemblyLanguageServerProtocol {
 #[cfg(test)]
 mod tests {
     use lsp_types::{
-        DocumentSymbol, DocumentSymbolResponse, GotoDefinitionResponse, Hover, MarkedString,
+        DocumentHighlight, DocumentSymbol, DocumentSymbolResponse, GotoDefinitionResponse, Hover,
+        Position,
     };
     use pretty_assertions::assert_eq;
 
+    use crate::types::DocumentRange;
+
     use super::*;
-
-    #[test]
-    fn test_updates() {
-        let mut actor = AssemblyLanguageServerProtocol::new(
-            r#"stp	x29, x30, [sp, -32]!
-// lsp-asm-architecture: AArch64"#,
-            Url::parse("file://temp").unwrap(),
-            Default::default(),
-        );
-
-        let orig_data = actor.parser.clone();
-        actor.update("stp x20, x21, [sp, -32]!");
-        assert_ne!(orig_data, actor.parser);
-    }
 
     #[test]
     fn test_goto_definition_with_label() {
@@ -909,5 +935,71 @@ end:
 
             assert_eq!(actual, response);
         }
+    }
+
+    #[test]
+    fn test_invalid_versions() {
+        let mut lsp = AssemblyLanguageServerProtocol::new(
+            "str x1, [sp, #80]",
+            Url::parse("file://test").unwrap(),
+            LSPConfig {
+                architecture: crate::types::Architecture::AArch64,
+                ..Default::default()
+            },
+        );
+
+        assert_eq!(
+            true,
+            lsp.update(
+                5,
+                vec![DocumentChange {
+                    text: String::from("// test"),
+                    range: Some(DocumentRange {
+                        start: DocumentPosition { line: 0, column: 0 },
+                        end: DocumentPosition { line: 0, column: 0 },
+                    }),
+                }],
+            )
+        );
+        assert_eq!(
+            false,
+            lsp.update(
+                5,
+                vec![DocumentChange {
+                    text: String::from("// te"),
+                    range: Some(DocumentRange {
+                        start: DocumentPosition { line: 0, column: 0 },
+                        end: DocumentPosition { line: 0, column: 0 },
+                    }),
+                }],
+            )
+        );
+        assert_eq!(
+            false,
+            lsp.update(
+                3,
+                vec![DocumentChange {
+                    text: String::from("// te"),
+                    range: Some(DocumentRange {
+                        start: DocumentPosition { line: 0, column: 0 },
+                        end: DocumentPosition { line: 0, column: 0 },
+                    }),
+                }],
+            )
+        );
+
+        assert_eq!(
+            true,
+            lsp.update(
+                6,
+                vec![DocumentChange {
+                    text: String::from("// test more"),
+                    range: Some(DocumentRange {
+                        start: DocumentPosition { line: 0, column: 0 },
+                        end: DocumentPosition { line: 0, column: 0 },
+                    }),
+                }],
+            )
+        );
     }
 }

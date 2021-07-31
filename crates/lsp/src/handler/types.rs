@@ -95,3 +95,8 @@ impl SemanticTokensMessage {
         Self { url, range }
     }
 }
+
+pub struct DocumentChange {
+    pub(crate) text: String,
+    pub(crate) range: Option<DocumentRange>,
+}

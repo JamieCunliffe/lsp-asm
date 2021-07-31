@@ -33,7 +33,9 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
     let (connection, io_threads) = Connection::stdio();
 
     let capabilities = ServerCapabilities {
-        text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::Full)),
+        text_document_sync: Some(TextDocumentSyncCapability::Kind(
+            TextDocumentSyncKind::Incremental,
+        )),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         definition_provider: Some(OneOf::Left(true)),
         references_provider: Some(OneOf::Left(true)),
@@ -190,7 +192,17 @@ async fn process_message(
                 }
                 "textDocument/didChange" => {
                     let data = get_notification::<DidChangeTextDocument>(notification).unwrap();
-                    handler.update_file(data).await
+
+                    if let Err(e) = handler.update_file(data).await {
+                        if let Some(params) = e.data {
+                            let _ = connection.sender.send(Message::Notification(Notification {
+                                method: String::from("textDocument/resync"),
+                                params,
+                            }));
+                        }
+                    }
+
+                    Ok(())
                 }
                 "textDocument/didSave" => Ok(()),
                 "textDocument/didClose" => {

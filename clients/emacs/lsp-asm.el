@@ -64,11 +64,20 @@
   ((&Command :title :arguments? [location]))
   (lsp-show-xrefs (lsp--locations-to-xref-items location) nil nil))
 
+(defun lsp-asm--resync-document (workspace params)
+  "Resync the document."
+  (-let* ((uri (gethash "uri" params))
+          (path (lsp--uri-to-path uri)))
+    (lsp-with-current-buffer (find-buffer-visiting path)
+      (lsp-log "Resync requested for: %s" path)
+      (lsp-on-revert))))
+
 (add-to-list 'lsp-language-id-configuration '(asm-mode . "Assembly"))
 (lsp-register-client
  (make-lsp-client :new-connection (lsp-stdio-connection "lsp-asm")
                   :major-modes '(asm-mode)
-                  :notification-handlers (ht ("client/registerCapability" 'ignore))
+                  :notification-handlers (ht ("client/registerCapability" 'ignore)
+                                             ("textDocument/resync" 'lsp-asm--resync-document))
                   :priority 1
                   :initialization-options 'lsp-asm--make-init-options
                   :action-handlers (ht ("lsp-asm.loc" #'lsp-asm--open-loc))

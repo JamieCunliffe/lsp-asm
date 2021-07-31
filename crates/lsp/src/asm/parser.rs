@@ -61,6 +61,20 @@ impl Parser {
         &self.debug_map.get_or_init(|| DebugMap::new(&self.tree()))
     }
 
+    pub(super) fn reconstruct_file(&self) -> String {
+        let mut buffer: Vec<u8> = Vec::with_capacity(self.tree().text_range().end().into());
+        for token in self.tree().descendants_with_tokens() {
+            if let Some(token) = token.as_token() {
+                buffer.extend_from_slice(token.text().as_bytes());
+            }
+        }
+
+        // The data that we have copied into here has come from a &str which
+        // is always valid UTF8, therefore it should be perfectly fine to use
+        // the unchecked variant of the function, as validation isn't required.
+        unsafe { String::from_utf8_unchecked(buffer) }
+    }
+
     pub(crate) fn token<'st, 'c, T>(&'c self, token: &'st SyntaxToken) -> Option<T>
     where
         T: AstToken<'st, 'c>,
@@ -250,6 +264,12 @@ impl PositionInfo {
             .unwrap_or_else(|| self.lines.last().unwrap());
 
         TextRange::new(*start, *end)
+    }
+
+    pub fn offset_for_line(&self, line: LineNumber) -> Option<u32> {
+        self.lines
+            .get(line as usize)
+            .map(|s: &TextSize| u32::from(*s))
     }
 
     /// Helper function to get the line and column for a text size

@@ -6,7 +6,10 @@ use cucumber_rust::gherkin::Step;
 use cucumber_rust::{async_trait, given, then, when, World, WorldInit};
 
 use lsp_asm::handler::types::{FindReferencesMessage, LocationMessage, SemanticTokensMessage};
-use lsp_types::{MarkupContent, SemanticTokens, SemanticTokensResult, Url};
+use lsp_types::{
+    DidChangeTextDocumentParams, MarkupContent, SemanticTokens, SemanticTokensResult,
+    TextDocumentContentChangeEvent, Url, VersionedTextDocumentIdentifier,
+};
 use pretty_assertions::assert_eq;
 use serde_json::Value;
 use util::{get_doc_position, parse_config};
@@ -82,6 +85,72 @@ async fn open_file(state: &mut LSPWorld, file: String) {
     state.handler.open_file("asm", url, &data).await.unwrap();
 }
 
+#[when(
+    regex = r#"I insert the following text in "(.*)" at position "(.*)" to bring it to version ([0-9]+)"#
+)]
+async fn insert_file(state: &mut LSPWorld, step: &Step, file: String, pos: String, version: i32) {
+    let pos = get_doc_position(pos.as_str());
+    let url = Url::parse(&format!("file://{}", file)).unwrap();
+    let data = step.docstring.as_ref().unwrap();
+    let data = &data[1..data.len() - 1];
+
+    state
+        .handler
+        .update_file(DidChangeTextDocumentParams {
+            text_document: VersionedTextDocumentIdentifier::new(url, version),
+            content_changes: vec![TextDocumentContentChangeEvent {
+                range: Some(lsp_types::Range::new(pos.clone().into(), pos.into())),
+                range_length: None,
+                text: data.to_string(),
+            }],
+        })
+        .await
+        .unwrap();
+}
+
+#[when(
+    regex = r#"I update the following text in "(.*)" at position "(.*)" to bring it to version ([0-9]+)"#
+)]
+async fn update_file(state: &mut LSPWorld, step: &Step, file: String, pos: String, version: i32) {
+    let pos = util::make_range(&pos);
+    let url = Url::parse(&format!("file://{}", file)).unwrap();
+    let data = step.docstring.as_ref().unwrap();
+    let data = &data[1..data.len() - 1];
+
+    state
+        .handler
+        .update_file(DidChangeTextDocumentParams {
+            text_document: VersionedTextDocumentIdentifier::new(url, version),
+            content_changes: vec![TextDocumentContentChangeEvent {
+                range: pos.into(),
+                range_length: None,
+                text: data.to_string(),
+            }],
+        })
+        .await
+        .unwrap();
+}
+
+#[when(regex = r#"I perform a full sync of the file "(.*)" to bring it to version ([0-9]+)"#)]
+async fn full_sync_file(state: &mut LSPWorld, step: &Step, file: String, version: i32) {
+    let url = Url::parse(&format!("file://{}", file)).unwrap();
+    let data = step.docstring.as_ref().unwrap();
+    let data = &data[1..data.len() - 1];
+
+    state
+        .handler
+        .update_file(DidChangeTextDocumentParams {
+            text_document: VersionedTextDocumentIdentifier::new(url, version),
+            content_changes: vec![TextDocumentContentChangeEvent {
+                range: None,
+                range_length: None,
+                text: data.to_string(),
+            }],
+        })
+        .await
+        .unwrap();
+}
+
 #[when(regex = r#"I run "(.*)" on the file "(.*)" at position "(.*)"(.*)"#)]
 async fn run_command(
     state: &mut LSPWorld,
@@ -145,7 +214,7 @@ fn expect_response(state: &mut LSPWorld, step: &Step) {
                 }),
                 range: None,
             }),
-            "syntax tree" => serde_json::to_value(expected),
+            "syntax tree" => serde_json::to_value(expected.trim_start()),
             _ => serde_json::from_str(expected),
         }
     } else if let Some(expected) = step.table.as_ref() {

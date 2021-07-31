@@ -7,7 +7,7 @@ use crate::asm::handler::AssemblyLanguageServerProtocol;
 use crate::config::LSPConfig;
 
 use super::error::{lsp_error_map, ErrorCode};
-use super::types::{FindReferencesMessage, LocationMessage, SemanticTokensMessage};
+use super::types::{DocumentChange, FindReferencesMessage, LocationMessage, SemanticTokensMessage};
 use super::LanguageServerProtocol;
 
 use lsp_server::ResponseError;
@@ -50,22 +50,31 @@ impl LangServerHandler {
 
     pub async fn update_file(&self, msg: DidChangeTextDocumentParams) -> Result<(), ResponseError> {
         let uri = msg.text_document.uri;
-        let change_params = msg.content_changes;
-        if change_params.len() != 1 {
-            panic!("Unexpected document changed parameters");
-        }
+        let mut change_params = msg.content_changes;
 
-        let text = &change_params.first().unwrap().text;
-        self.actors
+        let changes = change_params
+            .drain(..)
+            .map(|c| DocumentChange {
+                text: c.text,
+                range: c.range.map(|r| r.into()),
+            })
+            .collect();
+
+        if self
+            .actors
             .read()
             .await
             .get(&uri)
             .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
             .write()
             .await
-            .update(text);
-
-        Ok(())
+            .update(msg.text_document.version as _, changes)
+        {
+            Ok(())
+        } else {
+            warn!("Out of order document updates, request full sync");
+            Err(lsp_error_map(ErrorCode::InvalidVersion(uri)))
+        }
     }
 
     pub async fn close_file(&self, url: Url) -> Result<(), ResponseError> {

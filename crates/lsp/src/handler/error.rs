@@ -1,10 +1,18 @@
 use lsp_server::ResponseError;
+use lsp_types::Url;
+use serde::Serialize;
 
 pub(crate) enum ErrorCode {
     TokenNotFound,
     InvalidPosition,
     CastFailed,
     FileNotFound,
+    InvalidVersion(Url),
+}
+
+#[derive(Serialize)]
+pub struct ResyncFile {
+    uri: Url,
 }
 
 pub(crate) fn lsp_error_map(error: ErrorCode) -> ResponseError {
@@ -28,6 +36,11 @@ pub(crate) fn lsp_error_map(error: ErrorCode) -> ResponseError {
             code: 5,
             message: String::from("The file specified in the request is not known"),
             data: None,
+        },
+        ErrorCode::InvalidVersion(uri) => ResponseError {
+            code: 6,
+            message: String::from("Incorrect version transition"),
+            data: serde_json::to_value(ResyncFile { uri }).ok(),
         },
     }
 }
