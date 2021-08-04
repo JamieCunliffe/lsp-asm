@@ -349,3 +349,54 @@ popq %rbp"#,
         Architecture::X86_64
     );
 }
+
+#[test]
+fn test_string_with_escaped_quote() {
+    assert_listing!(
+        r##".L__unnamed_709:
+	.quad	.L__unnamed_1695
+	.asciz	"Q\000\000\000\000\000\000\000\"\004\000\000\022\000\000"
+	.size	.L__unnamed_709, 24"##,
+        r#"ROOT@0..133
+  LOCAL_LABEL@0..133
+    LABEL@0..16 ".L__unnamed_709:"
+    WHITESPACE@16..18 "\n\t"
+    DIRECTIVE@18..40
+      MNEMONIC@18..23 ".quad"
+      WHITESPACE@23..24 "\t"
+      TOKEN@24..40 ".L__unnamed_1695"
+    WHITESPACE@40..42 "\n\t"
+    DIRECTIVE@42..106
+      MNEMONIC@42..48 ".asciz"
+      WHITESPACE@48..49 "\t"
+      STRING@49..106 "\"Q\\000\\000\\000\\000\\00 ..."
+    WHITESPACE@106..108 "\n\t"
+    DIRECTIVE@108..133
+      MNEMONIC@108..113 ".size"
+      WHITESPACE@113..114 "\t"
+      TOKEN@114..129 ".L__unnamed_709"
+      COMMA@129..130 ","
+      WHITESPACE@130..131 " "
+      NUMBER@131..133 "24"
+"#,
+        Architecture::X86_64
+    );
+}
+
+#[test]
+fn test_asm_with_empty_string() {
+    assert_listing!(
+        r#".section        .debug_loc,"",@progbits"#,
+        r#"ROOT@0..39
+  DIRECTIVE@0..39
+    MNEMONIC@0..8 ".section"
+    WHITESPACE@8..16 "        "
+    TOKEN@16..26 ".debug_loc"
+    COMMA@26..27 ","
+    STRING@27..29 "\"\""
+    COMMA@29..30 ","
+    TOKEN@30..39 "@progbits"
+"#,
+        Architecture::X86_64
+    );
+}

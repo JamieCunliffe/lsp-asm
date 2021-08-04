@@ -10,11 +10,12 @@ use super::ast::SyntaxKind;
 
 use either::Either;
 
-use nom::bytes::complete::{is_not, tag, take_while};
+use nom::bytes::complete::{tag, take_while};
 use nom::character::is_hex_digit;
 use nom::error::ErrorKind;
 use nom::multi::many0;
-use nom::sequence::delimited;
+use nom::sequence::{delimited, preceded, terminated};
+use nom::IResult;
 use rowan::GreenNode;
 
 type Span<'a> = super::span::Span<'a, &'a InternalSpanConfig<'a>>;
@@ -416,23 +417,25 @@ where
     }
 }
 
+fn str_parse<T, Input>(data: Input) -> IResult<Input, Input>
+where
+    Input: nom::InputTake + nom::InputIter<Item = T>,
+    T: Into<char>,
+{
+    let mut escaped = false;
+    for (i, ch) in data.iter_indices() {
+        match ch.into() {
+            '\\' if !escaped => escaped = true,
+            '"' if !escaped => return Ok(data.take_split(i)),
+            _ => escaped = false,
+        }
+    }
+    Err(nom::Err::Incomplete(nom::Needed::Unknown))
+}
+
 /// Parse a string constant
 fn parse_string(remaining: Span) -> nom::IResult<Span, String> {
-    let (remaining, inner) = match delimited(tag("\""), is_not("\""), tag("\""))(remaining) {
-        Ok(a) => a,
-        nom::lib::std::result::Result::Err(nom::Err::Error((r, kind)))
-            if kind == ErrorKind::IsNot =>
-        {
-            // An empty string will give an error due to the sep part of delimited being the char we are looking for, we can
-            // handle that case by just returning an empty string, but we have to ensure we update the parser to skip over
-            // the "" that would be contained within.
-
-            let (remaining, _quote) = take_while(|a| a == '"')(r)?;
-
-            return Ok((remaining, String::from(r#""""#)));
-        }
-        Err(e) => return Err(e),
-    };
+    let (remaining, inner) = terminated(preceded(tag("\""), str_parse), tag("\""))(remaining)?;
 
     Ok((remaining, format!(r#""{}""#, inner.as_str())))
 }
