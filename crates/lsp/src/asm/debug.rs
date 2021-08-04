@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
+use std::path::PathBuf;
 
 use lsp_types::Url;
 use once_cell::sync::OnceCell;
@@ -35,6 +36,14 @@ impl DebugMap {
                 let file = ast::find_kind_index(&n, 0, SyntaxKind::STRING)?;
                 let name = file.as_token()?.text().trim_matches('"').to_string();
 
+                let mut path = PathBuf::from(&name);
+                if path.is_dir() {
+                    let file = ast::find_kind_index(&n, 1, SyntaxKind::STRING)?;
+                    let name = file.as_token()?.text().trim_matches('"').to_string();
+                    path.push(name);
+                }
+
+                let name = path.to_str()?.to_string();
                 let file = FileInfo {
                     name,
                     contents: Default::default(),
@@ -147,6 +156,50 @@ mod test {
             ),
             Some(DocumentLocation {
                 uri: Url::parse("file://filename").unwrap(),
+                range: DocumentRange {
+                    start: DocumentPosition {
+                        line: 2131,
+                        column: 0
+                    },
+                    end: DocumentPosition {
+                        line: 2131,
+                        column: 0
+                    },
+                },
+            })
+        );
+    }
+
+    #[test]
+    fn debug_map_dir_filename() {
+        let data = r#"Lfunc_begin0:
+	.file	1 "./" "main.c"
+	.loc	1 2132 0
+	.cfi_startproc"#;
+        let tree = Parser::from(data, &Default::default());
+        let map = DebugMap::new(&tree.tree());
+
+        let values = map.map.iter().clone().collect::<Vec<_>>();
+        assert_eq!(
+            values,
+            vec![(
+                &1,
+                &FileInfo {
+                    name: String::from("./main.c"),
+                    contents: Default::default(),
+                }
+            )]
+        );
+
+        assert_eq!(
+            map.get_file_location(
+                ast::find_kind_index(&tree.tree(), 1, SyntaxKind::DIRECTIVE)
+                    .unwrap()
+                    .as_node()
+                    .unwrap()
+            ),
+            Some(DocumentLocation {
+                uri: Url::parse("file://./main.c").unwrap(),
                 range: DocumentRange {
                     start: DocumentPosition {
                         line: 2131,
