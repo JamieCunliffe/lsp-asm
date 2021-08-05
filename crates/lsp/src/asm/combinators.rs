@@ -183,14 +183,17 @@ fn parse_next(expr: Span) -> NomResultElement {
 
             // Check to see if we need to end any nodes before processing this one
             let kind = {
-                let is_local = expr.current_indent_is_kind(SyntaxKind::LOCAL_LABEL);
-                let is_label = is_local || expr.current_indent_is_kind(SyntaxKind::LABEL);
                 let kind = pre_process_next(&expr.as_str(), expr.extra().config);
 
-                if is_local && matches!(kind, SyntaxKind::LOCAL_LABEL | SyntaxKind::LABEL) {
+                if matches!(kind, SyntaxKind::LOCAL_LABEL | SyntaxKind::LABEL)
+                    && expr.current_indent_is_kind(SyntaxKind::LOCAL_LABEL)
+                {
                     expr.finish_node();
                 }
-                if is_label && matches!(kind, SyntaxKind::LABEL) {
+
+                if matches!(kind, SyntaxKind::LABEL)
+                    && expr.current_indent_is_kind(SyntaxKind::LABEL)
+                {
                     expr.finish_node();
                 }
 

@@ -400,3 +400,47 @@ fn test_asm_with_empty_string() {
         Architecture::X86_64
     );
 }
+
+#[test]
+fn test_starts_local_label() {
+    assert_listing!(
+        r#"	.file	"something.c"
+	.text
+.Ltext0:
+	.globl	main
+	.type	main, @function
+main:
+"#,
+        r#"ROOT@0..79
+  WHITESPACE@0..1 "\t"
+  DIRECTIVE@1..20
+    MNEMONIC@1..6 ".file"
+    WHITESPACE@6..7 "\t"
+    STRING@7..20 "\"something.c\""
+  WHITESPACE@20..22 "\n\t"
+  DIRECTIVE@22..27
+    MNEMONIC@22..27 ".text"
+  WHITESPACE@27..28 "\n"
+  LOCAL_LABEL@28..73
+    LABEL@28..36 ".Ltext0:"
+    WHITESPACE@36..38 "\n\t"
+    DIRECTIVE@38..49
+      MNEMONIC@38..44 ".globl"
+      WHITESPACE@44..45 "\t"
+      TOKEN@45..49 "main"
+    WHITESPACE@49..51 "\n\t"
+    DIRECTIVE@51..72
+      MNEMONIC@51..56 ".type"
+      WHITESPACE@56..57 "\t"
+      TOKEN@57..61 "main"
+      COMMA@61..62 ","
+      WHITESPACE@62..63 " "
+      TOKEN@63..72 "@function"
+    WHITESPACE@72..73 "\n"
+  LABEL@73..79
+    LABEL@73..78 "main:"
+    WHITESPACE@78..79 "\n"
+"#,
+        Architecture::X86_64
+    );
+}
