@@ -44,7 +44,7 @@ impl<'a> InternalSpanConfig<'a> {
 
 impl<'a> Span<'a> {
     pub(crate) fn config(&self) -> &ParserConfig {
-        &self.extra().config
+        self.extra().config
     }
     pub(self) fn start_node(&self, kind: SyntaxKind) {
         self.extra().builder.start_node(kind)
@@ -183,7 +183,7 @@ fn parse_next(expr: Span) -> NomResultElement {
 
             // Check to see if we need to end any nodes before processing this one
             let kind = {
-                let kind = pre_process_next(&expr.as_str(), expr.extra().config);
+                let kind = pre_process_next(expr.as_str(), expr.extra().config);
 
                 if matches!(kind, SyntaxKind::LOCAL_LABEL | SyntaxKind::LABEL)
                     && expr.current_indent_is_kind(SyntaxKind::LOCAL_LABEL)
@@ -274,7 +274,7 @@ fn parse_line(expr: Span) -> NomResultElement {
     end_many0!(expr);
     let config = expr.extra().config;
     let first = expr.chars().next().unwrap_or('\0');
-    match get_action(first, &config) {
+    match get_action(first, config) {
         Some(Either::Left(kind)) => {
             let (remaining, val) = take_while(|a| a == first)(expr)?;
             remaining.token(kind, val.as_str());
@@ -285,7 +285,7 @@ fn parse_line(expr: Span) -> NomResultElement {
             // If we start with a comment parse it.
             process_comment!(expr);
 
-            let (remaining, token) = take_while(|a: char| !is_special_char(a, &config))(expr)?;
+            let (remaining, token) = take_while(|a: char| !is_special_char(a, config))(expr)?;
             span_to_token(&token);
             Ok((remaining, ()))
         }
@@ -294,7 +294,7 @@ fn parse_line(expr: Span) -> NomResultElement {
 
 /// Converts the span into a GreenToken
 fn span_to_token(token: &Span) {
-    if super::registers::is_register(token.as_str(), &token.extra().config) {
+    if super::registers::is_register(token.as_str(), token.extra().config) {
         token.token(SyntaxKind::REGISTER, token.as_str());
     } else if is_numeric(token.as_str()) {
         token.token(SyntaxKind::NUMBER, token.as_str());
@@ -450,7 +450,7 @@ fn parse_minus(expr: Span) -> NomResultElement {
     let config = expr.extra().config;
     let (remaining_operator, minus_token) = take_while(|a| a == '-')(expr)?;
     let (remaining_neg, token) =
-        take_while(|a: char| !is_special_char(a, &config))(remaining_operator.clone())?;
+        take_while(|a: char| !is_special_char(a, config))(remaining_operator.clone())?;
     if is_numeric(token.as_str()) {
         remaining_neg.token(SyntaxKind::NUMBER, &format!("-{}", token.as_str()));
         Ok((remaining_neg, ()))
@@ -460,11 +460,12 @@ fn parse_minus(expr: Span) -> NomResultElement {
     }
 }
 
+type ProcessFunction = Box<dyn Fn(Span) -> NomResultElement>;
 #[inline]
 fn get_action(
     c: char,
     config: &ParserConfig,
-) -> Option<Either<SyntaxKind, Box<dyn Fn(Span) -> NomResultElement>>> {
+) -> Option<Either<SyntaxKind, ProcessFunction>> {
     match c {
         ',' => Some(Either::Left(SyntaxKind::COMMA)),
         '+' => Some(Either::Left(SyntaxKind::OPERATOR)),

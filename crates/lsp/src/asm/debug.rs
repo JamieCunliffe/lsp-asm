@@ -91,12 +91,12 @@ impl DebugMap {
 
     pub fn get_location(&self, node: &SyntaxNode) -> Option<(u32, LineNumber)> {
         if matches!(node.kind(), SyntaxKind::DIRECTIVE) {
-            ast::find_kind_index(&node, 0, SyntaxKind::MNEMONIC)
+            ast::find_kind_index(node, 0, SyntaxKind::MNEMONIC)
                 .filter(|t| t.as_token().map(|t| t.text() == ".loc").unwrap_or(false))
                 .and_then(|_| {
-                    let file_id = ast::find_kind_index(&node, 0, SyntaxKind::NUMBER)?;
+                    let file_id = ast::find_kind_index(node, 0, SyntaxKind::NUMBER)?;
                     let file_id = file_id.as_token()?.text().parse::<u32>().ok()?;
-                    let line = ast::find_kind_index(&node, 1, SyntaxKind::NUMBER)?;
+                    let line = ast::find_kind_index(node, 1, SyntaxKind::NUMBER)?;
                     let line = line.as_token()?.text().parse::<LineNumber>().ok()?;
 
                     Some((file_id, line))
@@ -110,7 +110,7 @@ impl DebugMap {
         self.map.get(&id).map(|f| &f.name)
     }
 
-    fn load_file(filename: &String) -> Option<String> {
+    fn load_file(filename: &str) -> Option<String> {
         let mut file = File::open(filename).ok()?;
 
         let mut contents = String::new();

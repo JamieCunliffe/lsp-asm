@@ -85,7 +85,7 @@ fn build(env_vars: &HashMap<&str, &str>) -> Result<(), DynError> {
 
 fn clean(env_vars: &HashMap<&str, &str>) -> Result<(), DynError> {
     let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
-    run_command(format!("{} clean", cargo).as_str(), &env_vars)
+    run_command(format!("{} clean", cargo).as_str(), env_vars)
 }
 
 fn test(generate_coverage: bool) -> Result<(), DynError> {

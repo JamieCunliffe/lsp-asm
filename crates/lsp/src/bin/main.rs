@@ -105,7 +105,7 @@ fn lsp_loop(
                 Message::Request(req)
                     if connection.clone().handle_shutdown(&req).unwrap_or(false) =>
                 {
-                    return ()
+                    return
                 }
 
                 m => tokio::spawn(async move {
@@ -113,7 +113,6 @@ fn lsp_loop(
                 }),
             };
         }
-        ()
     });
 
     Ok(())

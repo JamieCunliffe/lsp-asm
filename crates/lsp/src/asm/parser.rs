@@ -41,7 +41,7 @@ impl Parser {
         let root = Self::parse_asm(data, &config);
 
         Self {
-            line_index: PositionInfo::new(&data),
+            line_index: PositionInfo::new(data),
             filesize,
             root,
             config,
@@ -58,7 +58,7 @@ impl Parser {
     }
 
     pub(super) fn debug_map(&self) -> &DebugMap {
-        &self.debug_map.get_or_init(|| DebugMap::new(&self.tree()))
+        self.debug_map.get_or_init(|| DebugMap::new(&self.tree()))
     }
 
     pub(super) fn reconstruct_file(&self) -> String {

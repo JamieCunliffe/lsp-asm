@@ -117,7 +117,7 @@ impl<'st, 'ft> AstToken<'st, 'ft> for LabelToken<'st, 'ft> {
     }
 
     fn syntax(&self) -> &'st SyntaxToken {
-        &self.token
+        self.token
     }
 }
 
