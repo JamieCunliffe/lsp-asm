@@ -9,7 +9,7 @@ path = "src/runner.rs"
 harness = false
 
 [dev-dependencies]
-lsp-asm = { path = "../lsp" }
+lsp-asm = { path = "../lsp", features = ["poison"] }
 cucumber_rust = { version = "0.8.4", features = ["macros"] }
 tokio = { version = "1.6.1", features = ["macros", "rt-multi-thread"] }
 lsp-types = { version = "0.89.2", features = ["proposed"] }

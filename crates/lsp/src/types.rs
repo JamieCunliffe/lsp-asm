@@ -1,4 +1,5 @@
 use lsp_types::Url;
+use std::fmt::Display;
 
 pub type LineNumber = u32;
 pub type ColumnNumber = u32;
@@ -22,7 +23,7 @@ pub struct DocumentLocation {
     pub range: DocumentRange,
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum Architecture {
     X86_64,
     AArch64,
@@ -47,6 +48,20 @@ impl Default for Architecture {
     }
 }
 
+impl Display for Architecture {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match *self {
+                Architecture::AArch64 => "aarch64",
+                Architecture::X86_64 => "x86-64",
+                Architecture::Unknown => "UNKNOWN",
+            }
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -58,5 +73,6 @@ mod tests {
         assert_eq!(Architecture::from("littleaarch64"), Architecture::AArch64);
         assert_eq!(Architecture::from("arm64"), Architecture::AArch64);
         assert_eq!(Architecture::from("x86_64"), Architecture::X86_64);
+        assert_eq!(Architecture::from("something"), Architecture::Unknown);
     }
 }

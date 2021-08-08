@@ -1,4 +1,6 @@
 #![allow(deprecated)]
+use itertools::*;
+use std::iter;
 
 use lsp_server::ResponseError;
 use lsp_types::{
@@ -9,18 +11,19 @@ use lsp_types::{
 use rowan::TextRange;
 
 use crate::config::LSPConfig;
+use crate::documentation::{self, load_documentation};
 use crate::handler::error::{lsp_error_map, ErrorCode};
 use crate::handler::semantic::semantic_delta_transform;
 use crate::handler::types::DocumentChange;
 use crate::handler::LanguageServerProtocol;
-use crate::types::DocumentPosition;
+use crate::types::{Architecture, DocumentPosition};
 
 use super::ast::{
     self, find_kind_index, AstNode, LabelNode, LabelToken, LocalLabelNode, NumericToken,
     RegisterToken, SyntaxKind, SyntaxToken,
 };
 use super::parser::{Parser, PositionInfo};
-use super::registers::RegisterKind;
+use super::registers::{registers_for_architecture, RegisterKind};
 
 pub struct AssemblyLanguageServerProtocol {
     parser: Parser,
@@ -144,6 +147,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                     .token(&token)
                     .ok_or_else(|| lsp_error_map(ErrorCode::CastFailed))?,
             ),
+            SyntaxKind::MNEMONIC => get_hover_mnemonic(&token, self.parser.architecture()),
             SyntaxKind::L_PAREN
             | SyntaxKind::R_PAREN
             | SyntaxKind::L_SQ
@@ -152,7 +156,6 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             | SyntaxKind::R_CURLY
             | SyntaxKind::L_ANGLE
             | SyntaxKind::R_ANGLE
-            | SyntaxKind::MNEMONIC
             | SyntaxKind::REGISTER
             | SyntaxKind::TOKEN
             | SyntaxKind::WHITESPACE
@@ -385,6 +388,32 @@ fn get_label_hover(label: &LabelToken) -> Option<Vec<String>> {
     }
 
     Some(symbols)
+}
+
+fn get_hover_mnemonic(token: &SyntaxToken, arch: &Architecture) -> Option<Vec<String>> {
+    let docs = load_documentation(arch).ok()?;
+    let instructions = docs.get(&token.text().to_lowercase())?;
+
+    let template = documentation::find_correct_instruction_template(
+        &token.parent(),
+        instructions,
+        &registers_for_architecture(arch),
+    );
+
+    if let Some(template) = template {
+        let instruction = documentation::instruction_from_template(instructions, template)?;
+
+        Some(vec![format!("{}", instruction)])
+    } else {
+        // Couldn't resolve which instruction we are on so print them all.
+        Some(
+            instructions
+                .iter()
+                .map(|i| format!("{}", i))
+                .interleave_shortest(iter::repeat(String::from("---")))
+                .collect(),
+        )
+    }
 }
 
 fn find_references<'a>(

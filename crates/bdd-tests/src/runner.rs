@@ -6,10 +6,12 @@ use cucumber_rust::gherkin::Step;
 use cucumber_rust::{async_trait, given, then, when, World, WorldInit};
 
 use lsp_asm::handler::types::{FindReferencesMessage, LocationMessage, SemanticTokensMessage};
+use lsp_asm::types::Architecture;
 use lsp_types::{
     DidChangeTextDocumentParams, MarkupContent, SemanticTokens, SemanticTokensResult,
     TextDocumentContentChangeEvent, Url, VersionedTextDocumentIdentifier,
 };
+
 use pretty_assertions::assert_eq;
 use serde_json::Value;
 use util::{get_doc_position, parse_config};
@@ -60,6 +62,14 @@ impl World for LSPWorld {
             last_response: Default::default(),
         })
     }
+}
+
+#[given(regex = r#"I have the "(.*)" documentation"#)]
+async fn check_doc(_state: &mut LSPWorld, arch: String) {
+    let arch = Architecture::from(arch.as_str());
+    let data = std::fs::read_to_string(format!("./features/known-defs/{}.json", &arch)).unwrap();
+    let data = serde_json::from_str(data.as_str()).unwrap();
+    lsp_asm::documentation::poison_cache(&arch, data);
 }
 
 #[given("an lsp initialized with the following parameters")]

@@ -3,11 +3,12 @@ use std::env;
 use std::path::Path;
 use std::process::Command;
 
-use clap::{App, AppSettings, Arg};
+use clap::{App, AppSettings, Arg, ArgMatches};
 
-type DynError = Box<dyn std::error::Error>;
+type DynError = Box<dyn std::error::Error + Sync + Send>;
 
 fn main() {
+    pretty_env_logger::init();
     if let Err(e) = try_main() {
         eprintln!("{}", e);
         std::process::exit(-1);
@@ -24,20 +25,30 @@ fn try_main() -> Result<(), DynError> {
                     .help("Generate coverage report")
                     .takes_value(false)
                     .required(false),
-            ),
+            ))
+        .subcommand(
+            App::new("build-docs")
+                .about("Download and build instruction set documentation")
+                .arg(
+                    Arg::with_name("aarch64")
+                        .long("aarch64")
+                        .help("Downloads and builds the documentation for the AArch64 instruction set from arm.com")
+                        .takes_value(false),
+                ),
         )
         .get_matches();
 
-    match matches.subcommand() {
+    std::env::set_current_dir(project_root())?;
 
+    match matches.subcommand() {
         ("test", Some(args)) => test(args.is_present("coverage"))?,
+        ("build-docs", Some(args)) => build_docs(args)?,
         _ => panic!("Invalid subcommand specified - Have you added a subcommand without adding it to the match?"),
     };
 
     Ok(())
 }
 
-#[allow(unused)]
 fn project_root() -> String {
     Path::new(&env!("CARGO_MANIFEST_DIR"))
         .ancestors()
@@ -112,5 +123,20 @@ fn test(generate_coverage: bool) -> Result<(), DynError> {
             &env,
         )?;
     }
+
+    Ok(())
+}
+
+fn build_docs(args: &ArgMatches) -> Result<(), DynError> {
+    let mut tasks = Vec::new();
+    let mut rt = tokio::runtime::Runtime::new()?;
+
+    if args.is_present("aarch64") {
+        tasks.push(rt.spawn(documentation_builder::build_aarch64_instructions()));
+    }
+    for task in tasks {
+        rt.block_on(task)??;
+    }
+
     Ok(())
 }

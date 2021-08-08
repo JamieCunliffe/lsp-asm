@@ -13,7 +13,7 @@ pub struct Register {
 }
 
 impl Register {
-    const fn new(names: &'static [&'static str]) -> Self {
+    pub const fn new(names: &'static [&'static str]) -> Self {
         Self { names }
     }
 }
@@ -24,13 +24,29 @@ bitflags! {
         const GENERAL_PURPOSE = 0b00000001;
         const FLOATING_POINT  = 0b00000010;
         const SIMD            = 0b00000100;
+        const SCALABLE        = 0b00001000;
+        const PREDICATE       = 0b00010000;
 
         const SIMD_FP         = Self::FLOATING_POINT.bits | Self::SIMD.bits;
+        const SCALABLE_SIMD   = Self::SIMD.bits | Self::SCALABLE.bits;
     }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum RegisterSize {
+    Bits8(RegisterKind),
+    Bits16(RegisterKind),
+    Bits32(RegisterKind),
+    Bits64(RegisterKind),
+    Bits128(RegisterKind),
+    Scalable(RegisterKind),
+    Unknown,
 }
 
 pub(crate) trait Registers {
     fn get_kind(&self, token: &SyntaxToken) -> RegisterKind;
+    fn get_size(&self, token: &SyntaxToken) -> RegisterSize;
+    fn is_sp(&self, token: &SyntaxToken) -> bool;
 }
 
 pub struct AArch64 {}
@@ -55,12 +71,37 @@ impl Registers for AArch64 {
             _ => RegisterKind::NONE,
         }
     }
+
+    fn get_size(&self, token: &SyntaxToken) -> RegisterSize {
+        let name = register_name(token.text());
+        match name.get(0..=0).unwrap_or("\0") {
+            "x" | "r" => RegisterSize::Bits64(RegisterKind::GENERAL_PURPOSE),
+            "w" => RegisterSize::Bits32(RegisterKind::GENERAL_PURPOSE),
+            "d" => RegisterSize::Bits64(RegisterKind::SIMD_FP),
+            "s" => RegisterSize::Bits32(RegisterKind::SIMD_FP),
+            "v" => {
+                let size = name.split('.').next().unwrap_or("\0");
+                match size {
+                    "8b" | "16b" => RegisterSize::Bits8(RegisterKind::SIMD_FP),
+                    "4h" | "8h" => RegisterSize::Bits16(RegisterKind::SIMD_FP),
+                    "2s" | "4s" => RegisterSize::Bits32(RegisterKind::SIMD_FP),
+                    "2d" => RegisterSize::Bits64(RegisterKind::SIMD_FP),
+                    _ => RegisterSize::Bits128(RegisterKind::SIMD_FP),
+                }
+            }
+            _ => RegisterSize::Unknown,
+        }
+    }
+
+    fn is_sp(&self, token: &SyntaxToken) -> bool {
+        register_name(token.text()) == "sp"
+    }
 }
 
 pub(crate) fn registers_for_architecture(arch: &Architecture) -> Option<impl Registers> {
     match arch {
-        Architecture::X86_64 => None,
         Architecture::AArch64 => Some(AArch64 {}),
+        Architecture::X86_64 => None,
         Architecture::Unknown => None,
     }
 }
@@ -109,7 +150,7 @@ pub(crate) const X86_64_REGISTERS: [Register; 9] = [
     Register::new(&["rip"]),
 ];
 
-pub(crate) const AARCH64_REGISTERS: [Register; 64] = [
+pub(crate) const AARCH64_REGISTERS: [Register; 65] = [
     Register::new(&["r0", "x0", "w0"]),
     Register::new(&["r1", "x1", "w1"]),
     Register::new(&["r2", "x2", "w2"]),
@@ -142,6 +183,7 @@ pub(crate) const AARCH64_REGISTERS: [Register; 64] = [
     Register::new(&["r29", "x29", "w29"]),
     Register::new(&["r30", "x30", "w30"]),
     Register::new(&["sp"]),
+    Register::new(&["xzr", "wzr"]),
     Register::new(&[
         "v0", "v0.8b", "v0.16b", "v0.4h", "v0.8h", "v0.2s", "v0.4s", "v0.2d", "d0", "s0",
     ]),

@@ -1,11 +1,11 @@
-mod ast;
+pub(crate) mod ast;
 mod builder;
 mod combinators;
-mod config;
+pub(crate) mod config;
 mod debug;
 pub mod handler;
 pub mod parser;
-mod registers;
+pub(crate) mod registers;
 mod span;
 
 #[cfg(test)]

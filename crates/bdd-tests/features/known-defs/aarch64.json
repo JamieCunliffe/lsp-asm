@@ -1,0 +1,385 @@
+{
+  "stp": [
+    {
+      "opcode": "STP",
+      "header": "STP (V1)",
+      "architecture": null,
+      "description": "STP V1 Description",
+      "asm_template": [
+        {
+          "asm": [
+            "STP  <St1>, <St2>, [<Xn|SP>], #<imm>"
+          ],
+          "display_asm": "STP  <St1>, <St2>, [<Xn|SP>], #<imm>",
+          "items": [
+            {
+              "name": "<St1>",
+              "description": "Position 1"
+            },
+            {
+              "name": "<St2>",
+              "description": "Position 2"
+            },
+            {
+              "name": "<Xn|SP>",
+              "description": "Position 3"
+            },
+            {
+              "name": "<imm>",
+              "description": "Position 4"
+            }
+          ]
+        },
+        {
+          "asm": [
+            "STP  <Dt1>, <Dt2>, [<Xn|SP>], #<imm>"
+          ],
+          "display_asm": "STP  <Dt1>, <Dt2>, [<Xn|SP>], #<imm>",
+          "items": [
+            {
+              "name": "<Dt1>",
+              "description": "Position 1"
+            },
+            {
+              "name": "<Dt2>",
+              "description": "Position 2"
+            },
+            {
+              "name": "<Xn|SP>",
+              "description": "Position 3"
+            },
+            {
+              "name": "<imm>",
+              "description": "Position 4"
+            }
+          ]
+        },
+        {
+          "asm": [
+            "STP  <Qt1>, <Qt2>, [<Xn|SP>], #<imm>"
+          ],
+          "display_asm": "STP  <Qt1>, <Qt2>, [<Xn|SP>], #<imm>",
+          "items": [
+            {
+              "name": "<Qt1>",
+              "description": "Position 1"
+            },
+            {
+              "name": "<Qt2>",
+              "description": "Position 2"
+            },
+            {
+              "name": "<Xn|SP>",
+              "description": "Position 3"
+            },
+            {
+              "name": "<imm>",
+              "description": "Position 4"
+            }
+          ]
+        },
+        {
+          "asm": [
+            "STP  <St1>, <St2>, [<Xn|SP>, #<imm>]!"
+          ],
+          "display_asm": "STP  <St1>, <St2>, [<Xn|SP>, #<imm>]!",
+          "items": [
+            {
+              "name": "<St1>",
+              "description": "Position 1"
+            },
+            {
+              "name": "<St2>",
+              "description": "Position 2"
+            },
+            {
+              "name": "<Xn|SP>",
+              "description": "Position 3"
+            },
+            {
+              "name": "<imm>",
+              "description": "Position 4"
+            }
+          ]
+        },
+        {
+          "asm": [
+            "STP  <Dt1>, <Dt2>, [<Xn|SP>, #<imm>]!"
+          ],
+          "display_asm": "STP  <Dt1>, <Dt2>, [<Xn|SP>, #<imm>]!",
+          "items": [
+            {
+              "name": "<Dt1>",
+              "description": "Position 1"
+            },
+            {
+              "name": "<Dt2>",
+              "description": "Position 2"
+            },
+            {
+              "name": "<Xn|SP>",
+              "description": "Position 3"
+            },
+            {
+              "name": "<imm>",
+              "description": "Position 4"
+            }
+          ]
+        },
+        {
+          "asm": [
+            "STP  <Qt1>, <Qt2>, [<Xn|SP>, #<imm>]!"
+          ],
+          "display_asm": "STP  <Qt1>, <Qt2>, [<Xn|SP>, #<imm>]!",
+          "items": [
+            {
+              "name": "<Qt1>",
+              "description": "Position 1"
+            },
+            {
+              "name": "<Qt2>",
+              "description": "Position 2"
+            },
+            {
+              "name": "<Xn|SP>",
+              "description": "Position 3"
+            },
+            {
+              "name": "<imm>",
+              "description": "Position 4"
+            }
+          ]
+        },
+        {
+          "asm": [
+            "STP  <St1>, <St2>, [<Xn|SP>, #<imm>]",
+            "STP  <St1>, <St2>, [<Xn|SP>]"
+          ],
+          "display_asm": "STP  <St1>, <St2>, [<Xn|SP>{, #<imm>}]",
+          "items": [
+            {
+              "name": "<St1>",
+              "description": "Position 1"
+            },
+            {
+              "name": "<St2>",
+              "description": "Position 2"
+            },
+            {
+              "name": "<Xn|SP>",
+              "description": "Position 3"
+            },
+            {
+              "name": "<imm>",
+              "description": "Position 4"
+            }
+          ]
+        },
+        {
+          "asm": [
+            "STP  <Dt1>, <Dt2>, [<Xn|SP>, #<imm>]",
+            "STP  <Dt1>, <Dt2>, [<Xn|SP>]"
+          ],
+          "display_asm": "STP  <Dt1>, <Dt2>, [<Xn|SP>{, #<imm>}]",
+          "items": [
+            {
+              "name": "<Dt1>",
+              "description": "Position 1"
+            },
+            {
+              "name": "<Dt2>",
+              "description": "Position 2"
+            },
+            {
+              "name": "<Xn|SP>",
+              "description": "Position 3"
+            },
+            {
+              "name": "<imm>",
+              "description": "Position 4"
+            }
+          ]
+        },
+        {
+          "asm": [
+            "STP  <Qt1>, <Qt2>, [<Xn|SP>, #<imm>]",
+            "STP  <Qt1>, <Qt2>, [<Xn|SP>]"
+          ],
+          "display_asm": "STP  <Qt1>, <Qt2>, [<Xn|SP>{, #<imm>}]",
+          "items": [
+            {
+              "name": "<Qt1>",
+              "description": "Position 1"
+            },
+            {
+              "name": "<Qt2>",
+              "description": "Position 2"
+            },
+            {
+              "name": "<Xn|SP>",
+              "description": "Position 3"
+            },
+            {
+              "name": "<imm>",
+              "description": "Position 4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "opcode": "STP",
+      "header": "STP V2",
+      "architecture": null,
+      "description": "STP V2 Description",
+      "asm_template": [
+        {
+          "asm": [
+            "STP  <Wt1>, <Wt2>, [<Xn|SP>], #<imm>"
+          ],
+          "display_asm": "STP  <Wt1>, <Wt2>, [<Xn|SP>], #<imm>",
+          "items": [
+            {
+              "name": "<Wt1>",
+              "description": "Position 1"
+            },
+            {
+              "name": "<Wt2>",
+              "description": "Position 2"
+            },
+            {
+              "name": "<Xn|SP>",
+              "description": "Position 3"
+            },
+            {
+              "name": "<imm>",
+              "description": "Position 4"
+            }
+          ]
+        },
+        {
+          "asm": [
+            "STP  <Xt1>, <Xt2>, [<Xn|SP>], #<imm>"
+          ],
+          "display_asm": "STP  <Xt1>, <Xt2>, [<Xn|SP>], #<imm>",
+          "items": [
+            {
+              "name": "<Xt1>",
+              "description": "Position 1"
+            },
+            {
+              "name": "<Xt2>",
+              "description": "Position 2"
+            },
+            {
+              "name": "<Xn|SP>",
+              "description": "Position 3"
+            },
+            {
+              "name": "<imm>",
+              "description": "Position 4"
+            }
+          ]
+        },
+        {
+          "asm": [
+            "STP  <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]!"
+          ],
+          "display_asm": "STP  <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]!",
+          "items": [
+            {
+              "name": "<Wt1>",
+              "description": "Position 1"
+            },
+            {
+              "name": "<Wt2>",
+              "description": "Position 2"
+            },
+            {
+              "name": "<Xn|SP>",
+              "description": "Position 3"
+            },
+            {
+              "name": "<imm>",
+              "description": "Position 4"
+            }
+          ]
+        },
+        {
+          "asm": [
+            "STP  <Xt1>, <Xt2>, [<Xn|SP>, #<imm>]!"
+          ],
+          "display_asm": "STP  <Xt1>, <Xt2>, [<Xn|SP>, #<imm>]!",
+          "items": [
+            {
+              "name": "<Xt1>",
+              "description": "Position 1"
+            },
+            {
+              "name": "<Xt2>",
+              "description": "Position 2"
+            },
+            {
+              "name": "<Xn|SP>",
+              "description": "Position 3"
+            },
+            {
+              "name": "<imm>",
+              "description": "Position 4"
+            }
+          ]
+        },
+        {
+          "asm": [
+            "STP  <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]",
+            "STP  <Wt1>, <Wt2>, [<Xn|SP>]"
+          ],
+          "display_asm": "STP  <Wt1>, <Wt2>, [<Xn|SP>{, #<imm>}]",
+          "items": [
+            {
+              "name": "<Wt1>",
+              "description": "Position 1"
+            },
+            {
+              "name": "<Wt2>",
+              "description": "Position 2"
+            },
+            {
+              "name": "<Xn|SP>",
+              "description": "Position 3"
+            },
+            {
+              "name": "<imm>",
+              "description": "Position 4"
+            }
+          ]
+        },
+        {
+          "asm": [
+            "STP  <Xt1>, <Xt2>, [<Xn|SP>, #<imm>]",
+            "STP  <Xt1>, <Xt2>, [<Xn|SP>]"
+          ],
+          "display_asm": "STP  <Xt1>, <Xt2>, [<Xn|SP>{, #<imm>}]",
+          "items": [
+            {
+              "name": "<Xt1>",
+              "description": "Position 1"
+            },
+            {
+              "name": "<Xt2>",
+              "description": "Position 2"
+            },
+            {
+              "name": "<Xn|SP>",
+              "description": "Position 3"
+            },
+            {
+              "name": "<imm>",
+              "description": "Position 4"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

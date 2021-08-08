@@ -57,6 +57,10 @@ impl Parser {
         self.filesize
     }
 
+    pub(crate) fn architecture(&self) -> &Architecture {
+        &self.config.architecture
+    }
+
     pub(super) fn debug_map(&self) -> &DebugMap {
         self.debug_map.get_or_init(|| DebugMap::new(&self.tree()))
     }
@@ -159,7 +163,7 @@ impl Parser {
     }
 
     /// Helper function to perform the parsing of data
-    fn parse_asm(data: &str, config: &ParserConfig) -> GreenNode {
+    pub(crate) fn parse_asm(data: &str, config: &ParserConfig) -> GreenNode {
         super::combinators::parse(data, config)
     }
 
