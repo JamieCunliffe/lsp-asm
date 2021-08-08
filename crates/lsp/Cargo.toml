@@ -15,8 +15,8 @@ lazy_static = "1.4.0"
 tokio = { version = "1.8.1", features = ["rt-multi-thread", "sync"] }
 regex = "1.5.3"
 either = "1.6.1"
-lsp-server = "0.4.1"
-lsp-types = { version = "0.85.0", features = ["proposed"] }
+lsp-server = "0.5.2"
+lsp-types = { version = "0.89.2", features = ["proposed"] }
 serde_json = "1.0.34"
 serde = { version = "1.0.83", features = ["derive"] }
 nom = "5.0.0"

@@ -441,13 +441,13 @@ impl<'s> LocalLabelNode<'s> {
 }
 
 impl AssemblyLanguageServerProtocol {
-    pub fn new(data: &str, uri: Url, config: LSPConfig) -> Self {
+    pub fn new(data: &str, uri: Url, version: u32, config: LSPConfig) -> Self {
         let parser = Parser::from(data, &config);
         Self {
             parser,
             uri,
             config,
-            version: 0,
+            version,
         }
     }
 
@@ -496,6 +496,7 @@ mod tests {
     b entry
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            0,
             Default::default(),
         );
 
@@ -522,6 +523,7 @@ entry:
     b entry
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            0,
             Default::default(),
         );
 
@@ -547,6 +549,7 @@ entry:
     b somewhere
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            0,
             Default::default(),
         );
 
@@ -566,6 +569,7 @@ entry:
     stp x20, x21, [sp, -32]!
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            0,
             Default::default(),
         );
 
@@ -585,6 +589,7 @@ entry:
     stp x20, x21, [sp, -32]!
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            0,
             Default::default(),
         );
 
@@ -604,6 +609,7 @@ entry:
     b entry
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            0,
             Default::default(),
         );
 
@@ -635,6 +641,7 @@ end:
 
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            0,
             Default::default(),
         );
 
@@ -665,6 +672,7 @@ end:
 
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            0,
             Default::default(),
         );
 
@@ -689,6 +697,7 @@ end:
 
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            0,
             Default::default(),
         );
 
@@ -793,6 +802,7 @@ end:
     b entry
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
+            0,
             Default::default(),
         );
 
@@ -829,6 +839,7 @@ end:
     b entry
 // lsp-asm-architecture: AArch64"#,
                 Url::parse("file://temp").unwrap(),
+                0,
                 Default::default(),
             );
 
@@ -905,6 +916,7 @@ end:
         let mut lsp = AssemblyLanguageServerProtocol::new(
             "str x1, [sp, #80]",
             Url::parse("file://test").unwrap(),
+            0,
             LSPConfig {
                 architecture: crate::types::Architecture::AArch64,
                 ..Default::default()

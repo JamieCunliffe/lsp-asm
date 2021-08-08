@@ -9,4 +9,10 @@ It currently supports the following LSP messages:
 * Document Symbols
 
 # Installing
-This can be installed by running `cargo install --path ./lsp` from the root of this repository, the resulting binary will be placed within `~/.cargo/bin/`. If another location is desired this this can be built with `cargo build --release` and then copy the binary from `./target/release/lsp-asm` to the desired location.
+This can be installed by running `cargo install --path crates/lsp` from the root of this repository, the resulting binary will be placed within `~/.cargo/bin/`. If another location is desired this can be built with `cargo build --release` and then copy the binary from `./target/release/lsp-asm` to the desired location.
+
+## emacs client
+There is an emacs lsp-mode client contained within the directory `clients/emacs/`. Just load this package with your preferred method.
+
+## vscode client
+The vscode client is located in the `clients/code/` directory. This can be installed by running `npm install` from that directory.

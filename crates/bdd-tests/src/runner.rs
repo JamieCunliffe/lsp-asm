@@ -73,7 +73,7 @@ async fn open_temp_file(state: &mut LSPWorld, step: &Step, name: String) {
     let data = step.docstring.as_ref().unwrap().trim_matches('\n');
     let url = Url::parse(&format!("file://{}", name)).unwrap();
 
-    state.handler.open_file("asm", url, &data).await.unwrap();
+    state.handler.open_file("asm", url, &data, 0).await.unwrap();
 }
 
 #[when(regex = r#"I open the file "(.*)""#)]
@@ -82,7 +82,7 @@ async fn open_file(state: &mut LSPWorld, file: String) {
     let data = std::fs::read_to_string(path).unwrap();
     let url = Url::parse(&format!("file://{}", file)).unwrap();
 
-    state.handler.open_file("asm", url, &data).await.unwrap();
+    state.handler.open_file("asm", url, &data, 0).await.unwrap();
 }
 
 #[when(

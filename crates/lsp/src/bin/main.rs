@@ -186,7 +186,7 @@ async fn process_message(
                     let data = get_notification::<DidOpenTextDocument>(notification).unwrap();
                     let data = data.text_document;
                     handler
-                        .open_file(&data.language_id, data.uri, &data.text)
+                        .open_file(&data.language_id, data.uri, &data.text, data.version as _)
                         .await
                 }
                 "textDocument/didChange" => {
@@ -212,7 +212,10 @@ async fn process_message(
                     debug!("Received cancel request - Ignoring");
                     Ok(())
                 }
-                _ => panic!("Unknown notification: {:?}", notification.method),
+                _ => {
+                    error!("Unknown notification: {:?}", notification.method);
+                    Ok(())
+                }
             };
         }
         _ => (),
