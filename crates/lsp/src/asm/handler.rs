@@ -173,7 +173,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         Ok(hover.map(|hover| lsp_types::Hover {
             contents: HoverContents::Markup(MarkupContent {
                 kind: lsp_types::MarkupKind::Markdown,
-                value: hover.join("\n"),
+                value: hover.join("  \n"),
             }),
             range: None,
         }))
@@ -481,8 +481,7 @@ impl AssemblyLanguageServerProtocol {
 #[cfg(test)]
 mod tests {
     use lsp_types::{
-        DocumentHighlight, DocumentSymbol, DocumentSymbolResponse, GotoDefinitionResponse, Hover,
-        Position,
+        DocumentHighlight, DocumentSymbol, DocumentSymbolResponse, GotoDefinitionResponse, Position,
     };
     use pretty_assertions::assert_eq;
 
@@ -673,42 +672,6 @@ end:
             .find_references(DocumentPosition { line: 3, column: 5 }, false)
             .unwrap();
         let response: Vec<Location> = vec![];
-
-        assert_eq!(response, actual);
-    }
-
-    #[test]
-    fn test_document_hover_numeric() {
-        let actor = AssemblyLanguageServerProtocol::new(
-            r#"entry:
-.cfi_startproc
-    stp x20, x21, [sp, -32]!
-.L2:
-    b .L2
-end:
-.cfi_endproc
-
-// lsp-asm-architecture: AArch64"#,
-            Url::parse("file://temp").unwrap(),
-            Default::default(),
-        );
-
-        let actual = actor
-            .hover(DocumentPosition {
-                line: 2,
-                column: 25,
-            })
-            .unwrap();
-        let response = Some(Hover {
-            contents: lsp_types::HoverContents::Markup(MarkupContent {
-                value: r#"# Number
-Decimal: -32
-Hex: 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE0"#
-                    .to_string(),
-                kind: lsp_types::MarkupKind::Markdown,
-            }),
-            range: None,
-        });
 
         assert_eq!(response, actual);
     }

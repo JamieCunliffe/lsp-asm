@@ -462,10 +462,7 @@ fn parse_minus(expr: Span) -> NomResultElement {
 
 type ProcessFunction = Box<dyn Fn(Span) -> NomResultElement>;
 #[inline]
-fn get_action(
-    c: char,
-    config: &ParserConfig,
-) -> Option<Either<SyntaxKind, ProcessFunction>> {
+fn get_action(c: char, config: &ParserConfig) -> Option<Either<SyntaxKind, ProcessFunction>> {
     match c {
         ',' => Some(Either::Left(SyntaxKind::COMMA)),
         '+' => Some(Either::Left(SyntaxKind::OPERATOR)),
