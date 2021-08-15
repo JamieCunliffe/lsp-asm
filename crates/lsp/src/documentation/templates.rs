@@ -73,7 +73,12 @@ fn check_template(
     exact: bool,
     lookup: &Option<impl Registers>,
 ) -> bool {
-    let parsed_template = SyntaxNode::new_root(Parser::parse_asm(template, &TEMPLATE_CONFIG));
+    // Some of the registers have a + in the name, replace that + with
+    // ADD so that the parser doesn't split it up.
+    let parsed_template = SyntaxNode::new_root(Parser::parse_asm(
+        template.replace("+", "ADD").as_str(),
+        &TEMPLATE_CONFIG,
+    ));
 
     let parsed_template = parsed_template.first_child().unwrap();
     let filtered = node

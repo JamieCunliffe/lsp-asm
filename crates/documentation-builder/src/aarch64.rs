@@ -93,13 +93,13 @@ fn process_isa_ref(data: &str, file: &str) -> Vec<Instruction> {
                     .unwrap_or("")
                     .to_string(),
             })
-            .collect()
+            .collect_vec()
     });
 
     let asm_template = asm
         .zip(operands)
         .map(|(asm, items)| InstructionTemplate {
-            asm: parse_template(&asm),
+            asm: parse_template(&asm, &items),
             display_asm: asm.clone(),
             items,
         })
@@ -117,40 +117,57 @@ fn process_isa_ref(data: &str, file: &str) -> Vec<Instruction> {
         .collect()
 }
 
-fn parse_template(template: &str) -> Vec<String> {
-    let mut ret = vec![template.replace(|a| a == '{' || a == '}', "")];
+fn parse_template(template: &str, operands: &[OperandInfo]) -> Vec<String> {
+    let mut positions = Vec::new();
+    for (i, c) in template.char_indices() {
+        if c == '{' {
+            positions.push((i, 0));
+        } else if c == '}' {
+            let (_, ref mut e) = positions.iter_mut().rev().find(|(_, e)| *e == 0).unwrap();
+            *e = i
+        }
+    }
+    let positions = positions.iter().filter(|(open, close)| {
+        let text = &template[(*open + 1)..*close];
+        let text = text.trim_start_matches(|c| c == ' ' || c == ',' || c == '#');
+        let text = text
+            .find(|c| c == ' ' || c == ',')
+            .map(|p| &text[..p])
+            .unwrap_or(text)
+            .trim_end_matches('}');
 
-    let open = template
-        .chars()
-        .enumerate()
-        .filter(|(_, a)| a == &'{')
-        .map(|(idx, _)| idx)
-        .clone()
-        .collect::<Vec<_>>();
-    let close = template
-        .chars()
-        .enumerate()
-        .filter(|(_, a)| a == &'}')
-        .map(|(idx, _)| idx)
-        .clone()
-        .collect::<Vec<_>>();
-
-    ret.extend(
-        open.iter()
-            .zip(close.iter().rev())
-            .map(|(open, close)| {
-                template
-                    .chars()
-                    .take(*open)
-                    .chain(template.chars().skip(close + 1))
-                    .collect::<String>()
-                    .replace(|a| a == '{' || a == '}', "")
-                    .trim_end()
-                    .to_string()
+        let optional = operands
+            .iter()
+            .find(|op| op.name == text)
+            .map(|op| {
+                assert!(!op.name.starts_with('#'));
+                op.description.to_lowercase().contains("optional")
             })
-            .rev(),
-    );
+            .unwrap_or(false);
 
+        optional
+    });
+
+    let mut full = template.to_string();
+    positions
+        .clone()
+        .flat_map(|(s, e)| vec![s, e])
+        .sorted()
+        .rev()
+        .for_each(|idx| full.replace_range(*idx..(idx + 1), ""));
+    let mut ret = positions
+        .enumerate()
+        .map(|(idx, (open, close))| {
+            full.chars()
+                .take(open - idx)
+                .chain(template.chars().skip(close + 1 + idx))
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        })
+        .collect_vec();
+    ret.push(full);
+    ret.reverse();
     ret
 }
 
@@ -181,11 +198,30 @@ pub(crate) async fn get_instructions() -> Result<Vec<Instruction>, Box<dyn Error
 #[cfg(test)]
 mod test {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_parse_template_expansion() {
+        let operands = vec![
+            OperandInfo {
+                name: "<Xt1>".into(),
+                description: "Register".into(),
+            },
+            OperandInfo {
+                name: "<Xt2>".into(),
+                description: "Another register".into(),
+            },
+            OperandInfo {
+                name: "<Xn|SP>".into(),
+                description: "Another register".into(),
+            },
+            OperandInfo {
+                name: "<imm>".into(),
+                description: "Optional immediate".into(),
+            },
+        ];
         let input = "STP  <Xt1>, <Xt2>, [<Xn|SP>{, #<imm>}]";
-        let result = parse_template(&input);
+        let result = parse_template(&input, &operands);
         assert_eq!(
             result,
             vec![
@@ -197,8 +233,30 @@ mod test {
 
     #[test]
     fn test_parse_template_expansion_multiple() {
+        let operands = vec![
+            OperandInfo {
+                name: "<Xd>".into(),
+                description: "Register".into(),
+            },
+            OperandInfo {
+                name: "<Xn|SP>".into(),
+                description: "Another register".into(),
+            },
+            OperandInfo {
+                name: "<R><m>".into(),
+                description: "Something".into(),
+            },
+            OperandInfo {
+                name: "<extend>".into(),
+                description: "Optional extend".into(),
+            },
+            OperandInfo {
+                name: "<amount>".into(),
+                description: "Optional immediate".into(),
+            },
+        ];
         let input = "ADDS  <Xd>, <Xn|SP>, <R><m>{, <extend> {#<amount>}}";
-        let result = parse_template(&input);
+        let result = parse_template(&input, &operands);
 
         assert_eq!(
             result,
@@ -206,6 +264,70 @@ mod test {
                 String::from("ADDS  <Xd>, <Xn|SP>, <R><m>, <extend> #<amount>"),
                 String::from("ADDS  <Xd>, <Xn|SP>, <R><m>, <extend>"),
                 String::from("ADDS  <Xd>, <Xn|SP>, <R><m>"),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_template_expansion_without_optional() {
+        let operands = vec![
+            OperandInfo {
+                name: "<Zt>".into(),
+                description: "Register".into(),
+            },
+            OperandInfo {
+                name: "<Pg>".into(),
+                description: "Predicate".into(),
+            },
+            OperandInfo {
+                name: "<Zn>".into(),
+                description: "Another register".into(),
+            },
+            OperandInfo {
+                name: "<imm>".into(),
+                description: "Optional immediate".into(),
+            },
+        ];
+        let input = "LD1W    { <Zt>.S }, <Pg>/Z, [<Zn>.S{, #<imm>}]";
+        let result = parse_template(&input, &operands);
+
+        assert_eq!(
+            result,
+            vec![
+                String::from("LD1W    { <Zt>.S }, <Pg>/Z, [<Zn>.S, #<imm>]"),
+                String::from("LD1W    { <Zt>.S }, <Pg>/Z, [<Zn>.S]"),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_template_expansion_extra_in_opt() {
+        let operands = vec![
+            OperandInfo {
+                name: "<Zt>".into(),
+                description: "Register".into(),
+            },
+            OperandInfo {
+                name: "<Pg>".into(),
+                description: "Predicate".into(),
+            },
+            OperandInfo {
+                name: "<Xn|SP>".into(),
+                description: "Another register".into(),
+            },
+            OperandInfo {
+                name: "<imm>".into(),
+                description: "Optional immediate".into(),
+            },
+        ];
+        let input = "LD1W    { <Zt>.S }, <Pg>/Z, [<Xn|SP>{, #<imm>, MUL VL}]";
+        let result = parse_template(&input, &operands);
+
+        assert_eq!(
+            result,
+            vec![
+                String::from("LD1W    { <Zt>.S }, <Pg>/Z, [<Xn|SP>, #<imm>, MUL VL]"),
+                String::from("LD1W    { <Zt>.S }, <Pg>/Z, [<Xn|SP>]"),
             ]
         );
     }

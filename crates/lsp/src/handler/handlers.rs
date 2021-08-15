@@ -34,18 +34,12 @@ impl LangServerHandler {
         version: u32,
     ) -> Result<(), ResponseError> {
         let actor = match lang_id.to_lowercase().as_str() {
-            "asm" => AssemblyLanguageServerProtocol::new(
-                &text,
-                url.clone(),
-                version,
-                self.config.clone(),
-            ),
-            "assembly" => AssemblyLanguageServerProtocol::new(
-                &text,
-                url.clone(),
-                version,
-                self.config.clone(),
-            ),
+            "asm" => {
+                AssemblyLanguageServerProtocol::new(text, url.clone(), version, self.config.clone())
+            }
+            "assembly" => {
+                AssemblyLanguageServerProtocol::new(text, url.clone(), version, self.config.clone())
+            }
             _ => panic!("Unknown language: {}", lang_id),
         };
 
