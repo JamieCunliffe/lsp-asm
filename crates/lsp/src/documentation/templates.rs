@@ -3,7 +3,7 @@ use itertools::Itertools;
 use crate::asm::ast::{SyntaxElement, SyntaxKind, SyntaxNode};
 use crate::asm::config::ParserConfig;
 use crate::asm::parser::Parser;
-use crate::asm::registers::Registers;
+use crate::asm::registers::{Registers, RegisterKind};
 use crate::types::Architecture;
 
 use super::registers::DOC_REGISTERS;
@@ -115,6 +115,10 @@ fn node_or_token_match(
 
                 lookup.get_size(actual) == DOC_REGISTERS.get_size(template)
                     || (lookup.is_sp(actual) && DOC_REGISTERS.is_sp(template))
+                    || (template.text().starts_with("<R>")
+                        && lookup
+                            .get_kind(actual)
+                            .contains(RegisterKind::GENERAL_PURPOSE))
             } else {
                 false
             }
