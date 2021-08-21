@@ -1,6 +1,6 @@
 use std::str::{CharIndices, Chars};
 
-use nom::{Compare, InputIter, InputLength, InputTake, UnspecializedInput};
+use nom::{Compare, FindSubstring, InputIter, InputLength, InputTake, Needed, UnspecializedInput};
 
 #[derive(Clone, PartialEq, Debug)]
 pub(crate) struct Span<'a, T> {
@@ -56,7 +56,7 @@ impl<'a, T> InputIter for Span<'a, T> {
         self.data.position(predicate)
     }
 
-    fn slice_index(&self, count: usize) -> Option<usize> {
+    fn slice_index(&self, count: usize) -> Result<usize, Needed> {
         self.data.slice_index(count)
     }
 }
@@ -93,5 +93,11 @@ impl<'a, T> Compare<&'a str> for Span<'a, T> {
 
     fn compare_no_case(&self, t: &'a str) -> nom::CompareResult {
         self.data.compare_no_case(t)
+    }
+}
+
+impl<'a, T> FindSubstring<&'static str> for Span<'a, T> {
+    fn find_substring(&self, substr: &'static str) -> Option<usize> {
+        self.as_str().find(substr)
     }
 }

@@ -129,7 +129,7 @@ fn test(generate_coverage: bool) -> Result<(), DynError> {
 
 fn build_docs(args: &ArgMatches) -> Result<(), DynError> {
     let mut tasks = Vec::new();
-    let mut rt = tokio::runtime::Runtime::new()?;
+    let rt = tokio::runtime::Runtime::new()?;
 
     if args.is_present("aarch64") {
         tasks.push(rt.spawn(documentation_builder::build_aarch64_instructions()));

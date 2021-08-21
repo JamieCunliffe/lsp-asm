@@ -10,12 +10,12 @@ use super::ast::SyntaxKind;
 
 use either::Either;
 
-use nom::bytes::complete::{tag, take_while};
+use nom::bytes::complete::{tag, take_until, take_while};
 use nom::character::is_hex_digit;
 use nom::error::ErrorKind;
 use nom::multi::many0;
 use nom::sequence::{delimited, preceded, terminated};
-use nom::IResult;
+use nom::{IResult, InputTake};
 use rowan::GreenNode;
 
 type Span<'a> = super::span::Span<'a, &'a InternalSpanConfig<'a>>;
@@ -67,7 +67,7 @@ impl<'a> Span<'a> {
 macro_rules! end_many0(
     ($e:expr) => (
         if $e.is_empty() {
-            return nom::lib::std::result::Result::Err(nom::Err::Error(($e, ErrorKind::Many0)));
+            return nom::lib::std::result::Result::Err(nom::Err::Error(nom::error::Error::new($e, ErrorKind::Many0)));
         }
     ));
 
@@ -75,6 +75,10 @@ macro_rules! process_comment(
     ($e:expr) => (
         if $e.as_str().starts_with(&$e.config().comment_start) {
             return parse_comment($e);
+        }
+
+        if $e.as_str().starts_with("/*") {
+            return parse_multiline_comment($e);
         }
     ));
 
@@ -372,6 +376,27 @@ fn parse_comment(remaining: Span) -> NomResultElement {
 
     let (remaining, comment) = take_while(|a| a != '\n')(remaining)?;
     remaining.token(SyntaxKind::COMMENT, comment.as_str());
+
+    Ok((remaining, ()))
+}
+
+fn parse_multiline_comment(remaining: Span) -> NomResultElement {
+    assert!(remaining.as_str().starts_with("/*"));
+
+    let (remaining, comment) = match take_until("*/")(remaining) {
+        Ok((remaining, comment)) => {
+            let (remaining, end) = remaining.take_split(2);
+            let comment = format!("{}{}", comment.as_str(), end.as_str());
+            (remaining, comment)
+        }
+        nom::lib::std::result::Result::Err(nom::Err::Error((r, ErrorKind::TakeUntil))) => {
+            let (remaining, comment) = take_while(|a| a != '\0')(r)?;
+            (remaining, comment.as_str().to_string())
+        }
+        e => panic!("Unexpected result for multiline comment: {:#?}", e),
+    };
+
+    remaining.token(SyntaxKind::COMMENT, &comment);
 
     Ok((remaining, ()))
 }

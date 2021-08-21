@@ -444,3 +444,55 @@ main:
         Architecture::X86_64
     );
 }
+
+#[test]
+fn test_multiline_comment() {
+    assert_listing!(
+        r#"
+pushq %rbp
+/* This
+is
+a
+comment
+*/
+popq %rbp"#,
+        r#"ROOT@0..45
+  WHITESPACE@0..1 "\n"
+  INSTRUCTION@1..11
+    MNEMONIC@1..6 "pushq"
+    WHITESPACE@6..7 " "
+    REGISTER@7..11 "%rbp"
+  WHITESPACE@11..12 "\n"
+  COMMENT@12..35 "/* This\nis\na\ncomment\n*/"
+  WHITESPACE@35..36 "\n"
+  INSTRUCTION@36..45
+    MNEMONIC@36..40 "popq"
+    WHITESPACE@40..41 " "
+    REGISTER@41..45 "%rbp"
+"#,
+        Architecture::X86_64
+    );
+}
+
+#[test]
+fn test_multiline_comment_not_closed() {
+    assert_listing!(
+        r#"
+pushq %rbp
+/* This
+is
+a
+comment
+"#,
+        r#"ROOT@0..33
+  WHITESPACE@0..1 "\n"
+  INSTRUCTION@1..11
+    MNEMONIC@1..6 "pushq"
+    WHITESPACE@6..7 " "
+    REGISTER@7..11 "%rbp"
+  WHITESPACE@11..12 "\n"
+  COMMENT@12..33 "/* This\nis\na\ncomment\n"
+"#,
+        Architecture::X86_64
+    );
+}
