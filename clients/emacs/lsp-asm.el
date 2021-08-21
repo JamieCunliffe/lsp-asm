@@ -24,6 +24,11 @@
   :type 'boolean
   :group 'lsp-asm)
 
+(defcustom lsp-asm-analysis-cpus nil
+  "Map of cpus to use for each architecture for running code analysis."
+  :type '(alist :key-type (string) :value-type (string))
+  :group 'lsp-asm)
+
 (defcustom lsp-asm-log-level "error"
   "The logging level to use."
   :type '(choice (const "error")
@@ -33,7 +38,8 @@
                  (const "trace"))
   :group 'lsp-asm)
 
-(lsp-interface (asm:SyntaxTreeParams (:textDocument)))
+(lsp-interface (asm:SyntaxTreeParams (:textDocument))
+               (asm:AnalysisParams (:textDocument) (:range)))
 (define-derived-mode lsp-asm-syntax-tree-mode special-mode "Asm-Syntax-Tree"
   "Mode for the asm syntax tree buffer.")
 (defun lsp-asm-syntax-tree ()
@@ -54,11 +60,35 @@
         (goto-char (point-min)))
       (pop-to-buffer buf))))
 
+(define-derived-mode lsp-asm-analysis-mode special-mode "LLVM-MCA"
+  "Mode for the llvm mca results buffer.")
+(defun lsp-asm-run-analysis ()
+  "Run llvm-mca to analyse the assembly."
+  (interactive)
+  (-let* ((root (lsp-workspace-root default-directory))
+          (params (lsp-make-asm-analysis-params
+                   :text-document (lsp--text-document-identifier)
+                   :range? (if (use-region-p)
+                               (lsp--region-to-range (region-beginning) (region-end))
+                             (lsp--region-to-range (point-min) (point-max)))))
+          (results (lsp-send-request (lsp-make-request
+                                      "asm/runAnalysis"
+                                      params))))
+    (let ((buf (get-buffer-create (format "*llvm-mca %s*" root)))
+          (inhibit-read-only t))
+      (with-current-buffer buf
+        (lsp-asm-analysis-mode)
+        (erase-buffer)
+        (insert results)
+        (goto-char (point-min)))
+      (pop-to-buffer buf))))
+
 (defun lsp-asm--make-init-options ()
   "Init options for lsp-asm."
   `(:architecture ,lsp-asm-default-architecture
     :codelens (:enabled_filesize ,lsp-asm-codelens-filesize-threshold
-               :loc_enabled ,(lsp-json-bool lsp-asm-codelens-loc-enabled))))
+               :loc_enabled ,(lsp-json-bool lsp-asm-codelens-loc-enabled))
+    :analysis (:default_cpus ,(json-read-from-string (json-encode-alist lsp-asm-analysis-cpus)))))
 
 (lsp-defun lsp-asm--open-loc
   ((&Command :title :arguments? [location]))

@@ -86,13 +86,22 @@ impl From<lsp_types::ReferenceParams> for FindReferencesMessage {
     }
 }
 
-pub struct SemanticTokensMessage {
+#[derive(Debug)]
+pub struct DocumentRangeMessage {
     pub url: Url,
     pub range: Option<DocumentRange>,
 }
-impl SemanticTokensMessage {
+impl DocumentRangeMessage {
     pub fn new(url: Url, range: Option<DocumentRange>) -> Self {
         Self { url, range }
+    }
+}
+impl From<super::ext::RunAnalysisParams> for DocumentRangeMessage {
+    fn from(p: super::ext::RunAnalysisParams) -> Self {
+        Self {
+            url: p.text_document.uri,
+            range: p.range.map(|r| r.into()),
+        }
     }
 }
 

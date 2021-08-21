@@ -62,6 +62,21 @@ impl Display for Architecture {
     }
 }
 
+impl Architecture {
+    pub fn to_llvm(&self) -> String {
+        String::from(match self {
+            Architecture::X86_64 => "x86-64",
+            Architecture::AArch64 => "aarch64",
+            Architecture::Unknown => "native",
+        })
+    }
+
+    pub fn is_host(&self) -> bool {
+        let host = Architecture::from(std::env::consts::ARCH);
+        self != &Architecture::Unknown && self == &host
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

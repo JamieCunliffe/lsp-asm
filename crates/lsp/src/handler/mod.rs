@@ -4,7 +4,7 @@ use lsp_types::{
     SemanticTokensResult,
 };
 
-use crate::types::DocumentPosition;
+use crate::types::{DocumentPosition, DocumentRange};
 
 use self::types::DocumentChange;
 
@@ -45,4 +45,6 @@ pub trait LanguageServerProtocol {
     fn code_lens(&self) -> Result<Option<Vec<lsp_types::CodeLens>>, ResponseError>;
 
     fn syntax_tree(&self) -> Result<String, ResponseError>;
+
+    fn analysis(&self, range: Option<DocumentRange>) -> Result<String, ResponseError>;
 }

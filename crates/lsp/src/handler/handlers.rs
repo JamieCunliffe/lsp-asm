@@ -7,7 +7,7 @@ use crate::asm::handler::AssemblyLanguageServerProtocol;
 use crate::config::LSPConfig;
 
 use super::error::{lsp_error_map, ErrorCode};
-use super::types::{DocumentChange, FindReferencesMessage, LocationMessage, SemanticTokensMessage};
+use super::types::{DocumentChange, DocumentRangeMessage, FindReferencesMessage, LocationMessage};
 use super::LanguageServerProtocol;
 
 use lsp_server::ResponseError;
@@ -146,7 +146,7 @@ impl LangServerHandler {
 
     pub async fn get_semantic_tokens(
         &self,
-        request: SemanticTokensMessage,
+        request: DocumentRangeMessage,
     ) -> Result<lsp_types::SemanticTokensResult, ResponseError> {
         self.actors
             .read()
@@ -195,5 +195,16 @@ impl LangServerHandler {
             .read()
             .await
             .syntax_tree()
+    }
+
+    pub async fn analysis(&self, request: DocumentRangeMessage) -> Result<String, ResponseError> {
+        self.actors
+            .read()
+            .await
+            .get(&request.url)
+            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+            .read()
+            .await
+            .analysis(request.range)
     }
 }

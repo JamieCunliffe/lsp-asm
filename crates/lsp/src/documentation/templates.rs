@@ -3,7 +3,7 @@ use itertools::Itertools;
 use crate::asm::ast::{SyntaxElement, SyntaxKind, SyntaxNode};
 use crate::asm::config::ParserConfig;
 use crate::asm::parser::Parser;
-use crate::asm::registers::{Registers, RegisterKind};
+use crate::asm::registers::{RegisterKind, Registers};
 use crate::types::Architecture;
 
 use super::registers::DOC_REGISTERS;

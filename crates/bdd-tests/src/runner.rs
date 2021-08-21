@@ -5,7 +5,7 @@ use std::convert::Infallible;
 use cucumber_rust::gherkin::Step;
 use cucumber_rust::{async_trait, given, then, when, World, WorldInit};
 
-use lsp_asm::handler::types::{FindReferencesMessage, LocationMessage, SemanticTokensMessage};
+use lsp_asm::handler::types::{DocumentRangeMessage, FindReferencesMessage, LocationMessage};
 use lsp_asm::types::Architecture;
 use lsp_types::{
     DidChangeTextDocumentParams, MarkupContent, SemanticTokens, SemanticTokensResult,
@@ -194,7 +194,7 @@ async fn run_command(
         "document highlight" => util::make_result(&handler.document_highlight(location).await),
         "document hover" => util::make_result(&handler.hover(location).await),
         "semantic tokens" => {
-            let req = SemanticTokensMessage {
+            let req = DocumentRangeMessage {
                 url: location.url,
                 range,
             };

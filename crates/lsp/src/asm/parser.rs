@@ -79,6 +79,23 @@ impl Parser {
         unsafe { String::from_utf8_unchecked(buffer) }
     }
 
+    pub(super) fn reconstruct_from_tokens(
+        &self,
+        tokens: impl Iterator<Item = SyntaxToken>,
+        range: &TextRange,
+    ) -> String {
+        let mut buffer: Vec<u8> = Vec::with_capacity(range.end().into());
+
+        for token in tokens {
+            buffer.extend_from_slice(token.text().as_bytes());
+        }
+
+        // The data that we have copied into here has come from a &str which
+        // is always valid UTF8, therefore it should be perfectly fine to use
+        // the unchecked variant of the function, as validation isn't required.
+        unsafe { String::from_utf8_unchecked(buffer) }
+    }
+
     pub(crate) fn token<'st, 'c, T>(&'c self, token: &'st SyntaxToken) -> Option<T>
     where
         T: AstToken<'st, 'c>,
@@ -274,6 +291,12 @@ impl PositionInfo {
         self.lines
             .get(line as usize)
             .map(|s: &TextSize| u32::from(*s))
+    }
+    pub fn range_to_text_range(&self, range: &DocumentRange) -> Option<TextRange> {
+        let start = self.point_for_position(&range.start)?;
+        let end = self.point_for_position(&range.end)?;
+
+        Some(TextRange::new(start, end))
     }
 
     /// Helper function to get the line and column for a text size

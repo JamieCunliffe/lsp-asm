@@ -21,7 +21,7 @@ use lsp_types::{
 use serde_json::Value;
 
 use lsp_asm::handler::handlers::LangServerHandler;
-use lsp_asm::handler::types::SemanticTokensMessage;
+use lsp_asm::handler::types::DocumentRangeMessage;
 use tokio::runtime::Builder;
 
 pub(crate) type LangServerResult = Result<Value, ResponseError>;
@@ -80,7 +80,13 @@ fn lsp_loop(
 
     let params = params
         .initialization_options
-        .map(|opts| serde_json::from_value(opts).ok())
+        .map(|opts| match serde_json::from_value(opts) {
+            Ok(c) => Some(c),
+            Err(e) => {
+                error!("Failed to parse config due to error: {:#?}", e);
+                None
+            }
+        })
         .flatten()
         .unwrap_or_default();
 
@@ -150,13 +156,13 @@ async fn process_message(
                 }
                 "textDocument/semanticTokens/full" => {
                     let (_, data) = get_message::<SemanticTokensFullRequest>(request).unwrap();
-                    let msg = SemanticTokensMessage::new(data.text_document.uri, None);
+                    let msg = DocumentRangeMessage::new(data.text_document.uri, None);
                     make_result(handler.get_semantic_tokens(msg).await)
                 }
                 "textDocument/semanticTokens/range" => {
                     let (_, data) = get_message::<SemanticTokensRangeRequest>(request).unwrap();
                     let msg =
-                        SemanticTokensMessage::new(data.text_document.uri, Some(data.range.into()));
+                        DocumentRangeMessage::new(data.text_document.uri, Some(data.range.into()));
                     make_result(handler.get_semantic_tokens(msg).await)
                 }
                 "textDocument/codeLens" => {
@@ -167,6 +173,11 @@ async fn process_message(
                     let (_, data) =
                         get_message::<lsp_asm::handler::ext::SyntaxTree>(request).unwrap();
                     make_result(handler.syntax_tree(data.text_document.uri).await)
+                }
+                "asm/runAnalysis" => {
+                    let (_, data) =
+                        get_message::<lsp_asm::handler::ext::RunAnalysis>(request).unwrap();
+                    make_result(handler.analysis(data.into()).await)
                 }
                 _ => panic!("Unknown method: {:?}", request.method),
             };

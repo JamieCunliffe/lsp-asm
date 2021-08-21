@@ -16,12 +16,13 @@ use crate::handler::error::{lsp_error_map, ErrorCode};
 use crate::handler::semantic::semantic_delta_transform;
 use crate::handler::types::DocumentChange;
 use crate::handler::LanguageServerProtocol;
-use crate::types::{Architecture, DocumentPosition};
+use crate::types::{Architecture, DocumentPosition, DocumentRange};
 
 use super::ast::{
     self, find_kind_index, AstNode, LabelNode, LabelToken, LocalLabelNode, NumericToken,
     RegisterToken, SyntaxKind, SyntaxToken,
 };
+use super::llvm_mca::run_mca;
 use super::parser::{Parser, PositionInfo};
 use super::registers::{registers_for_architecture, RegisterKind};
 
@@ -367,6 +368,25 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
 
     fn syntax_tree(&self) -> Result<String, ResponseError> {
         Ok(format!("{:#?}", self.parser.tree()))
+    }
+
+    fn analysis(&self, range: Option<DocumentRange>) -> Result<String, ResponseError> {
+        let range = range
+            .map(|r| self.parser.position().range_to_text_range(&r))
+            .flatten()
+            .unwrap_or_else(|| self.parser.tree().text_range());
+
+        let tokens = self.parser.tokens_in_range(&range).filter(|t| {
+            !(matches!(t.kind(), SyntaxKind::METADATA)
+                || ast::find_parent(t, SyntaxKind::METADATA).is_some())
+        });
+        let asm = self.parser.reconstruct_from_tokens(tokens, &range);
+        run_mca(
+            asm.as_str(),
+            self.parser.architecture(),
+            &self.config.analysis,
+        )
+        .map_err(|e| lsp_error_map(ErrorCode::MCAFailed(e.to_string())))
     }
 }
 

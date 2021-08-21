@@ -9,6 +9,9 @@ It currently supports the following LSP messages:
 * Document Symbols
 * Codelens (shows line `.loc` directive refers to)
 
+## Additional commands
+* `runAnalysis` Run LLVM MCA on the file/region
+
 # Installing
 This can be installed by running `cargo install --path crates/lsp` from the root of this repository, the resulting binary will be placed within `~/.cargo/bin/`. If another location is desired this can be built with `cargo build --release` and then copy the binary from `./target/release/lsp-asm` to the desired location.
 

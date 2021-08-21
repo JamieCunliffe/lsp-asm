@@ -8,6 +8,7 @@ pub(crate) enum ErrorCode {
     CastFailed,
     FileNotFound,
     InvalidVersion(Url),
+    MCAFailed(String),
 }
 
 #[derive(Serialize)]
@@ -41,6 +42,11 @@ pub(crate) fn lsp_error_map(error: ErrorCode) -> ResponseError {
             code: 6,
             message: String::from("Incorrect version transition"),
             data: serde_json::to_value(ResyncFile { uri }).ok(),
+        },
+        ErrorCode::MCAFailed(reason) => ResponseError {
+            code: 7,
+            message: format!("Failed to run llvm-mca due to error: {}", reason),
+            data: None,
         },
     }
 }
