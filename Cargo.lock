@@ -103,24 +103,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
+name = "base"
+version = "0.1.0"
+dependencies = [
+ "bitflags",
+ "lazy_static",
+ "log",
+ "regex",
+ "serde",
+]
+
+[[package]]
 name = "base64"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
-
-[[package]]
-name = "bdd-tests"
-version = "0.1.0"
-dependencies = [
- "cucumber_rust",
- "lsp-asm",
- "lsp-server",
- "lsp-types",
- "pretty_assertions",
- "serde",
- "serde_json",
- "tokio",
-]
 
 [[package]]
 name = "bitflags"
@@ -418,14 +415,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4699f5cb7678f099b747ffdc1e6ce6cdc42579e29d28315aa715b9fd10324fc"
 
 [[package]]
+name = "documentation"
+version = "0.1.0"
+dependencies = [
+ "base",
+ "directories",
+ "itertools 0.10.1",
+ "lazy_static",
+ "parser",
+ "serde",
+ "serde_json",
+ "syntax",
+]
+
+[[package]]
 name = "documentation-builder"
 version = "0.1.0"
 dependencies = [
+ "base",
  "directories",
+ "documentation",
  "flate2",
  "itertools 0.10.1",
  "log",
- "lsp-asm",
  "pretty_assertions",
  "reqwest",
  "roxmltree",
@@ -1044,17 +1056,17 @@ dependencies = [
 name = "lsp-asm"
 version = "0.1.0"
 dependencies = [
- "bitflags",
+ "base",
  "byte-unit",
- "directories",
+ "documentation",
  "either",
  "itertools 0.10.1",
  "lazy_static",
  "log",
  "lsp-server",
  "lsp-types",
- "nom",
  "once_cell",
+ "parser",
  "pretty_assertions",
  "pretty_env_logger",
  "rayon",
@@ -1063,6 +1075,7 @@ dependencies = [
  "serde",
  "serde_json",
  "symbolic",
+ "syntax",
  "tokio",
 ]
 
@@ -1309,6 +1322,19 @@ dependencies = [
  "redox_syscall",
  "smallvec",
  "winapi",
+]
+
+[[package]]
+name = "parser"
+version = "0.1.0"
+dependencies = [
+ "base",
+ "either",
+ "log",
+ "nom",
+ "pretty_assertions",
+ "rowan",
+ "syntax",
 ]
 
 [[package]]
@@ -1932,6 +1958,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "syntax"
+version = "0.1.0"
+dependencies = [
+ "rowan",
+]
+
+[[package]]
 name = "tap"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2445,6 +2478,22 @@ dependencies = [
  "clap",
  "documentation-builder",
  "pretty_env_logger",
+ "tokio",
+]
+
+[[package]]
+name = "z-bdd-tests"
+version = "0.1.0"
+dependencies = [
+ "base",
+ "cucumber_rust",
+ "documentation",
+ "lsp-asm",
+ "lsp-server",
+ "lsp-types",
+ "pretty_assertions",
+ "serde",
+ "serde_json",
  "tokio",
 ]
 

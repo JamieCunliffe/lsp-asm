@@ -1,15 +1,8 @@
-use std::num::ParseIntError;
-
-use crate::asm::config::FileType;
-use crate::types::Architecture;
-
 use super::builder::Builder;
 use super::config::ParserConfig;
 
-use super::ast::SyntaxKind;
-
+use base::{Architecture, FileType};
 use either::Either;
-
 use nom::bytes::complete::{tag, take_until, take_while};
 use nom::character::is_hex_digit;
 use nom::error::ErrorKind;
@@ -17,6 +10,8 @@ use nom::multi::many0;
 use nom::sequence::{delimited, preceded, terminated};
 use nom::{IResult, InputTake};
 use rowan::GreenNode;
+use std::num::ParseIntError;
+use syntax::ast::SyntaxKind;
 
 type Span<'a> = super::span::Span<'a, &'a InternalSpanConfig<'a>>;
 type NomResultElement<'a> = nom::IResult<Span<'a>, ()>;
@@ -96,8 +91,8 @@ pub(crate) fn parse<'a>(data: &'a str, config: &'a ParserConfig) -> GreenNode {
 
     data.start_node(SyntaxKind::ROOT);
     let data = match config.file_type {
-        crate::asm::config::FileType::Assembly => data,
-        crate::asm::config::FileType::ObjDump => parse_objdump_header(data).unwrap().0,
+        FileType::Assembly => data,
+        FileType::ObjDump => parse_objdump_header(data).unwrap().0,
     };
 
     let result = many0(parse_next)(data);
@@ -296,9 +291,25 @@ fn parse_line(expr: Span) -> NomResultElement {
     }
 }
 
+pub fn register_name(name: &str) -> &str {
+    name.strip_prefix('%').unwrap_or(name)
+}
+
+/// Determine if `name` is a valid register
+fn is_register(name: &str, config: &ParserConfig) -> bool {
+    if let Some(registers) = config.registers {
+        let name = register_name(name);
+        registers
+            .iter()
+            .any(|register| register.names.contains(&name))
+    } else {
+        false
+    }
+}
+
 /// Converts the span into a GreenToken
 fn span_to_token(token: &Span) {
-    if super::registers::is_register(token.as_str(), token.extra().config) {
+    if is_register(token.as_str(), token.extra().config) {
         token.token(SyntaxKind::REGISTER, token.as_str());
     } else if is_numeric(token.as_str()) {
         token.token(SyntaxKind::NUMBER, token.as_str());
@@ -330,7 +341,7 @@ fn is_numeric(token: &str) -> bool {
 /// Parse a number into an i128, this will account for any prefixes and use them.
 /// a $ or # will be ignored and skipped any number prefixed with 0x will be
 /// parsed as a base 16 number
-pub(crate) fn parse_number(token: &str) -> Result<i128, ParseIntError> {
+pub fn parse_number(token: &str) -> Result<i128, ParseIntError> {
     let token = token.trim_start_matches(|c: char| ['$', '#'].contains(&c));
     if let Some(token) = token.strip_prefix("0x") {
         i128::from_str_radix(token, 16)
@@ -539,8 +550,6 @@ fn is_hex(data: char) -> bool {
 
 #[cfg(test)]
 mod test {
-    use crate::asm::registers::{AARCH64_REGISTERS, X86_64_REGISTERS};
-
     use super::*;
     use pretty_assertions::assert_eq;
 
@@ -560,7 +569,7 @@ mod test {
         let config = ParserConfig {
             architecture: Architecture::X86_64,
             file_type: FileType::ObjDump,
-            registers: Some(&X86_64_REGISTERS),
+            registers: None,
             ..Default::default()
         };
 
@@ -589,7 +598,7 @@ mod test {
         let config = ParserConfig {
             architecture: Architecture::AArch64,
             file_type: FileType::Assembly,
-            registers: Some(&AARCH64_REGISTERS),
+            registers: None,
             ..Default::default()
         };
 

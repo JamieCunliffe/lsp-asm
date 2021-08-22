@@ -6,8 +6,8 @@ use std::path::PathBuf;
 use lsp_types::Url;
 use once_cell::sync::OnceCell;
 
-use super::ast::{self, SyntaxKind, SyntaxNode};
 use crate::types::{DocumentLocation, DocumentPosition, DocumentRange, LineNumber};
+use syntax::ast::{self, SyntaxKind, SyntaxNode};
 
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct DebugMap {

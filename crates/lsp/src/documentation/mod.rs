@@ -1,151 +1,137 @@
-mod registers;
-mod templates;
 use itertools::Itertools;
-pub(crate) use templates::*;
 
-use crate::types::Architecture;
-
-use std::collections::HashMap;
-use std::error::Error;
-use std::fmt::Display;
-use std::fs::File;
-use std::io::BufReader;
-use std::sync::{Arc, RwLock};
-
-/// The documentation map type
-/// The key for this type **MUST** be lowercase.
-/// Each mnemonic in here can have mutliple instructions
-pub type DocumentationMap = HashMap<String, Vec<Instruction>>;
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct OperandInfo {
-    pub name: String,
-    pub description: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct InstructionTemplate {
-    pub asm: Vec<String>,
-    pub display_asm: String,
-    pub items: Vec<OperandInfo>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Instruction {
-    pub opcode: String,
-    pub header: Option<String>,
-    pub architecture: Option<String>,
-    pub description: String,
-    pub asm_template: Vec<InstructionTemplate>,
-}
-
-impl Display for Instruction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(header) = self.header.clone() {
-            writeln!(f, "# {}\n", header)?;
-        }
-
-        writeln!(f, "{}", self.description)?;
-
-        if !self.asm_template.is_empty() {
-            writeln!(
-                f,
-                r#"
-## Syntax:
-
-{}"#,
-                self.asm_template
-                    .iter()
-                    .map(|t| format!("{}", t))
-                    .collect_vec()
-                    .join("\n")
-            )?;
-        }
-
-        Ok(())
-    }
-}
-
-impl Display for InstructionTemplate {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(
-            f,
-            "* `{}`\n{}",
-            self.display_asm,
-            self.items
-                .iter()
-                .map(|item| format!("{}", item))
-                .collect_vec()
-                .join("\n")
-        )
-    }
-}
-
-impl Display for OperandInfo {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "  - **{}** {}", self.name, self.description)
-    }
-}
-
-#[derive(Debug)]
-pub struct CacheError {
-    pub reason: String,
-}
-
-impl Display for CacheError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.reason)
-    }
-}
-
-impl Error for CacheError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        Some(self)
-    }
-}
+use base::register::{RegisterKind, Registers};
+use base::Architecture;
+use documentation::registers::DOC_REGISTERS;
+use documentation::{Instruction, InstructionTemplate};
+use lazy_static::lazy_static;
+use parser::config::ParserConfig;
+use syntax::ast::{SyntaxElement, SyntaxKind, SyntaxNode};
 
 lazy_static! {
-    static ref DOCUMENTATION_CACHE: Arc<RwLock<HashMap<Architecture, Arc<DocumentationMap>>>> =
-        Arc::new(RwLock::new(HashMap::new()));
+    static ref TEMPLATE_CONFIG: ParserConfig = ParserConfig {
+        comment_start: String::from("//"),
+        architecture: Architecture::AArch64,
+        file_type: Default::default(),
+        registers: Some(&documentation::registers::DOCUMENTATION_REGISTERS),
+    };
+}
+/// Finds the instruction template that matches the given node, this will
+/// require an exact match to be found otherwise None is returned
+pub fn find_correct_instruction_template<'a>(
+    node: &SyntaxNode,
+    instructions: &'a [Instruction],
+    lookup: &Option<impl Registers>,
+) -> Option<&'a InstructionTemplate> {
+    instructions
+        .iter()
+        .flat_map(|x| &x.asm_template)
+        .find(|template| {
+            template
+                .asm
+                .iter()
+                .any(|template| check_template(template, node, true, lookup))
+        })
 }
 
-pub fn load_documentation(arch: &Architecture) -> Result<Arc<DocumentationMap>, Box<dyn Error>> {
-    {
-        let cache = DOCUMENTATION_CACHE.read()?;
-        if let Some(d) = cache.get(arch) {
-            return Ok(d.clone());
+/// Finds the instruction templates that match the given node, this will return
+/// templates that are a partial match i.e. if the template is longer than the
+/// input but up to that point it matches, then it will be included.
+#[allow(unused)]
+pub fn find_potential_instruction_templates<'a>(
+    node: &SyntaxNode,
+    instructions: &'a [Instruction],
+    lookup: &Option<impl Registers>,
+) -> Vec<&'a InstructionTemplate> {
+    instructions
+        .iter()
+        .flat_map(|x| &x.asm_template)
+        .filter(|template| {
+            template
+                .asm
+                .iter()
+                .any(|template| check_template(template, node, false, lookup))
+        })
+        .collect_vec()
+}
+
+/// Given an an instruction template, find the instruction that it belongs to.
+pub fn instruction_from_template<'a>(
+    instructions: &'a [Instruction],
+    template: &InstructionTemplate,
+) -> Option<&'a Instruction> {
+    instructions
+        .iter()
+        .find(|x| x.asm_template.iter().any(|x| x == template))
+}
+
+fn check_template(
+    template: &str,
+    node: &SyntaxNode,
+    exact: bool,
+    lookup: &Option<impl Registers>,
+) -> bool {
+    // Some of the registers have a + in the name, replace that + with
+    // ADD so that the parser doesn't split it up.
+    let parsed_template = SyntaxNode::new_root(parser::parse_asm(
+        template.replace("+", "ADD").as_str(),
+        &TEMPLATE_CONFIG,
+    ));
+
+    let parsed_template = parsed_template.first_child().unwrap();
+    let filtered = node
+        .descendants_with_tokens()
+        .filter(|c| {
+            !matches!(
+                c.kind(),
+                SyntaxKind::WHITESPACE | SyntaxKind::METADATA | SyntaxKind::COMMENT
+            )
+        })
+        .collect_vec();
+
+    let filtered_parsed = parsed_template
+        .descendants_with_tokens()
+        .filter(|c| !matches!(c.kind(), SyntaxKind::WHITESPACE | SyntaxKind::METADATA))
+        .collect_vec();
+
+    (!exact || filtered.len() == filtered_parsed.len())
+        && filtered
+            .iter()
+            .zip(filtered_parsed.iter())
+            .all(|x| node_or_token_match(x, lookup))
+}
+
+fn node_or_token_match(
+    elements: (&SyntaxElement, &SyntaxElement),
+    lookup: &Option<impl Registers>,
+) -> bool {
+    match elements {
+        (a, t) if a.kind() == SyntaxKind::REGISTER && t.kind() == SyntaxKind::REGISTER => {
+            if let Some(lookup) = lookup {
+                let actual = a.as_token().unwrap().text();
+                let template = t.as_token().unwrap().text();
+
+                lookup.get_size(actual) == DOC_REGISTERS.get_size(template)
+                    || (lookup.is_sp(actual) && DOC_REGISTERS.is_sp(template))
+                    || (template.starts_with("<R>")
+                        && lookup
+                            .get_kind(actual)
+                            .contains(RegisterKind::GENERAL_PURPOSE))
+            } else {
+                false
+            }
         }
+        (a, t) if a.kind() == SyntaxKind::NUMBER && t.kind() == SyntaxKind::TOKEN => {
+            // If we have a number and we are expecting a token, it could still
+            // be a match if the token is an immediate
+            t.as_token()
+                // TODO: Could do more validation here
+                .map(|t| t.text().starts_with('#'))
+                .unwrap_or(false)
+        }
+        (a, t) if a.kind() == t.kind() => true,
+        _ => false,
     }
-    let base = directories::BaseDirs::new().ok_or_else(|| CacheError {
-        reason: String::from("Failed to init base directories"),
-    })?;
-    let path = base
-        .data_local_dir()
-        .join("lsp-asm")
-        .join(format!("{}.json", arch));
-
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
-    let data = serde_json::from_reader(reader)?;
-
-    {
-        let mut cache = DOCUMENTATION_CACHE.write()?;
-        cache.insert(*arch, Arc::new(data));
-    }
-
-    if let Some(d) = DOCUMENTATION_CACHE.read()?.get(arch) {
-        Ok(d.clone())
-    } else {
-        Err(Box::new(CacheError {
-            reason: String::from("Failed to read back inserted documentation"),
-        }))
-    }
-}
-
-#[cfg(feature = "poison")]
-pub fn poison_cache(arch: &Architecture, data: DocumentationMap) {
-    let mut cache = DOCUMENTATION_CACHE.write().unwrap();
-    cache.insert(*arch, Arc::new(data));
 }
 
 #[cfg(test)]

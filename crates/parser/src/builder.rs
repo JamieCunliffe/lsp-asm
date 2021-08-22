@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use rowan::{GreenNode, GreenToken, NodeOrToken};
 
-use super::ast::SyntaxKind;
+use syntax::ast::SyntaxKind;
 
 pub struct Builder {
     child: RefCell<Vec<NodeOrToken<GreenNode, GreenToken>>>,

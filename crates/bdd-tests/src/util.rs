@@ -1,14 +1,13 @@
 #![allow(deprecated)]
+use base::Architecture;
 use lsp_asm::config::LSPConfig;
 use lsp_asm::handler::semantic;
-use lsp_asm::types::{Architecture, DocumentLocation, DocumentPosition, DocumentRange};
-
+use lsp_asm::types::{DocumentLocation, DocumentPosition, DocumentRange};
 use lsp_server::ResponseError;
 use lsp_types::{
     CodeLens, Command, DocumentHighlight, DocumentHighlightKind, DocumentSymbol, Location, Range,
     SemanticToken, SymbolKind, Url,
 };
-
 use serde_json::Value;
 use std::collections::HashMap;
 

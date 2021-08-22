@@ -1,0 +1,15 @@
+[package]
+name = "parser"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+base = { path = "../base" }
+syntax = { path = "../syntax" }
+nom = "6.0.0"
+rowan = "0.12.6"
+either = "1.6.1"
+log = "0.4.14"
+
+[dev-dependencies]
+pretty_assertions = "0.7.2"

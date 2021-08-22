@@ -1,14 +1,14 @@
-use crate::config::LSPConfig;
-use crate::types::{Architecture, DocumentPosition, DocumentRange, LineNumber};
-
-use super::ast::{AstToken, LabelToken, SyntaxKind, SyntaxNode, SyntaxToken};
-use super::config::{FileType, ParserConfig};
+use super::ast::{AstToken, LabelToken};
 use super::debug::DebugMap;
-
+use crate::config::LSPConfig;
+use crate::types::{DocumentPosition, DocumentRange, LineNumber};
+use base::{Architecture, FileType};
 use byte_unit::Byte;
 use once_cell::sync::OnceCell;
+use parser::config::ParserConfig;
 use rayon::prelude::*;
 use rowan::{GreenNode, TextRange, TextSize};
+use syntax::ast::{SyntaxKind, SyntaxNode, SyntaxToken};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Parser {
@@ -35,10 +35,10 @@ impl Parser {
     /// * data: The assembly listing to parse
     pub fn from(data: &str, config: &LSPConfig) -> Self {
         let filesize = Byte::from_bytes(data.len() as _);
-        let mut config = ParserConfig::new(&Self::determine_architecture(data, config));
-        config.file_type = Self::determine_filetype(data);
+        let mut config = Self::config_from_arch(&Self::determine_architecture(data, config));
+        config.file_type = FileType::from_contents(data);
 
-        let root = Self::parse_asm(data, &config);
+        let root = parser::parse_asm(data, &config);
 
         Self {
             line_index: PositionInfo::new(data),
@@ -144,7 +144,7 @@ impl Parser {
 
     /// Gets a value that can be used to determine if two tokens refer to the
     /// same thing e.g. `0x10` and `16` should be considered equal just as
-    /// `label1:` and `label` are equal.
+    /// `label1:` and `label1` are equal.
     fn token_value<'a>(&self, token: &'a SyntaxToken) -> Option<SemanticEq<'a>> {
         match token.kind() {
             SyntaxKind::REGISTER => Some(SemanticEq::Register(super::registers::register_id(
@@ -179,26 +179,6 @@ impl Parser {
         }
     }
 
-    /// Helper function to perform the parsing of data
-    pub(crate) fn parse_asm(data: &str, config: &ParserConfig) -> GreenNode {
-        super::combinators::parse(data, config)
-    }
-
-    fn determine_filetype(filedata: &str) -> super::config::FileType {
-        use regex::Regex;
-
-        lazy_static! {
-            static ref OBJDUMP_DETECTION: Regex =
-                Regex::new(r#".*:[\t ]+file format .*\n\n\nDisassembly of section .*:"#).unwrap();
-        }
-
-        if OBJDUMP_DETECTION.is_match(filedata) {
-            FileType::ObjDump
-        } else {
-            Default::default()
-        }
-    }
-
     /// Attempt to determine the architecture that the assembly data is for.
     fn determine_architecture(filedata: &str, config: &LSPConfig) -> Architecture {
         use regex::Regex;
@@ -225,6 +205,23 @@ impl Parser {
         match arch {
             Architecture::Unknown => Architecture::from(std::env::consts::ARCH),
             a => a,
+        }
+    }
+
+    fn config_from_arch(arch: &Architecture) -> ParserConfig {
+        match arch {
+            Architecture::AArch64 => ParserConfig {
+                comment_start: String::from("//"),
+                registers: Some(&super::registers::AARCH64_REGISTERS),
+                architecture: *arch,
+                ..ParserConfig::default()
+            },
+            Architecture::X86_64 => ParserConfig {
+                registers: Some(&super::registers::X86_64_REGISTERS),
+                architecture: *arch,
+                ..ParserConfig::default()
+            },
+            Architecture::Unknown => ParserConfig::default(),
         }
     }
 }

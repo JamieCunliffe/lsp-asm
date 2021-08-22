@@ -1,62 +1,17 @@
-use crate::types::Architecture;
-
-use super::ast::SyntaxToken;
-use super::config::ParserConfig;
-use bitflags::bitflags;
-
-/// A register
-#[derive(Debug, PartialEq)]
-pub struct Register {
-    /// A list of names that for this register, each name in this list is
-    /// considered to be the same hardware register.
-    names: &'static [&'static str],
-}
-
-impl Register {
-    pub const fn new(names: &'static [&'static str]) -> Self {
-        Self { names }
-    }
-}
-
-bitflags! {
-    pub struct RegisterKind : u32 {
-        const NONE            = 0b00000000;
-        const GENERAL_PURPOSE = 0b00000001;
-        const FLOATING_POINT  = 0b00000010;
-        const SIMD            = 0b00000100;
-        const SCALABLE        = 0b00001000;
-        const PREDICATE       = 0b00010000;
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub enum RegisterSize {
-    Bits8(RegisterKind),
-    Bits16(RegisterKind),
-    Bits32(RegisterKind),
-    Bits64(RegisterKind),
-    Bits128(RegisterKind),
-    Vector,
-    Scalable(RegisterKind),
-    Unknown,
-}
-
-pub(crate) trait Registers {
-    fn get_kind(&self, token: &SyntaxToken) -> RegisterKind;
-    fn get_size(&self, token: &SyntaxToken) -> RegisterSize;
-    fn is_sp(&self, token: &SyntaxToken) -> bool;
-}
+use base::register::{RegisterKind, RegisterSize, Registers};
+use base::Architecture;
+use parser::config::ParserConfig;
+use parser::Register;
 
 pub struct AArch64 {}
 impl Registers for AArch64 {
-    fn get_kind(&self, token: &SyntaxToken) -> RegisterKind {
-        let name = register_name(token.text());
+    fn get_kind(&self, name: &str) -> RegisterKind {
         match name.get(0..=0).unwrap_or("\0") {
             "x" | "r" => RegisterKind::GENERAL_PURPOSE,
             "w" => RegisterKind::GENERAL_PURPOSE,
             "q" => RegisterKind::FLOATING_POINT,
             "d" => RegisterKind::FLOATING_POINT,
-            "s" if token.text() != "sp" => RegisterKind::FLOATING_POINT,
+            "s" if name != "sp" => RegisterKind::FLOATING_POINT,
             "h" => RegisterKind::FLOATING_POINT,
             "b" => RegisterKind::FLOATING_POINT,
             "v" => {
@@ -75,8 +30,7 @@ impl Registers for AArch64 {
         }
     }
 
-    fn get_size(&self, token: &SyntaxToken) -> RegisterSize {
-        let name = register_name(token.text());
+    fn get_size(&self, name: &str) -> RegisterSize {
         match name.get(0..=0).unwrap_or("\0") {
             "x" | "r" => RegisterSize::Bits64(RegisterKind::GENERAL_PURPOSE),
             "w" => RegisterSize::Bits32(RegisterKind::GENERAL_PURPOSE),
@@ -101,8 +55,8 @@ impl Registers for AArch64 {
         }
     }
 
-    fn is_sp(&self, token: &SyntaxToken) -> bool {
-        register_name(token.text()) == "sp"
+    fn is_sp(&self, name: &str) -> bool {
+        name == "sp"
     }
 }
 
@@ -114,24 +68,12 @@ pub(crate) fn registers_for_architecture(arch: &Architecture) -> Option<impl Reg
     }
 }
 
-/// Determine if `name` is a valid register
-pub(crate) fn is_register(name: &str, config: &ParserConfig) -> bool {
-    if let Some(registers) = config.registers {
-        let name = register_name(name);
-        registers
-            .iter()
-            .any(|register| register.names.contains(&name))
-    } else {
-        false
-    }
-}
-
 /// Gets an index for this register that can be used for comparisons, the id
 /// that is returned should only be considered valid for the given parser config
 /// when comparing.
 pub(crate) fn register_id(name: &str, config: &ParserConfig) -> Option<i8> {
     if let Some(registers) = config.registers {
-        let name = register_name(name);
+        let name = parser::register_name(name);
         registers
             .iter()
             .enumerate()
@@ -140,10 +82,6 @@ pub(crate) fn register_id(name: &str, config: &ParserConfig) -> Option<i8> {
     } else {
         None
     }
-}
-
-fn register_name(name: &str) -> &str {
-    name.strip_prefix('%').unwrap_or(name)
 }
 
 pub(crate) const X86_64_REGISTERS: [Register; 9] = [

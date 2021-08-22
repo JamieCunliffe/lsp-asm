@@ -1,7 +1,17 @@
 #![allow(deprecated)]
+use super::ast::{AstNode, LabelNode, LabelToken, LocalLabelNode, NumericToken, RegisterToken};
+use super::llvm_mca::run_mca;
+use super::parser::{Parser, PositionInfo};
+use super::registers::registers_for_architecture;
+use crate::config::LSPConfig;
+use crate::handler::error::{lsp_error_map, ErrorCode};
+use crate::handler::semantic::semantic_delta_transform;
+use crate::handler::types::DocumentChange;
+use crate::handler::LanguageServerProtocol;
+use crate::types::{DocumentPosition, DocumentRange};
+use base::register::RegisterKind;
+use base::Architecture;
 use itertools::*;
-use std::iter;
-
 use lsp_server::ResponseError;
 use lsp_types::{
     CodeLens, Command, DocumentHighlightKind, DocumentSymbol, DocumentSymbolResponse,
@@ -9,22 +19,8 @@ use lsp_types::{
     SemanticTokensResult, SymbolKind, Url,
 };
 use rowan::TextRange;
-
-use crate::config::LSPConfig;
-use crate::documentation::{self, load_documentation};
-use crate::handler::error::{lsp_error_map, ErrorCode};
-use crate::handler::semantic::semantic_delta_transform;
-use crate::handler::types::DocumentChange;
-use crate::handler::LanguageServerProtocol;
-use crate::types::{Architecture, DocumentPosition, DocumentRange};
-
-use super::ast::{
-    self, find_kind_index, AstNode, LabelNode, LabelToken, LocalLabelNode, NumericToken,
-    RegisterToken, SyntaxKind, SyntaxToken,
-};
-use super::llvm_mca::run_mca;
-use super::parser::{Parser, PositionInfo};
-use super::registers::{registers_for_architecture, RegisterKind};
+use std::iter;
+use syntax::ast::{self, find_kind_index, SyntaxKind, SyntaxToken};
 
 pub struct AssemblyLanguageServerProtocol {
     parser: Parser,
@@ -240,7 +236,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         let tokens = tokens
             .filter_map(|token| {
                 if let Some(index) = match token.kind() {
-                    _ if crate::asm::ast::find_parent(&token, SyntaxKind::METADATA).is_some() => {
+                    _ if syntax::ast::find_parent(&token, SyntaxKind::METADATA).is_some() => {
                         Some(crate::handler::semantic::METADATA_INDEX)
                     }
                     SyntaxKind::METADATA => Some(crate::handler::semantic::METADATA_INDEX),
@@ -411,17 +407,17 @@ fn get_label_hover(label: &LabelToken) -> Option<Vec<String>> {
 }
 
 fn get_hover_mnemonic(token: &SyntaxToken, arch: &Architecture) -> Option<Vec<String>> {
-    let docs = load_documentation(arch).ok()?;
+    let docs = documentation::load_documentation(arch).ok()?;
     let instructions = docs.get(&token.text().to_lowercase())?;
 
-    let template = documentation::find_correct_instruction_template(
+    let template = crate::documentation::find_correct_instruction_template(
         &token.parent(),
         instructions,
         &registers_for_architecture(arch),
     );
 
     if let Some(template) = template {
-        let instruction = documentation::instruction_from_template(instructions, template)?;
+        let instruction = crate::documentation::instruction_from_template(instructions, template)?;
 
         Some(vec![format!("{}", instruction)])
     } else {
@@ -967,7 +963,7 @@ end:
             Url::parse("file://test").unwrap(),
             0,
             LSPConfig {
-                architecture: crate::types::Architecture::AArch64,
+                architecture: Architecture::AArch64,
                 ..Default::default()
             },
         );

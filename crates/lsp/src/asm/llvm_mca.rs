@@ -1,9 +1,9 @@
+use base::Architecture;
 use std::error::Error;
 use std::io::{ErrorKind, Write};
 use std::process::{Command, Stdio};
 
 use crate::config::AnalysisConfig;
-use crate::types::Architecture;
 
 pub(super) fn run_mca(
     data: &str,

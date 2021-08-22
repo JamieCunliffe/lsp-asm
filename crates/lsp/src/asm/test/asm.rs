@@ -1,5 +1,5 @@
 use crate::assert_listing;
-use crate::types::Architecture;
+use base::Architecture;
 
 #[test]
 fn test_two_instructions() {

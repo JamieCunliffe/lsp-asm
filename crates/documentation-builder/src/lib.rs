@@ -1,10 +1,7 @@
+use base::Architecture;
+use documentation::{DocumentationMap, Instruction};
 use itertools::Itertools;
-
 use log::info;
-
-use lsp_asm::documentation::{DocumentationMap, Instruction};
-use lsp_asm::types::Architecture;
-
 use std::error::Error;
 use std::fs::{self, File};
 use std::io::prelude::*;

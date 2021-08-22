@@ -1,12 +1,11 @@
 #![allow(clippy::upper_case_acronyms)]
-use crate::asm::ast::SyntaxToken;
-use crate::asm::registers::{Register, RegisterKind, RegisterSize, Registers};
+use base::register::{RegisterKind, RegisterSize, Registers};
+use parser::Register;
 
-pub(super) struct DocRegisters {}
+pub struct DocRegisters {}
 
 impl Registers for DocRegisters {
-    fn get_kind(&self, token: &SyntaxToken) -> RegisterKind {
-        let name = token.text();
+    fn get_kind(&self, name: &str) -> RegisterKind {
         if name.get(0..=0) == Some("<") {
             match name.get(1..=1).unwrap_or("\0") {
                 "X" => RegisterKind::GENERAL_PURPOSE,
@@ -26,8 +25,7 @@ impl Registers for DocRegisters {
         }
     }
 
-    fn get_size(&self, token: &SyntaxToken) -> RegisterSize {
-        let name = token.text();
+    fn get_size(&self, name: &str) -> RegisterSize {
         if name.get(0..=0) == Some("<") {
             match name.get(1..=1).unwrap_or("\0") {
                 "X" => RegisterSize::Bits64(RegisterKind::GENERAL_PURPOSE),
@@ -47,14 +45,14 @@ impl Registers for DocRegisters {
         }
     }
 
-    fn is_sp(&self, token: &SyntaxToken) -> bool {
-        token.text().contains("SP")
+    fn is_sp(&self, name: &str) -> bool {
+        name.contains("SP")
     }
 }
 
-pub(super) const DOC_REGISTERS: DocRegisters = DocRegisters {};
+pub const DOC_REGISTERS: DocRegisters = DocRegisters {};
 
-pub(super) const DOCUMENTATION_REGISTERS: [Register; 1] = [Register::new(&[
+pub const DOCUMENTATION_REGISTERS: [Register; 1] = [Register::new(&[
     "<Bt>",
     "<Da>",
     "<Dd>",

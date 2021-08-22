@@ -1,5 +1,5 @@
 [package]
-name = "bdd-tests"
+name = "z-bdd-tests"
 version = "0.1.0"
 edition = "2018"
 
@@ -9,7 +9,9 @@ path = "src/runner.rs"
 harness = false
 
 [dev-dependencies]
-lsp-asm = { path = "../lsp", features = ["poison"] }
+base = { path = "../base" }
+documentation = { path = "../documentation", features = ["poison"] }
+lsp-asm = { path = "../lsp" }
 cucumber_rust = { version = "0.8.4", features = ["macros"] }
 tokio = { version = "1.10.0", features = ["macros", "rt-multi-thread"] }
 lsp-types = { version = "0.89.2", features = ["proposed"] }
