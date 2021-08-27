@@ -1,6 +1,6 @@
 use itertools::Itertools;
 
-use base::register::{RegisterKind, Registers};
+use base::register::{RegisterSize, Registers};
 use base::Architecture;
 use documentation::registers::DOC_REGISTERS;
 use documentation::{Instruction, InstructionTemplate};
@@ -111,12 +111,12 @@ fn node_or_token_match(
                 let actual = a.as_token().unwrap().text();
                 let template = t.as_token().unwrap().text();
 
-                lookup.get_size(actual) == DOC_REGISTERS.get_size(template)
-                    || (lookup.is_sp(actual) && DOC_REGISTERS.is_sp(template))
-                    || (template.starts_with("<R>")
-                        && lookup
-                            .get_kind(actual)
-                            .contains(RegisterKind::GENERAL_PURPOSE))
+                let doc_size = DOC_REGISTERS.get_size(template);
+                let size = lookup.get_size(actual) == doc_size || doc_size == RegisterSize::Unknown;
+
+                size && DOC_REGISTERS
+                    .get_kind(template)
+                    .contains(lookup.get_kind(actual))
             } else {
                 false
             }

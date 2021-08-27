@@ -8,7 +8,7 @@
       "asm_template": [
         {
           "asm": [
-            "STP  <St1>, <St2>, [<Xn|SP>], #<imm>"
+            "STP  <FP_32>, <FP_32>, [<GP|SP_32>], #<imm>"
           ],
           "display_asm": "STP  <St1>, <St2>, [<Xn|SP>], #<imm>",
           "items": [
@@ -32,7 +32,7 @@
         },
         {
           "asm": [
-            "STP  <Dt1>, <Dt2>, [<Xn|SP>], #<imm>"
+            "STP  <FP_64>, <FP_64>, [<GP|SP_64>], #<imm>"
           ],
           "display_asm": "STP  <Dt1>, <Dt2>, [<Xn|SP>], #<imm>",
           "items": [
@@ -56,7 +56,7 @@
         },
         {
           "asm": [
-            "STP  <Qt1>, <Qt2>, [<Xn|SP>], #<imm>"
+            "STP  <FP_128>, <FP_128>, [<GP|SP_64>], #<imm>"
           ],
           "display_asm": "STP  <Qt1>, <Qt2>, [<Xn|SP>], #<imm>",
           "items": [
@@ -80,7 +80,7 @@
         },
         {
           "asm": [
-            "STP  <St1>, <St2>, [<Xn|SP>, #<imm>]!"
+            "STP  <FP_32>, <FP_32>, [<GP|SP_64>, #<imm>]!"
           ],
           "display_asm": "STP  <St1>, <St2>, [<Xn|SP>, #<imm>]!",
           "items": [
@@ -104,7 +104,7 @@
         },
         {
           "asm": [
-            "STP  <Dt1>, <Dt2>, [<Xn|SP>, #<imm>]!"
+            "STP  <FP_64>, <FP_64>, [<GP|SP_64>, #<imm>]!"
           ],
           "display_asm": "STP  <Dt1>, <Dt2>, [<Xn|SP>, #<imm>]!",
           "items": [
@@ -128,7 +128,7 @@
         },
         {
           "asm": [
-            "STP  <Qt1>, <Qt2>, [<Xn|SP>, #<imm>]!"
+            "STP  <FP_128>, <FP_128>, [<GP|SP_64>, #<imm>]!"
           ],
           "display_asm": "STP  <Qt1>, <Qt2>, [<Xn|SP>, #<imm>]!",
           "items": [
@@ -152,8 +152,8 @@
         },
         {
           "asm": [
-            "STP  <St1>, <St2>, [<Xn|SP>, #<imm>]",
-            "STP  <St1>, <St2>, [<Xn|SP>]"
+            "STP  <FP_32>, <FP_32>, [<GP|SP_64>, #<imm>]",
+            "STP  <FP_32>, <FP_32>, [<GP|SP_64>]"
           ],
           "display_asm": "STP  <St1>, <St2>, [<Xn|SP>{, #<imm>}]",
           "items": [
@@ -177,8 +177,8 @@
         },
         {
           "asm": [
-            "STP  <Dt1>, <Dt2>, [<Xn|SP>, #<imm>]",
-            "STP  <Dt1>, <Dt2>, [<Xn|SP>]"
+            "STP  <GP_64>, <FP_64>, [<GP|SP_64>, #<imm>]",
+            "STP  <GP_64>, <FP_64>, [<GP|SP_64>]"
           ],
           "display_asm": "STP  <Dt1>, <Dt2>, [<Xn|SP>{, #<imm>}]",
           "items": [
@@ -202,8 +202,8 @@
         },
         {
           "asm": [
-            "STP  <Qt1>, <Qt2>, [<Xn|SP>, #<imm>]",
-            "STP  <Qt1>, <Qt2>, [<Xn|SP>]"
+            "STP  <FP_128>, <FP_128>, [<GP|SP_64>, #<imm>]",
+            "STP  <FP_128>, <FP_128>, [<GP|SP_64>]"
           ],
           "display_asm": "STP  <Qt1>, <Qt2>, [<Xn|SP>{, #<imm>}]",
           "items": [
@@ -235,7 +235,7 @@
       "asm_template": [
         {
           "asm": [
-            "STP  <Wt1>, <Wt2>, [<Xn|SP>], #<imm>"
+            "STP  <GP_32>, <GP_32>, [<GP|SP_64>], #<imm>"
           ],
           "display_asm": "STP  <Wt1>, <Wt2>, [<Xn|SP>], #<imm>",
           "items": [
@@ -259,7 +259,7 @@
         },
         {
           "asm": [
-            "STP  <Xt1>, <Xt2>, [<Xn|SP>], #<imm>"
+            "STP  <GP_64>, <GP_64>, [<GP|SP_64>], #<imm>"
           ],
           "display_asm": "STP  <Xt1>, <Xt2>, [<Xn|SP>], #<imm>",
           "items": [
@@ -283,7 +283,7 @@
         },
         {
           "asm": [
-            "STP  <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]!"
+            "STP  <GP_32>, <GP32>, [<GP|SP_64>, #<imm>]!"
           ],
           "display_asm": "STP  <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]!",
           "items": [
@@ -307,7 +307,7 @@
         },
         {
           "asm": [
-            "STP  <Xt1>, <Xt2>, [<Xn|SP>, #<imm>]!"
+            "STP  <GP_64>, <GP_64>, [<GP|SP_64>, #<imm>]!"
           ],
           "display_asm": "STP  <Xt1>, <Xt2>, [<Xn|SP>, #<imm>]!",
           "items": [
@@ -331,8 +331,8 @@
         },
         {
           "asm": [
-            "STP  <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]",
-            "STP  <Wt1>, <Wt2>, [<Xn|SP>]"
+            "STP  <GP_32>, <GP_32>, [<GP|SP_64>, #<imm>]",
+            "STP  <GP_32>, <GP_32>, [<GP|SP_64>]"
           ],
           "display_asm": "STP  <Wt1>, <Wt2>, [<Xn|SP>{, #<imm>}]",
           "items": [
@@ -356,8 +356,8 @@
         },
         {
           "asm": [
-            "STP  <Xt1>, <Xt2>, [<Xn|SP>, #<imm>]",
-            "STP  <Xt1>, <Xt2>, [<Xn|SP>]"
+            "STP  <GP_64>, <GP_64>, [<GP|SP_64>, #<imm>]",
+            "STP  <GP_64>, <GP_64>, [<GP|SP_64>]"
           ],
           "display_asm": "STP  <Xt1>, <Xt2>, [<Xn|SP>{, #<imm>}]",
           "items": [
@@ -378,6 +378,128 @@
               "description": "Position 4"
             }
           ]
+        }
+      ]
+    }
+  ],
+  "ld1w": [
+    {
+      "opcode": "LD1W",
+      "header": "LD1W V0",
+      "architecture": null,
+      "description": "LD1W 0",
+      "asm_template": [
+        {
+          "asm": [
+            "LD1W    { <SCALE_V> }, <PRED_V>, [<SCALE_V>, #<imm>]",
+            "LD1W    { <SCALE_V> }, <PRED_V>, [<SCALE_V>]"
+          ],
+          "display_asm": "LD1W ...",
+          "items": []
+        },
+        {
+          "asm": [
+            "LD1W    { <SCALE_V> }, <PRED_V>, [<SCALE_V>, #<imm>]",
+            "LD1W    { <SCALE_V> }, <PRED_V>, [<SCALE_V>]"
+          ],
+          "display_asm": "LD1W ...",
+          "items": []
+        }
+      ]
+    },
+    {
+      "opcode": "LD1W",
+      "header": "LD1W V1",
+      "architecture": null,
+      "description": "LD1W 9",
+      "asm_template": [
+        {
+          "asm": [
+            "LD1W    { <SCALE_V> }, <PRED_V>, [<GP|SP_64>, #<imm>, MUL VL]",
+            "LD1W    { <SCALE_V> }, <PRED_V>, [<GP|SP_64>]"
+          ],
+          "display_asm": "LD1W ...",
+          "items": []
+        },
+        {
+          "asm": [
+            "LD1W    { <SCALE_V> }, <PRED_V>, [<GP|SP_64>, #<imm>, MUL VL]",
+            "LD1W    { <SCALE_V> }, <PRED_V>, [<GP|SP_64>]"
+          ],
+          "display_asm": "LD1W ...",
+          "items": []
+        }
+      ]
+    },
+    {
+      "opcode": "LD1W",
+      "header": "LD1W V2",
+      "architecture": null,
+      "description": "LD1W 18",
+      "asm_template": [
+        {
+          "asm": [
+            "LD1W    { <SCALE_V> }, <PRED_V>, [<GP|SP_64>, <GP_64>, LSL #2]"
+          ],
+          "display_asm": "LD1W ...",
+          "items": []
+        },
+        {
+          "asm": [
+            "LD1W    { <SCALE_V> }, <PRED_V>, [<GP|SP_64>, <GP_64>, LSL #2]"
+          ],
+          "display_asm": "LD1W ...",
+          "items": []
+        }
+      ]
+    },
+    {
+      "opcode": "LD1W",
+      "header": "LD1W V3",
+      "architecture": null,
+      "description": "LD1W 27",
+      "asm_template": [
+        {
+          "asm": [
+            "LD1W    { <SCALE_V> }, <PRED_V>, [<GP|SP_64>, <SCALE_V>, <mod> #2]"
+          ],
+          "display_asm": "LD1W ...",
+          "items": []
+        },
+        {
+          "asm": [
+            "LD1W    { <SCALE_V> }, <PRED_V>, [<GP|SP_64>, <SCALE_V>, <mod> #2]"
+          ],
+          "display_asm": "LD1W ...",
+          "items": []
+        },
+        {
+          "asm": [
+            "LD1W    { <SCALE_V> }, <PRED_V>, [<GP|SP_64>, <SCALE_V>, <mod>]"
+          ],
+          "display_asm": "LD1W ...",
+          "items": []
+        },
+        {
+          "asm": [
+            "LD1W    { <SCALE_V> }, <PRED_V>, [<GP|SP_64>, <SCALE_V>, <mod>]"
+          ],
+          "display_asm": "LD1W ...",
+          "items": []
+        },
+        {
+          "asm": [
+            "LD1W    { <SCALE_V> }, <PRED_V>, [<GP|SP_64>, <SCALE_V>, LSL #2]"
+          ],
+          "display_asm": "LD1W ...",
+          "items": []
+        },
+        {
+          "asm": [
+            "LD1W    { <SCALE_V> }, <PRED_V>, [<GP|SP_64>, <SCALE_V>]"
+          ],
+          "display_asm": "LD1W ...",
+          "items": []
         }
       ]
     }

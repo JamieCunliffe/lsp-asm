@@ -1,10 +1,11 @@
+use itertools::Itertools;
 use std::error::Error;
 use std::ffi::OsStr;
 use std::io::prelude::*;
 
-use itertools::Itertools;
-
-use documentation::{Instruction, InstructionTemplate, OperandInfo};
+use documentation::{
+    registers::to_documentation_name, Instruction, InstructionTemplate, OperandInfo,
+};
 use log::warn;
 
 const A64_ISA: &str = "https://developer.arm.com/-/media/developer/products/architecture/armv8-a-architecture/2021-06/A64_ISA_xml_v87A-2021-06.tar.gz";
@@ -99,7 +100,15 @@ fn process_isa_ref(data: &str, file: &str) -> Vec<Instruction> {
     let asm_template = asm
         .zip(operands)
         .map(|(asm, items)| InstructionTemplate {
-            asm: parse_template(&asm, &items),
+            asm: parse_template(&asm, &items)
+                .drain(..)
+                .map(|mut t| {
+                    crate::register_replacements::REGISTER_REPLACEMENTS
+                        .iter()
+                        .for_each(|(f, s, k)| t = t.replace(f, &to_documentation_name(k, s)));
+                    t
+                })
+                .collect_vec(),
             display_asm: asm.clone(),
             items,
         })

@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use bitflags::bitflags;
 
 bitflags! {
@@ -8,18 +10,20 @@ bitflags! {
         const SIMD            = 0b00000100;
         const SCALABLE        = 0b00001000;
         const PREDICATE       = 0b00010000;
+        const SP              = 0b00100000;
+
+        const GP_OR_SP = RegisterKind::GENERAL_PURPOSE.bits | RegisterKind::SP.bits;
     }
 }
 
 #[derive(Debug, PartialEq)]
 pub enum RegisterSize {
-    Bits8(RegisterKind),
-    Bits16(RegisterKind),
-    Bits32(RegisterKind),
-    Bits64(RegisterKind),
-    Bits128(RegisterKind),
+    Bits8,
+    Bits16,
+    Bits32,
+    Bits64,
+    Bits128,
     Vector,
-    Scalable(RegisterKind),
     Unknown,
 }
 
@@ -27,4 +31,48 @@ pub trait Registers {
     fn get_kind(&self, register: &str) -> RegisterKind;
     fn get_size(&self, register: &str) -> RegisterSize;
     fn is_sp(&self, register: &str) -> bool;
+}
+
+impl Display for RegisterSize {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match *self {
+                RegisterSize::Bits8 => "8",
+                RegisterSize::Bits16 => "16",
+                RegisterSize::Bits32 => "32",
+                RegisterSize::Bits64 => "64",
+                RegisterSize::Bits128 => "128",
+                RegisterSize::Vector => "V",
+                RegisterSize::Unknown => "U",
+            }
+        )
+    }
+}
+
+impl Display for RegisterKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut r = Vec::new();
+        if self.contains(RegisterKind::GENERAL_PURPOSE) {
+            r.push("GP");
+        }
+        if self.contains(RegisterKind::FLOATING_POINT) {
+            r.push("FP");
+        }
+        if self.contains(RegisterKind::SIMD) {
+            r.push("SIMD");
+        }
+        if self.contains(RegisterKind::SCALABLE) {
+            r.push("SCALE");
+        }
+        if self.contains(RegisterKind::PREDICATE) {
+            r.push("PRED");
+        }
+        if self.contains(RegisterKind::SP) {
+            r.push("SP");
+        }
+
+        write!(f, "{}", r.join("|"))
+    }
 }

@@ -9,6 +9,7 @@ impl Registers for AArch64 {
         match name.get(0..=0).unwrap_or("\0") {
             "x" | "r" => RegisterKind::GENERAL_PURPOSE,
             "w" => RegisterKind::GENERAL_PURPOSE,
+            "s" if name == "sp" => RegisterKind::SP,
             "q" => RegisterKind::FLOATING_POINT,
             "d" => RegisterKind::FLOATING_POINT,
             "s" if name != "sp" => RegisterKind::FLOATING_POINT,
@@ -32,13 +33,14 @@ impl Registers for AArch64 {
 
     fn get_size(&self, name: &str) -> RegisterSize {
         match name.get(0..=0).unwrap_or("\0") {
-            "x" | "r" => RegisterSize::Bits64(RegisterKind::GENERAL_PURPOSE),
-            "w" => RegisterSize::Bits32(RegisterKind::GENERAL_PURPOSE),
-            "q" => RegisterSize::Bits128(RegisterKind::FLOATING_POINT),
-            "d" => RegisterSize::Bits64(RegisterKind::FLOATING_POINT),
-            "s" => RegisterSize::Bits32(RegisterKind::FLOATING_POINT),
-            "h" => RegisterSize::Bits16(RegisterKind::FLOATING_POINT),
-            "b" => RegisterSize::Bits8(RegisterKind::FLOATING_POINT),
+            "x" | "r" => RegisterSize::Bits64,
+            "s" if name == "sp" => RegisterSize::Bits64,
+            "w" => RegisterSize::Bits32,
+            "q" => RegisterSize::Bits128,
+            "d" => RegisterSize::Bits64,
+            "s" => RegisterSize::Bits32,
+            "h" => RegisterSize::Bits16,
+            "b" => RegisterSize::Bits8,
             "v" => {
                 let size = name.split('.').next().unwrap_or("\0");
                 match size {
@@ -49,8 +51,8 @@ impl Registers for AArch64 {
                     _ => RegisterSize::Vector,
                 }
             }
-            "p" => RegisterSize::Scalable(RegisterKind::PREDICATE),
-            "z" => RegisterSize::Scalable(RegisterKind::SCALABLE),
+            "p" => RegisterSize::Vector,
+            "z" => RegisterSize::Vector,
             _ => RegisterSize::Unknown,
         }
     }

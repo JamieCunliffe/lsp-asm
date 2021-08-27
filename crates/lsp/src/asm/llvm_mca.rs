@@ -22,7 +22,7 @@ pub(super) fn run_mca(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    if let Some(cpu) = config.default_cpus.get(&arch) {
+    if let Some(cpu) = config.default_cpus.get(arch) {
         command.arg(format!("-mcpu={}", cpu));
     } else if !arch.is_host() {
         // MCA defaults the cpu to be the host cpu, if we are running for a
