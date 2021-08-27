@@ -18,6 +18,7 @@ pub enum SyntaxKind {
     MNEMONIC,
     REGISTER,
     TOKEN,
+    FLOAT,
     NUMBER,
     WHITESPACE,
     COMMA,

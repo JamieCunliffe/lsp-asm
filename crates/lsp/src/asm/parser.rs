@@ -28,6 +28,7 @@ enum SemanticEq<'a> {
     Register(i8),
     /// The token is a numeric value
     Numeric(i128),
+    Float(f64),
 }
 
 impl Parser {
@@ -153,6 +154,7 @@ impl Parser {
             )?)),
             SyntaxKind::TOKEN => Some(SemanticEq::String(token.text())),
             SyntaxKind::NUMBER => Some(SemanticEq::Numeric(token.text().parse::<i128>().ok()?)),
+            SyntaxKind::FLOAT => Some(SemanticEq::Float(token.text().parse::<f64>().ok()?)),
             SyntaxKind::LABEL => self
                 .token::<LabelToken>(token)
                 .map(|t| SemanticEq::String(t.name())),

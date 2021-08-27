@@ -10,7 +10,7 @@ use nom::multi::many0;
 use nom::sequence::{delimited, preceded, terminated};
 use nom::{IResult, InputTake};
 use rowan::GreenNode;
-use std::num::ParseIntError;
+use std::num::{ParseFloatError, ParseIntError};
 use syntax::ast::SyntaxKind;
 
 type Span<'a> = super::span::Span<'a, &'a InternalSpanConfig<'a>>;
@@ -313,6 +313,8 @@ fn span_to_token(token: &Span) {
         token.token(SyntaxKind::REGISTER, token.as_str());
     } else if is_numeric(token.as_str()) {
         token.token(SyntaxKind::NUMBER, token.as_str());
+    } else if is_floating_point(token.as_str()) {
+        token.token(SyntaxKind::FLOAT, token.as_str());
     } else if token.as_str().ends_with(':') {
         token.token(SyntaxKind::LABEL, token.as_str());
     } else {
@@ -338,6 +340,11 @@ fn is_numeric(token: &str) -> bool {
     parse_number(token).is_ok()
 }
 
+/// Tests if a string is a floating point number
+fn is_floating_point(token: &str) -> bool {
+    parse_float(token).is_ok()
+}
+
 /// Parse a number into an i128, this will account for any prefixes and use them.
 /// a $ or # will be ignored and skipped any number prefixed with 0x will be
 /// parsed as a base 16 number
@@ -348,6 +355,11 @@ pub fn parse_number(token: &str) -> Result<i128, ParseIntError> {
     } else {
         token.parse::<i128>()
     }
+}
+
+pub(crate) fn parse_float(token: &str) -> Result<f64, ParseFloatError> {
+    let token = token.trim_start_matches(|c: char| ['$', '#'].contains(&c));
+    token.parse::<f64>()
 }
 
 /// Parse any expression that is contained within a set of brackets
@@ -558,6 +570,11 @@ mod test {
         assert_eq!(true, is_numeric("#-42"));
         assert_eq!(true, is_numeric("0x123456789ABCDEF"));
         assert_eq!(true, is_numeric("0x123456789abcdef"));
+    }
+
+    #[test]
+    fn test_is_numeric_float() {
+        assert_eq!(true, is_floating_point("#1.00000"));
     }
 
     #[test]

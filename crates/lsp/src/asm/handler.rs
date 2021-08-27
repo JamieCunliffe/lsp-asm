@@ -161,6 +161,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             | SyntaxKind::STRING
             | SyntaxKind::LOCAL_LABEL
             | SyntaxKind::COMMENT
+            | SyntaxKind::FLOAT
             | SyntaxKind::INSTRUCTION
             | SyntaxKind::DIRECTIVE
             | SyntaxKind::BRACKETS
@@ -246,7 +247,9 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                         _ => unreachable!("Parent should be instruction or directive"),
                     },
                     SyntaxKind::COMMENT => Some(crate::handler::semantic::COMMENT_INDEX),
-                    SyntaxKind::NUMBER => Some(crate::handler::semantic::NUMERIC_INDEX),
+                    SyntaxKind::NUMBER | SyntaxKind::FLOAT => {
+                        Some(crate::handler::semantic::NUMERIC_INDEX)
+                    }
                     SyntaxKind::STRING => Some(crate::handler::semantic::STRING_INDEX),
                     SyntaxKind::REGISTER => self
                         .parser
