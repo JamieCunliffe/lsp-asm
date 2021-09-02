@@ -121,7 +121,10 @@ fn node_or_token_match(
                 false
             }
         }
-        (a, t) if a.kind() == SyntaxKind::NUMBER && t.kind() == SyntaxKind::TOKEN => {
+        (a, t)
+            if matches!(a.kind(), SyntaxKind::NUMBER | SyntaxKind::FLOAT)
+                && t.kind() == SyntaxKind::TOKEN =>
+        {
             // If we have a number and we are expecting a token, it could still
             // be a match if the token is an immediate
             t.as_token()
