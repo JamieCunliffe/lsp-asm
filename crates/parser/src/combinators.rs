@@ -376,15 +376,24 @@ fn parse_brackets(remaining: Span, tokens: (SyntaxKind, SyntaxKind)) -> NomResul
         _ => panic!("Unexpected bracket type"),
     };
 
-    let (remaining, inner) = get_bracket_span(remaining, pair)?;
+    let span = get_bracket_span(remaining.clone(), pair);
 
-    remaining.start_node(SyntaxKind::BRACKETS);
-    remaining.token(tokens.0, pair.0);
-    many0(parse_line)(inner)?;
-    remaining.token(tokens.1, pair.1);
-    remaining.finish_node();
+    if let Ok((remaining, inner)) = span {
+        remaining.start_node(SyntaxKind::BRACKETS);
+        remaining.token(tokens.0, pair.0);
+        many0(parse_line)(inner)?;
+        remaining.token(tokens.1, pair.1);
+        remaining.finish_node();
 
-    Ok((remaining, ()))
+        Ok((remaining, ()))
+    } else {
+        remaining.start_node(SyntaxKind::BRACKETS);
+        remaining.token(tokens.0, pair.0);
+        let (remaining, _) = remaining.take_split(1);
+        let (remaining, _) = many0(parse_line)(remaining)?;
+        remaining.finish_node();
+        Ok((remaining, ()))
+    }
 }
 
 /// Skip the parser to the end of the line and generate a `TokenValue::Comment` with the contents
