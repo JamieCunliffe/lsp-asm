@@ -321,6 +321,22 @@ impl PositionInfo {
                     None
                 }
             }))
+            .chain(std::iter::once(((data.len() + 1) as u32).into()))
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_line_map() {
+        let data = r#"first line
+second line
+another"#;
+        let map = PositionInfo::new(data);
+        let result: Vec<TextSize> = vec![0u32.into(), 11u32.into(), 23u32.into(), 31u32.into()];
+        assert_eq!(result, map.lines);
     }
 }

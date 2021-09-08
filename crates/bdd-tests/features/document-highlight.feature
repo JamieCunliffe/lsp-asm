@@ -32,3 +32,18 @@ Feature: Testing document highlight
     When I run "document highlight" on the file "./features/test-files/multiple-functions.s" at position "36:7"
     Then I expect the following response
       | range | kind |
+
+  Scenario: Request highlight for register on last line
+    Given an lsp initialized with the following parameters
+      | key          | value  |
+      | architecture | x86-64 |
+    When I open the temporary file "t1"
+      """
+        movl %edi, -4(%rbp)
+        movl -4(%rbp), %eax
+      """
+    When I run "document highlight" on the file "t1" at position "1:16"
+    Then I expect the following response
+      |     range | kind |
+      | 1:14-1:18 | text |
+      | 2:8-2:12  | text |
