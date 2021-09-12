@@ -112,10 +112,7 @@ impl Parser {
     /// Gets the the token at the given `position`.
     pub(crate) fn token_at_point(&self, position: &DocumentPosition) -> Option<SyntaxToken> {
         let position = self.position().point_for_position(position)?;
-        self.tree()
-            .descendants_with_tokens()
-            .filter_map(|t| t.into_token())
-            .find(|token| token.text_range().contains(position))
+        self.tree().token_at_offset(position).right_biased()
     }
 
     /// Gets the tokens that are contained within `range`.
