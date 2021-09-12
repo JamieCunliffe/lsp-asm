@@ -9,6 +9,7 @@ pub(crate) enum ErrorCode {
     FileNotFound,
     InvalidVersion(Url),
     MCAFailed(String),
+    MissingParentNode,
 }
 
 #[derive(Serialize)]
@@ -46,6 +47,11 @@ pub(crate) fn lsp_error_map(error: ErrorCode) -> ResponseError {
         ErrorCode::MCAFailed(reason) => ResponseError {
             code: 7,
             message: format!("Failed to run llvm-mca due to error: {}", reason),
+            data: None,
+        },
+        ErrorCode::MissingParentNode => ResponseError {
+            code: 8,
+            message: String::from("No parent node attached"),
             data: None,
         },
     }

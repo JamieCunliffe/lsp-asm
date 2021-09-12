@@ -11,7 +11,7 @@ use super::types::{DocumentChange, DocumentRangeMessage, FindReferencesMessage, 
 use super::LanguageServerProtocol;
 
 use lsp_server::ResponseError;
-use lsp_types::{DidChangeTextDocumentParams, Url};
+use lsp_types::{CompletionList, DidChangeTextDocumentParams, Url};
 
 pub struct LangServerHandler {
     actors: RwLock<HashMap<Url, RwLock<Box<dyn LanguageServerProtocol + Send + Sync>>>>,
@@ -184,6 +184,20 @@ impl LangServerHandler {
             .read()
             .await
             .code_lens()
+    }
+
+    pub async fn completion(
+        &self,
+        location: LocationMessage,
+    ) -> Result<CompletionList, ResponseError> {
+        self.actors
+            .read()
+            .await
+            .get(&location.url)
+            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+            .read()
+            .await
+            .completion(location.position)
     }
 
     pub async fn syntax_tree(&self, url: Url) -> Result<String, ResponseError> {

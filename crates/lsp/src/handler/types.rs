@@ -1,5 +1,7 @@
-use crate::types::{DocumentLocation, DocumentPosition, DocumentRange};
-use lsp_types::{TextDocumentPositionParams, Url};
+use crate::types::{CompletionItem, DocumentLocation, DocumentPosition, DocumentRange};
+use lsp_types::{
+    CompletionItemKind, Documentation, MarkupContent, TextDocumentPositionParams, Url,
+};
 
 impl From<lsp_types::TextDocumentPositionParams> for DocumentPosition {
     fn from(pos: lsp_types::TextDocumentPositionParams) -> Self {
@@ -108,4 +110,38 @@ impl From<super::ext::RunAnalysisParams> for DocumentRangeMessage {
 pub struct DocumentChange {
     pub(crate) text: String,
     pub(crate) range: Option<DocumentRange>,
+}
+
+impl From<CompletionItem> for lsp_types::CompletionItem {
+    fn from(item: CompletionItem) -> Self {
+        Self {
+            label: item.text,
+            label_details: None,
+            kind: Some(match item.kind {
+                crate::types::CompletionKind::Label => CompletionItemKind::Constant,
+                crate::types::CompletionKind::Register => CompletionItemKind::Variable,
+                crate::types::CompletionKind::Mnemonic => CompletionItemKind::Function,
+            }),
+            detail: Some(item.details),
+            documentation: item.documentation.map(|d| {
+                Documentation::MarkupContent(MarkupContent {
+                    kind: lsp_types::MarkupKind::Markdown,
+                    value: d,
+                })
+            }),
+            deprecated: None,
+            preselect: None,
+            sort_text: None,
+            filter_text: None,
+            insert_text: None,
+            insert_text_format: None,
+            insert_text_mode: None,
+            text_edit: None,
+            additional_text_edits: None,
+            command: None,
+            commit_characters: None,
+            data: None,
+            tags: None,
+        }
+    }
 }

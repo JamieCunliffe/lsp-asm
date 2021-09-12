@@ -72,8 +72,7 @@ pub type SyntaxToken = rowan::SyntaxToken<AssemblyLanguage>;
 pub type SyntaxElement = rowan::NodeOrToken<SyntaxNode, SyntaxToken>;
 
 pub fn find_parent(token: &SyntaxToken, syntax_kind: SyntaxKind) -> Option<SyntaxNode> {
-    iter::successors(Some(token.parent()), |parent| parent.parent())
-        .find(|e| e.kind() == syntax_kind)
+    iter::successors(token.parent(), |parent| parent.parent()).find(|e| e.kind() == syntax_kind)
 }
 
 pub fn find_kind_index(

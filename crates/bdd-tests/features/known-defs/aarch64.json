@@ -177,8 +177,8 @@
         },
         {
           "asm": [
-            "STP  <GP_64>, <FP_64>, [<GP|SP_64>, #<imm>]",
-            "STP  <GP_64>, <FP_64>, [<GP|SP_64>]"
+            "STP  <FP_64>, <FP_64>, [<GP|SP_64>, #<imm>]",
+            "STP  <FP_64>, <FP_64>, [<GP|SP_64>]"
           ],
           "display_asm": "STP  <Dt1>, <Dt2>, [<Xn|SP>{, #<imm>}]",
           "items": [

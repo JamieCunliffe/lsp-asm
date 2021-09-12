@@ -2,11 +2,13 @@
 use base::Architecture;
 use lsp_asm::config::LSPConfig;
 use lsp_asm::handler::semantic;
-use lsp_asm::types::{DocumentLocation, DocumentPosition, DocumentRange};
+use lsp_asm::types::{
+    CompletionItem, CompletionKind, DocumentLocation, DocumentPosition, DocumentRange,
+};
 use lsp_server::ResponseError;
 use lsp_types::{
-    CodeLens, Command, DocumentHighlight, DocumentHighlightKind, DocumentSymbol, Location, Range,
-    SemanticToken, SymbolKind, Url,
+    CodeLens, Command, CompletionList, DocumentHighlight, DocumentHighlightKind, DocumentSymbol,
+    Location, Range, SemanticToken, SymbolKind, Url,
 };
 use serde_json::Value;
 use std::collections::HashMap;
@@ -171,4 +173,39 @@ pub(crate) fn make_codelens(table: &Vec<Vec<String>>) -> Option<Vec<CodeLens>> {
             })
             .collect()
     })
+}
+
+pub(crate) fn make_completion(table: &Vec<Vec<String>>) -> CompletionList {
+    let items = table
+        .iter()
+        .skip(1)
+        .map(|row| CompletionItem {
+            text: row.get(0).unwrap().parse().unwrap(),
+            details: row.get(1).unwrap().replace("%PIPE%", "|"),
+            documentation: row.get(3).map(String::from),
+            kind: match row.get(2).unwrap().as_str() {
+                "mnemonic" => CompletionKind::Mnemonic,
+                "label" => CompletionKind::Label,
+                "register" => CompletionKind::Register,
+                x => panic!("Unknown completion kind: {}", x),
+            },
+        })
+        .map(|i| i.into())
+        .collect::<Vec<_>>();
+
+    CompletionList {
+        is_incomplete: true,
+        items,
+    }
+}
+
+pub(crate) fn sort_completions(mut list: CompletionList) -> CompletionList {
+    let items = &mut list.items;
+    items.sort_by(|a, b| {
+        let a = (&a.label, a.detail.as_ref().unwrap());
+        let b = (&b.label, b.detail.as_ref().unwrap());
+        a.cmp(&b)
+    });
+
+    list
 }

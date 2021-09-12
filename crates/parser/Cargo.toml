@@ -7,7 +7,7 @@ edition = "2018"
 base = { path = "../base" }
 syntax = { path = "../syntax" }
 nom = "6.0.0"
-rowan = "0.12.6"
+rowan = "0.13.2"
 either = "1.6.1"
 log = "0.4.14"
 

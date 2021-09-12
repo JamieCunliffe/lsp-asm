@@ -3,6 +3,7 @@ use super::ast::{AstNode, LabelNode, LabelToken, LocalLabelNode, NumericToken, R
 use super::llvm_mca::run_mca;
 use super::parser::{Parser, PositionInfo};
 use super::registers::registers_for_architecture;
+use crate::completion;
 use crate::config::LSPConfig;
 use crate::handler::error::{lsp_error_map, ErrorCode};
 use crate::handler::semantic::semantic_delta_transform;
@@ -14,9 +15,9 @@ use base::Architecture;
 use itertools::*;
 use lsp_server::ResponseError;
 use lsp_types::{
-    CodeLens, Command, DocumentHighlightKind, DocumentSymbol, DocumentSymbolResponse,
-    HoverContents, Location, MarkupContent, Range, SemanticToken, SemanticTokens,
-    SemanticTokensResult, SymbolKind, Url,
+    CodeLens, Command, CompletionList, DocumentHighlightKind, DocumentSymbol,
+    DocumentSymbolResponse, HoverContents, Location, MarkupContent, Range, SemanticToken,
+    SemanticTokens, SemanticTokensResult, SymbolKind, Url,
 };
 use rowan::TextRange;
 use std::iter;
@@ -81,7 +82,11 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             SyntaxKind::MNEMONIC if token.text() == ".loc" => vec![self
                 .parser
                 .debug_map()
-                .get_file_location(&token.parent())
+                .get_file_location(
+                    &token
+                        .parent()
+                        .ok_or_else(|| lsp_error_map(ErrorCode::MissingParentNode))?,
+                )
                 .map(|l| l.into())
                 .ok_or_else(|| lsp_error_map(ErrorCode::InvalidPosition))?],
             _ => Vec::new(),
@@ -241,7 +246,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                         Some(crate::handler::semantic::METADATA_INDEX)
                     }
                     SyntaxKind::METADATA => Some(crate::handler::semantic::METADATA_INDEX),
-                    SyntaxKind::MNEMONIC => match token.parent().kind() {
+                    SyntaxKind::MNEMONIC => match token.parent()?.kind() {
                         SyntaxKind::INSTRUCTION => Some(crate::handler::semantic::OPCODE_INDEX),
                         SyntaxKind::DIRECTIVE => Some(crate::handler::semantic::DIRECTIVE_INDEX),
                         _ => unreachable!("Parent should be instruction or directive"),
@@ -365,6 +370,24 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         Ok(lens)
     }
 
+    fn completion(&self, location: DocumentPosition) -> Result<CompletionList, ResponseError> {
+        let docs = match documentation::load_documentation(self.parser.architecture()) {
+            Err(_) => return Ok(Default::default()),
+            Ok(docs) => docs,
+        };
+
+        let items = completion::handle_completion(&self.parser, &location, docs)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|i| i.into())
+            .collect_vec();
+
+        Ok(CompletionList {
+            is_incomplete: true,
+            items,
+        })
+    }
+
     fn syntax_tree(&self) -> Result<String, ResponseError> {
         Ok(format!("{:#?}", self.parser.tree()))
     }
@@ -410,11 +433,13 @@ fn get_label_hover(label: &LabelToken) -> Option<Vec<String>> {
 }
 
 fn get_hover_mnemonic(token: &SyntaxToken, arch: &Architecture) -> Option<Vec<String>> {
+    let instruction = ast::find_parent(token, SyntaxKind::INSTRUCTION)?;
+
     let docs = documentation::load_documentation(arch).ok()?;
     let instructions = docs.get(&token.text().to_lowercase())?;
 
     let template = crate::documentation::find_correct_instruction_template(
-        &token.parent(),
+        &instruction,
         instructions,
         &registers_for_architecture(arch),
     );

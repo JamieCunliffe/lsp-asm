@@ -8,6 +8,7 @@ It currently supports the following LSP messages:
 * Semantic Tokens/Syntax Highlighting (labels, registers, numbers, comments, directives, instructions)
 * Document Symbols
 * Codelens (shows line `.loc` directive refers to)
+* Completion (based on the documentation, experimental)
 
 ## Additional commands
 * `runAnalysis` Run LLVM MCA on the file/region

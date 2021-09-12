@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-rowan = "0.12.6"
+rowan = "0.13.2"

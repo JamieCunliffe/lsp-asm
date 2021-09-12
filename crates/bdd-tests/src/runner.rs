@@ -18,6 +18,8 @@ use util::{get_doc_position, parse_config};
 
 use lsp_asm::handler::handlers::LangServerHandler;
 
+use crate::util::sort_completions;
+
 mod util;
 
 #[tokio::main]
@@ -80,7 +82,8 @@ async fn init_lsp(state: &mut LSPWorld, step: &Step) {
 
 #[when(regex = r#"I open the temporary file "(.*)""#)]
 async fn open_temp_file(state: &mut LSPWorld, step: &Step, name: String) {
-    let data = step.docstring.as_ref().unwrap().trim_matches('\n');
+    let data = step.docstring.as_ref().unwrap();
+    let data = &data[1..data.len() - 1];
     let url = Url::parse(&format!("file://{}", name)).unwrap();
 
     state.handler.open_file("asm", url, &data, 0).await.unwrap();
@@ -203,6 +206,12 @@ async fn run_command(
         "document symbols" => util::make_result(&handler.document_symbols(location.url).await),
         "codelens" => util::make_result(&handler.code_lens(location.url).await),
         "syntax tree" => util::make_result(&handler.syntax_tree(location.url).await),
+        "completion" => util::make_result(
+            &handler
+                .completion(location)
+                .await
+                .map(|i| sort_completions(i)),
+        ),
         _ => "".into(),
     };
 
@@ -245,6 +254,7 @@ fn expect_response(state: &mut LSPWorld, step: &Step) {
             }
             "document symbols" => serde_json::to_value(util::make_doc_symbol(rows)),
             "codelens" => serde_json::to_value(util::make_codelens(rows)),
+            "completion" => serde_json::to_value(sort_completions(util::make_completion(rows))),
             _ => panic!("Unknown cmd: {}", cmd),
         }
     } else {

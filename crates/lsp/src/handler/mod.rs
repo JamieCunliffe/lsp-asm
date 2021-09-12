@@ -1,7 +1,7 @@
 use lsp_server::ResponseError;
 use lsp_types::{
-    DocumentHighlight, DocumentSymbolResponse, GotoDefinitionResponse, Hover, Location, Range,
-    SemanticTokensResult,
+    CompletionList, DocumentHighlight, DocumentSymbolResponse, GotoDefinitionResponse, Hover,
+    Location, Range, SemanticTokensResult,
 };
 
 use crate::types::{DocumentPosition, DocumentRange};
@@ -43,6 +43,8 @@ pub trait LanguageServerProtocol {
     fn document_symbols(&self) -> Result<DocumentSymbolResponse, ResponseError>;
 
     fn code_lens(&self) -> Result<Option<Vec<lsp_types::CodeLens>>, ResponseError>;
+
+    fn completion(&self, location: DocumentPosition) -> Result<CompletionList, ResponseError>;
 
     fn syntax_tree(&self) -> Result<String, ResponseError>;
 

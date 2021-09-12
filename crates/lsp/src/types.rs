@@ -21,3 +21,18 @@ pub struct DocumentLocation {
     pub uri: Url,
     pub range: DocumentRange,
 }
+
+#[derive(Debug, PartialOrd, Ord, Eq, PartialEq, Clone)]
+pub enum CompletionKind {
+    Label,
+    Register,
+    Mnemonic,
+}
+
+#[derive(Debug, PartialOrd, Ord, Eq, PartialEq, Clone)]
+pub struct CompletionItem {
+    pub text: String,
+    pub details: String,
+    pub documentation: Option<String>,
+    pub kind: CompletionKind,
+}

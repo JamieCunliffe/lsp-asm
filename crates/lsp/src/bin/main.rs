@@ -9,13 +9,14 @@ use lsp_server::{Connection, Message, Notification, Request, RequestId, Response
 
 use lsp_types::notification::{DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument};
 use lsp_types::request::{
-    CodeLensRequest, DocumentHighlightRequest, DocumentSymbolRequest, GotoDefinition, HoverRequest,
-    References, SemanticTokensFullRequest, SemanticTokensRangeRequest,
+    CodeLensRequest, Completion, DocumentHighlightRequest, DocumentSymbolRequest, GotoDefinition,
+    HoverRequest, References, SemanticTokensFullRequest, SemanticTokensRangeRequest,
 };
 use lsp_types::{
-    CodeLensOptions, HoverProviderCapability, OneOf, SemanticTokensFullOptions,
-    SemanticTokensLegend, SemanticTokensOptions, SemanticTokensServerCapabilities,
-    ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, WorkDoneProgressOptions,
+    CodeLensOptions, CompletionOptions, CompletionOptionsCompletionItem, HoverProviderCapability,
+    OneOf, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
+    SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability,
+    TextDocumentSyncKind, WorkDoneProgressOptions,
 };
 
 use serde_json::Value;
@@ -58,6 +59,15 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
                 range: Some(true),
             },
         )),
+        completion_provider: Some(CompletionOptions {
+            resolve_provider: Some(false),
+            trigger_characters: Some(vec![String::from(" "), String::from(",")]),
+            all_commit_characters: None,
+            work_done_progress_options: Default::default(),
+            completion_item: Some(CompletionOptionsCompletionItem {
+                label_details_support: Some(true),
+            }),
+        }),
         ..Default::default()
     };
 
@@ -134,6 +144,10 @@ async fn process_message(
             let req_id = request.id.clone();
             info!("Handling request: {:#?}, id: {}", request.method, &req_id);
             let result = match request.method.as_str() {
+                "textDocument/completion" => {
+                    let (_, data) = get_message::<Completion>(request).unwrap();
+                    make_result(handler.completion(data.text_document_position.into()).await)
+                }
                 "textDocument/definition" => {
                     let (_, data) = get_message::<GotoDefinition>(request).unwrap();
                     make_result(handler.goto_definition(data.into()).await)
