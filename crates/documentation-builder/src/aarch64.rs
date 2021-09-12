@@ -2,6 +2,7 @@ use itertools::Itertools;
 use std::error::Error;
 use std::ffi::OsStr;
 use std::io::prelude::*;
+use textwrap::fill;
 
 use documentation::{
     registers::to_documentation_name, Instruction, InstructionTemplate, OperandInfo,
@@ -120,7 +121,7 @@ fn process_isa_ref(data: &str, file: &str) -> Vec<Instruction> {
             opcode: mnemonic.to_string(),
             header: header.clone(),
             architecture: variant.clone(),
-            description: description.trim().to_string(),
+            description: fill(description.trim(), 100),
             asm_template: asm_template.clone(),
         })
         .collect()
