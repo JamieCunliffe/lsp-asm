@@ -13,7 +13,8 @@ Feature: Document hover
       """
     When I run "document hover" on the file "doc" at position "2:2"
     Then I expect the following response
-      """# STP V2
+      """
+# STP V2
 
 STP V2 Description
 
@@ -55,10 +56,12 @@ STP V2 Description
   - **<Xn|SP>** Position 3
   - **<imm>** Position 4
 
+
 """
     When I run "document hover" on the file "doc" at position "4:2"
     Then I expect the following response
-      """# LD1W V1
+      """
+# LD1W V1
 
 LD1W 9
 
@@ -68,6 +71,7 @@ LD1W 9
 
 
 * `LD1W ...`
+
 
 
 """

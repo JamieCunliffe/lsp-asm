@@ -229,7 +229,7 @@ fn expect_response(state: &mut LSPWorld, step: &Step) {
             "document hover" => serde_json::to_value(lsp_types::Hover {
                 contents: lsp_types::HoverContents::Markup(MarkupContent {
                     kind: lsp_types::MarkupKind::Markdown,
-                    value: expected.to_string(),
+                    value: expected[1..expected.len() - 1].to_string(),
                 }),
                 range: None,
             }),

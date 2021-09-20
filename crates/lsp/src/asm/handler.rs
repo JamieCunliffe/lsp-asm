@@ -425,7 +425,7 @@ fn get_label_hover(label: &LabelToken) -> Option<Vec<String>> {
     let mut symbols = Vec::new();
 
     if let Some((sym, lang)) = label.demangle() {
-        symbols.push(String::from("# Demangled Symbol\n"));
+        symbols.push(String::from("# Demangled Symbol"));
         symbols.push(format!("**{}**: `{}`", lang, sym));
     }
 

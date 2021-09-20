@@ -42,9 +42,11 @@ Feature: Testing objdump functions
     When I open the file "./features/test-files/objdump.s"
     When I run "document hover" on the file "./features/test-files/objdump.s" at position "102:41"
     Then I expect the following response
-      """# Number  
+      """
+# Number  
 Decimal: 0  
-Hex: 0x0"""
+Hex: 0x0
+      """
 
   Scenario: Semantic tokens for objdump
     When I open the file "./features/test-files/objdump.s"
