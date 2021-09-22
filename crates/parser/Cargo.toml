@@ -6,8 +6,8 @@ edition = "2018"
 [dependencies]
 base = { path = "../base" }
 syntax = { path = "../syntax" }
-nom = "6.0.0"
-rowan = "0.13.2"
+nom = "7.0.0"
+rowan = "0.14.0"
 either = "1.6.1"
 log = "0.4.14"
 

@@ -2,8 +2,7 @@ use std::path::Path;
 
 use std::convert::Infallible;
 
-use cucumber_rust::gherkin::Step;
-use cucumber_rust::{async_trait, given, then, when, World, WorldInit};
+use cucumber_rust::{async_trait, given, then, when, StepContext, World, WorldInit};
 
 use base::Architecture;
 use lsp_asm::handler::types::{DocumentRangeMessage, FindReferencesMessage, LocationMessage};
@@ -75,13 +74,15 @@ async fn check_doc(_state: &mut LSPWorld, arch: String) {
 }
 
 #[given("an lsp initialized with the following parameters")]
-async fn init_lsp(state: &mut LSPWorld, step: &Step) {
+async fn init_lsp(state: &mut LSPWorld, #[given(context)] step: &StepContext) {
+    let step = step.step.clone();
     let config = parse_config(&step.table.as_ref().unwrap().rows);
     state.handler = LangServerHandler::new(config);
 }
 
 #[when(regex = r#"I open the temporary file "(.*)""#)]
-async fn open_temp_file(state: &mut LSPWorld, step: &Step, name: String) {
+async fn open_temp_file(state: &mut LSPWorld, #[when(context)] step: &StepContext, name: String) {
+    let step = step.step.clone();
     let data = step.docstring.as_ref().unwrap();
     let data = &data[1..data.len() - 1];
     let url = Url::parse(&format!("file://{}", name)).unwrap();
@@ -101,7 +102,14 @@ async fn open_file(state: &mut LSPWorld, file: String) {
 #[when(
     regex = r#"I insert the following text in "(.*)" at position "(.*)" to bring it to version ([0-9]+)"#
 )]
-async fn insert_file(state: &mut LSPWorld, step: &Step, file: String, pos: String, version: i32) {
+async fn insert_file(
+    state: &mut LSPWorld,
+    #[when(context)] step: &StepContext,
+    file: String,
+    pos: String,
+    version: i32,
+) {
+    let step = step.step.clone();
     let pos = get_doc_position(pos.as_str());
     let url = Url::parse(&format!("file://{}", file)).unwrap();
     let data = step.docstring.as_ref().unwrap();
@@ -124,7 +132,14 @@ async fn insert_file(state: &mut LSPWorld, step: &Step, file: String, pos: Strin
 #[when(
     regex = r#"I update the following text in "(.*)" at position "(.*)" to bring it to version ([0-9]+)"#
 )]
-async fn update_file(state: &mut LSPWorld, step: &Step, file: String, pos: String, version: i32) {
+async fn update_file(
+    state: &mut LSPWorld,
+    #[when(context)] step: &StepContext,
+    file: String,
+    pos: String,
+    version: i32,
+) {
+    let step = step.step.clone();
     let pos = util::make_range(&pos);
     let url = Url::parse(&format!("file://{}", file)).unwrap();
     let data = step.docstring.as_ref().unwrap();
@@ -145,7 +160,13 @@ async fn update_file(state: &mut LSPWorld, step: &Step, file: String, pos: Strin
 }
 
 #[when(regex = r#"I perform a full sync of the file "(.*)" to bring it to version ([0-9]+)"#)]
-async fn full_sync_file(state: &mut LSPWorld, step: &Step, file: String, version: i32) {
+async fn full_sync_file(
+    state: &mut LSPWorld,
+    #[when(context)] step: &StepContext,
+    file: String,
+    version: i32,
+) {
+    let step = step.step.clone();
     let url = Url::parse(&format!("file://{}", file)).unwrap();
     let data = step.docstring.as_ref().unwrap();
     let data = &data[1..data.len() - 1];
@@ -219,7 +240,8 @@ async fn run_command(
 }
 
 #[then("I expect the following response")]
-fn expect_response(state: &mut LSPWorld, step: &Step) {
+fn expect_response(state: &mut LSPWorld, #[then(context)] step: &StepContext) {
+    let step = step.step.clone();
     let actual = serde_json::to_value(&state.last_response.resp).unwrap();
     let cmd = &state.last_response.cmd;
     let file = &state.last_response.file;

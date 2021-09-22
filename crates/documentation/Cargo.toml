@@ -8,9 +8,9 @@ base = { path = "../base" }
 syntax = { path = "../syntax" }
 parser = { path = "../parser" }
 itertools = "0.10.1"
-serde_json = "1.0.66"
-serde = { version = "1.0.127", features = ["derive"] }
-directories = "3.0.2"
+serde_json = "1.0.68"
+serde = { version = "1.0.130", features = ["derive"] }
+directories = "4.0.1"
 lazy_static = "1.4.0"
 
 [features]

@@ -5,4 +5,4 @@ edition = "2018"
 
 [dependencies]
 base = { path = "../base" }
-rowan = "0.13.2"
+rowan = "0.14.0"
