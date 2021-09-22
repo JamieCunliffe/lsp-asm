@@ -1,5 +1,5 @@
 use super::registers::registers_for_architecture;
-use base::register::{RegisterKind, Registers};
+use base::register::RegisterKind;
 use base::FileType;
 use parser::config::ParserConfig;
 use symbolic::common::{Name, NameMangling};
@@ -102,9 +102,7 @@ impl<'st, 'c> AstToken<'st, 'c> for RegisterToken<'st, 'c> {
 }
 impl<'st, 'c> RegisterToken<'st, 'c> {
     pub(crate) fn register_kind(&self) -> RegisterKind {
-        registers_for_architecture(&self.config.architecture)
-            .map(|r| r.get_kind(self.token.text()))
-            .unwrap_or(RegisterKind::NONE)
+        registers_for_architecture(&self.config.architecture).get_kind(self.token.text())
     }
 }
 

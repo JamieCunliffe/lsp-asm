@@ -9,8 +9,9 @@ pub mod config;
 mod span;
 
 pub use combinators::*;
+use syntax::alias::Alias;
 
-pub fn parse_asm(data: &str, config: &config::ParserConfig) -> GreenNode {
+pub fn parse_asm(data: &str, config: &config::ParserConfig) -> ParsedData {
     combinators::parse(data, config)
 }
 
@@ -26,4 +27,9 @@ impl Register {
     pub const fn new(names: &'static [&'static str]) -> Self {
         Self { names }
     }
+}
+
+pub struct ParsedData {
+    pub root: GreenNode,
+    pub alias: Alias,
 }

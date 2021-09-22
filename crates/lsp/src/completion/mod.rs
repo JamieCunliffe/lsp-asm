@@ -4,6 +4,7 @@ use base::register::Registers;
 use documentation::DocumentationMap;
 use itertools::Itertools;
 use rowan::NodeOrToken;
+use syntax::alias::Alias;
 use syntax::ast::{find_kind_index, find_parent, SyntaxElement, SyntaxKind, SyntaxToken};
 
 use crate::asm::parser::Parser;
@@ -36,7 +37,7 @@ pub fn handle_completion(
         }
         _ => {
             let completion_kinds =
-                find_documentation_token_for_instruction(docs, &token, &registers)?;
+                find_documentation_token_for_instruction(docs, &token, registers, parser.alias())?;
 
             let root = parser.tree();
             completion_kinds
@@ -45,8 +46,9 @@ pub fn handle_completion(
                     (_, "<label>") => label::complete_label(&root),
                     (SyntaxKind::REGISTER, _) => registers::complete_registers(
                         token.text(),
-                        &registers,
+                        registers,
                         parser.architecture(),
+                        parser.alias(),
                     ),
                     _ => Default::default(),
                 })
@@ -61,7 +63,8 @@ pub fn handle_completion(
 fn find_documentation_token_for_instruction(
     docs: Arc<DocumentationMap>,
     token: &SyntaxToken,
-    registers: &Option<impl Registers>,
+    registers: &dyn Registers,
+    alias: &Alias,
 ) -> Option<Vec<SyntaxToken>> {
     let instruction = find_parent(token, SyntaxKind::INSTRUCTION)?.clone_for_update();
 
@@ -93,12 +96,15 @@ fn find_documentation_token_for_instruction(
     // Remove the current token as this would interfere with the potential matches, for instance,
     // if x was typed this would be in the tree as a `SyntaxKind::TOKEN` and the match could be
     // expecting a `SyntaxKind::REGISTER` so it would discount it.
-    instruction
+    if let Some(token) = instruction
         .token_at_offset(token.text_range().start())
         .right_biased()
-        .map(|t| t.detach());
+    {
+        token.detach();
+    }
 
-    let templates = find_potential_instruction_templates(&instruction, instructions, registers);
+    let templates =
+        find_potential_instruction_templates(&instruction, instructions, registers, alias);
     let templates = if templates.is_empty() {
         instructions
             .iter()

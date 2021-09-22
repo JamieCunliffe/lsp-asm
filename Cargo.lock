@@ -1962,6 +1962,7 @@ dependencies = [
 name = "syntax"
 version = "0.1.0"
 dependencies = [
+ "base",
  "rowan",
 ]
 

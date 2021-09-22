@@ -473,3 +473,44 @@ popq %rbp"#,
         Architecture::X86_64
     );
 }
+
+#[test]
+fn test_arm_req_directive() {
+    assert_listing!(
+        "register .req x1",
+        r#"ROOT@0..16
+  ALIAS@0..16
+    REGISTER_ALIAS@0..8 "register"
+    WHITESPACE@8..9 " "
+    MNEMONIC@9..13 ".req"
+    WHITESPACE@13..14 " "
+    REGISTER@14..16 "x1"
+"#,
+        Architecture::AArch64
+    );
+}
+
+#[test]
+fn test_arm_req_alias() {
+    assert_listing!(
+        r#"register .req x1
+        mov register, x2"#,
+        r#"ROOT@0..41
+  ALIAS@0..16
+    REGISTER_ALIAS@0..8 "register"
+    WHITESPACE@8..9 " "
+    MNEMONIC@9..13 ".req"
+    WHITESPACE@13..14 " "
+    REGISTER@14..16 "x1"
+  WHITESPACE@16..25 "\n        "
+  INSTRUCTION@25..41
+    MNEMONIC@25..28 "mov"
+    WHITESPACE@28..29 " "
+    REGISTER_ALIAS@29..37 "register"
+    COMMA@37..38 ","
+    WHITESPACE@38..39 " "
+    REGISTER@39..41 "x2"
+"#,
+        Architecture::AArch64
+    );
+}

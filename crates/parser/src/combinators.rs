@@ -1,3 +1,5 @@
+use crate::ParsedData;
+
 use super::builder::Builder;
 use super::config::ParserConfig;
 
@@ -77,14 +79,7 @@ macro_rules! process_comment(
         }
     ));
 
-/// Entry point into the parser
-/// # Arguments
-/// * `data` The data that should be parsed
-/// * `config` the parser configuration
-///
-/// # Returns
-/// The root node
-pub(crate) fn parse<'a>(data: &'a str, config: &'a ParserConfig) -> GreenNode {
+pub(crate) fn parse<'a>(data: &'a str, config: &'a ParserConfig) -> ParsedData {
     let builder = Builder::new(data.len() / 4);
     let internal = InternalSpanConfig::new(config, &builder);
     let data = Span::new(data, &internal);
@@ -103,7 +98,10 @@ pub(crate) fn parse<'a>(data: &'a str, config: &'a ParserConfig) -> GreenNode {
 
     debug!("Parsed assembly with data remaining: {:#?}", remaining);
 
-    remaining.finish()
+    ParsedData {
+        root: remaining.finish(),
+        alias: remaining.extra().builder.alias.take(),
+    }
 }
 
 fn parse_objdump_header(expr: Span) -> nom::IResult<Span, ()> {
@@ -317,6 +315,15 @@ fn span_to_token(token: &Span) {
         token.token(SyntaxKind::FLOAT, token.as_str());
     } else if token.as_str().ends_with(':') {
         token.token(SyntaxKind::LABEL, token.as_str());
+    } else if token.config().architecture == Architecture::AArch64 && token.as_str() == ".req" {
+        token.extra().builder.change_node_kind(SyntaxKind::ALIAS);
+        token
+            .extra()
+            .builder
+            .change_previous_token_kind(1, SyntaxKind::REGISTER_ALIAS);
+        token.token(SyntaxKind::MNEMONIC, token.as_str());
+    } else if token.extra().builder.alias().is_alias(token.as_str()) {
+        token.token(SyntaxKind::REGISTER_ALIAS, token.as_str());
     } else {
         token.token(SyntaxKind::TOKEN, token.as_str());
     }

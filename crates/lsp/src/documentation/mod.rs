@@ -6,6 +6,8 @@ use documentation::registers::DOC_REGISTERS;
 use documentation::{Instruction, InstructionTemplate};
 use lazy_static::lazy_static;
 use parser::config::ParserConfig;
+use parser::ParsedData;
+use syntax::alias::Alias;
 use syntax::ast::{SyntaxElement, SyntaxKind, SyntaxNode};
 
 lazy_static! {
@@ -21,7 +23,8 @@ lazy_static! {
 pub fn find_correct_instruction_template<'a>(
     node: &SyntaxNode,
     instructions: &'a [Instruction],
-    lookup: &Option<impl Registers>,
+    lookup: &dyn Registers,
+    alias: &Alias,
 ) -> Option<&'a InstructionTemplate> {
     instructions
         .iter()
@@ -30,7 +33,7 @@ pub fn find_correct_instruction_template<'a>(
             template
                 .asm
                 .iter()
-                .any(|template| check_template(template, node, true, lookup))
+                .any(|template| check_template(template, node, true, lookup, alias))
         })
 }
 
@@ -40,7 +43,8 @@ pub fn find_correct_instruction_template<'a>(
 pub fn find_potential_instruction_templates<'a>(
     node: &SyntaxNode,
     instructions: &'a [Instruction],
-    lookup: &Option<impl Registers>,
+    lookup: &dyn Registers,
+    alias: &Alias,
 ) -> Vec<&'a InstructionTemplate> {
     instructions
         .iter()
@@ -49,7 +53,7 @@ pub fn find_potential_instruction_templates<'a>(
             template
                 .asm
                 .iter()
-                .any(|template| check_template(template, node, false, lookup))
+                .any(|template| check_template(template, node, false, lookup, alias))
         })
         .collect_vec()
 }
@@ -68,14 +72,16 @@ pub(crate) fn parse_template<T>(template: T) -> SyntaxNode
 where
     T: AsRef<str>,
 {
-    SyntaxNode::new_root(parser::parse_asm(template.as_ref(), &TEMPLATE_CONFIG))
+    let ParsedData { root, .. } = parser::parse_asm(template.as_ref(), &TEMPLATE_CONFIG);
+    SyntaxNode::new_root(root)
 }
 
 fn check_template(
     template: &str,
     node: &SyntaxNode,
     exact: bool,
-    lookup: &Option<impl Registers>,
+    lookup: &dyn Registers,
+    alias: &Alias,
 ) -> bool {
     let parsed_template = parse_template(template);
 
@@ -99,28 +105,28 @@ fn check_template(
         && filtered
             .iter()
             .zip(filtered_parsed.iter())
-            .all(|x| node_or_token_match(x, lookup))
+            .all(|x| node_or_token_match(x, lookup, alias))
 }
 
 fn node_or_token_match(
     elements: (&SyntaxElement, &SyntaxElement),
-    lookup: &Option<impl Registers>,
+    lookup: &dyn Registers,
+    alias: &Alias,
 ) -> bool {
     match elements {
         (a, t) if a.kind() == SyntaxKind::REGISTER && t.kind() == SyntaxKind::REGISTER => {
-            if let Some(lookup) = lookup {
-                let actual = a.as_token().unwrap().text();
-                let template = t.as_token().unwrap().text();
-
-                let doc_size = DOC_REGISTERS.get_size(template);
-                let size = lookup.get_size(actual) == doc_size || doc_size == RegisterSize::Unknown;
-
-                size && DOC_REGISTERS
-                    .get_kind(template)
-                    .contains(lookup.get_kind(actual))
-            } else {
-                false
-            }
+            let actual = a.as_token().unwrap().text();
+            let template = t.as_token().unwrap().text();
+            register_match(actual, template, lookup)
+        }
+        (a, t) if a.kind() == SyntaxKind::REGISTER_ALIAS && t.kind() == SyntaxKind::REGISTER => {
+            alias
+                .get_register_for_alias(a.as_token().unwrap().text())
+                .map(|actual| {
+                    let template = t.as_token().unwrap().text();
+                    register_match(actual, template, lookup)
+                })
+                .unwrap_or(false)
         }
         (a, t)
             if matches!(a.kind(), SyntaxKind::NUMBER | SyntaxKind::FLOAT)
@@ -136,6 +142,15 @@ fn node_or_token_match(
         (a, t) if a.kind() == t.kind() => true,
         _ => false,
     }
+}
+
+fn register_match(actual: &str, template: &str, lookup: &dyn Registers) -> bool {
+    let doc_size = DOC_REGISTERS.get_size(template);
+    let size = lookup.get_size(actual) == doc_size || doc_size == RegisterSize::Unknown;
+
+    size && DOC_REGISTERS
+        .get_kind(template)
+        .contains(lookup.get_kind(actual))
 }
 
 #[cfg(test)]

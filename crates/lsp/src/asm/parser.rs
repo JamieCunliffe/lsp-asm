@@ -6,8 +6,10 @@ use base::{Architecture, FileType};
 use byte_unit::Byte;
 use once_cell::sync::OnceCell;
 use parser::config::ParserConfig;
+use parser::ParsedData;
 use rayon::prelude::*;
 use rowan::{GreenNode, TextRange, TextSize};
+use syntax::alias::Alias;
 use syntax::ast::{SyntaxKind, SyntaxNode, SyntaxToken};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -17,6 +19,7 @@ pub struct Parser {
     config: ParserConfig,
     line_index: PositionInfo,
     debug_map: OnceCell<DebugMap>,
+    alias: Alias,
 }
 
 /// Helper enum for determining if tokens should be considered equal
@@ -39,7 +42,7 @@ impl Parser {
         let mut config = Self::config_from_arch(&Self::determine_architecture(data, config));
         config.file_type = FileType::from_contents(data);
 
-        let root = parser::parse_asm(data, &config);
+        let ParsedData { root, alias } = parser::parse_asm(data, &config);
 
         Self {
             line_index: PositionInfo::new(data),
@@ -47,6 +50,7 @@ impl Parser {
             root,
             config,
             debug_map: OnceCell::new(),
+            alias,
         }
     }
 
@@ -64,6 +68,10 @@ impl Parser {
 
     pub(super) fn debug_map(&self) -> &DebugMap {
         self.debug_map.get_or_init(|| DebugMap::new(&self.tree()))
+    }
+
+    pub fn alias(&self) -> &Alias {
+        &self.alias
     }
 
     pub(super) fn reconstruct_file(&self) -> String {
@@ -149,6 +157,13 @@ impl Parser {
                 token.text(),
                 &self.config,
             )?)),
+            SyntaxKind::REGISTER_ALIAS => {
+                let register = self.alias.get_register_for_alias(token.text())?;
+                Some(SemanticEq::Register(super::registers::register_id(
+                    register,
+                    &self.config,
+                )?))
+            }
             SyntaxKind::TOKEN => Some(SemanticEq::String(token.text())),
             SyntaxKind::NUMBER => Some(SemanticEq::Numeric(token.text().parse::<i128>().ok()?)),
             SyntaxKind::FLOAT => Some(SemanticEq::Float(token.text().parse::<f64>().ok()?)),
@@ -170,6 +185,7 @@ impl Parser {
             | SyntaxKind::STRING
             | SyntaxKind::LOCAL_LABEL
             | SyntaxKind::COMMENT
+            | SyntaxKind::ALIAS
             | SyntaxKind::INSTRUCTION
             | SyntaxKind::DIRECTIVE
             | SyntaxKind::BRACKETS

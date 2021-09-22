@@ -62,11 +62,28 @@ impl Registers for AArch64 {
     }
 }
 
-pub(crate) fn registers_for_architecture(arch: &Architecture) -> Option<impl Registers> {
+pub struct UnknownRegisters {}
+impl Registers for UnknownRegisters {
+    fn get_kind(&self, _register: &str) -> RegisterKind {
+        RegisterKind::NONE
+    }
+
+    fn get_size(&self, _register: &str) -> RegisterSize {
+        RegisterSize::Unknown
+    }
+
+    fn is_sp(&self, _register: &str) -> bool {
+        false
+    }
+}
+
+pub(crate) fn registers_for_architecture(arch: &Architecture) -> &dyn Registers {
+    static REGISTER_AARCH64: &AArch64 = &AArch64 {};
+    static REGISTER_NONE: &UnknownRegisters = &UnknownRegisters {};
     match arch {
-        Architecture::AArch64 => Some(AArch64 {}),
-        Architecture::X86_64 => None,
-        Architecture::Unknown => None,
+        Architecture::AArch64 => REGISTER_AARCH64,
+        Architecture::X86_64 => REGISTER_NONE,
+        Architecture::Unknown => REGISTER_NONE,
     }
 }
 

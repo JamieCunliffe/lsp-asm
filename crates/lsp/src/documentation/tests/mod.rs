@@ -1,6 +1,7 @@
 mod util;
 
 use pretty_assertions::assert_eq;
+use syntax::ast::find_kind_index;
 
 use super::*;
 use crate::asm::parser::Parser;
@@ -25,7 +26,37 @@ fn determine_instruction_from_template() {
         find_correct_instruction_template(
             &op,
             &instructions,
-            &registers_for_architecture(&Architecture::AArch64),
+            registers_for_architecture(&Architecture::AArch64),
+            parser.alias(),
+        )
+        .unwrap(),
+    );
+}
+
+#[test]
+fn determine_instruction_from_template_with_alias() {
+    let line = r#"reg_alias .req x29
+stp reg_alias, x30, [sp, #32]"#;
+    let parser = Parser::from(
+        line,
+        &LSPConfig {
+            architecture: Architecture::AArch64,
+            ..Default::default()
+        },
+    );
+    let op = parser.tree();
+    let instructions = vec![util::make_instruction()];
+
+    assert_eq!(
+        instructions[0].asm_template.get(5).unwrap(),
+        find_correct_instruction_template(
+            find_kind_index(&op, 0, SyntaxKind::INSTRUCTION)
+                .unwrap()
+                .as_node()
+                .unwrap(),
+            &instructions,
+            registers_for_architecture(&Architecture::AArch64),
+            parser.alias(),
         )
         .unwrap(),
     );
@@ -49,7 +80,8 @@ fn determine_instruction_from_template_end_comment() {
         find_correct_instruction_template(
             &op,
             &instructions,
-            &registers_for_architecture(&Architecture::AArch64),
+            registers_for_architecture(&Architecture::AArch64),
+            parser.alias(),
         )
         .unwrap(),
     );
@@ -77,7 +109,8 @@ fn determine_potential_instructions_from_template() {
         find_potential_instruction_templates(
             &op,
             &instructions,
-            &registers_for_architecture(&Architecture::AArch64),
+            registers_for_architecture(&Architecture::AArch64),
+            parser.alias(),
         ),
     );
 }

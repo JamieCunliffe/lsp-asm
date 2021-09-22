@@ -21,6 +21,7 @@ use lsp_types::{
 };
 use rowan::TextRange;
 use std::iter;
+use syntax::alias::Alias;
 use syntax::ast::{self, find_kind_index, SyntaxKind, SyntaxToken};
 
 pub struct AssemblyLanguageServerProtocol {
@@ -149,7 +150,10 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                     .token(&token)
                     .ok_or_else(|| lsp_error_map(ErrorCode::CastFailed))?,
             ),
-            SyntaxKind::MNEMONIC => get_hover_mnemonic(&token, self.parser.architecture()),
+            SyntaxKind::MNEMONIC => {
+                get_hover_mnemonic(&token, self.parser.architecture(), self.parser.alias())
+            }
+            SyntaxKind::REGISTER_ALIAS => get_alias_hover(&token, self.parser.alias()),
             SyntaxKind::L_PAREN
             | SyntaxKind::R_PAREN
             | SyntaxKind::L_SQ
@@ -167,6 +171,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             | SyntaxKind::LOCAL_LABEL
             | SyntaxKind::COMMENT
             | SyntaxKind::FLOAT
+            | SyntaxKind::ALIAS
             | SyntaxKind::INSTRUCTION
             | SyntaxKind::DIRECTIVE
             | SyntaxKind::BRACKETS
@@ -248,8 +253,10 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                     SyntaxKind::METADATA => Some(crate::handler::semantic::METADATA_INDEX),
                     SyntaxKind::MNEMONIC => match token.parent()?.kind() {
                         SyntaxKind::INSTRUCTION => Some(crate::handler::semantic::OPCODE_INDEX),
-                        SyntaxKind::DIRECTIVE => Some(crate::handler::semantic::DIRECTIVE_INDEX),
-                        _ => unreachable!("Parent should be instruction or directive"),
+                        SyntaxKind::DIRECTIVE | SyntaxKind::ALIAS => {
+                            Some(crate::handler::semantic::DIRECTIVE_INDEX)
+                        }
+                        _ => unreachable!("Invalid parent kind"),
                     },
                     SyntaxKind::COMMENT => Some(crate::handler::semantic::COMMENT_INDEX),
                     SyntaxKind::NUMBER | SyntaxKind::FLOAT => {
@@ -271,6 +278,19 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                             }
                         })
                         .or(Some(crate::handler::semantic::REGISTER_INDEX)),
+                    SyntaxKind::REGISTER_ALIAS => {
+                        let register = self.parser.alias().get_register_for_alias(token.text())?;
+                        let registers = registers_for_architecture(self.parser.architecture());
+
+                        let kind = registers.get_kind(register);
+                        if kind.contains(RegisterKind::GENERAL_PURPOSE) {
+                            Some(crate::handler::semantic::GP_REGISTER_INDEX)
+                        } else if kind.contains(RegisterKind::FLOATING_POINT) {
+                            Some(crate::handler::semantic::FP_REGISTER_INDEX)
+                        } else {
+                            Some(crate::handler::semantic::REGISTER_INDEX)
+                        }
+                    }
                     SyntaxKind::LABEL | SyntaxKind::LOCAL_LABEL => {
                         Some(crate::handler::semantic::LABEL_INDEX)
                     }
@@ -286,6 +306,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                     | SyntaxKind::WHITESPACE
                     | SyntaxKind::COMMA
                     | SyntaxKind::OPERATOR
+                    | SyntaxKind::ALIAS
                     | SyntaxKind::INSTRUCTION
                     | SyntaxKind::DIRECTIVE
                     | SyntaxKind::BRACKETS
@@ -432,7 +453,11 @@ fn get_label_hover(label: &LabelToken) -> Option<Vec<String>> {
     Some(symbols)
 }
 
-fn get_hover_mnemonic(token: &SyntaxToken, arch: &Architecture) -> Option<Vec<String>> {
+fn get_hover_mnemonic(
+    token: &SyntaxToken,
+    arch: &Architecture,
+    alias: &Alias,
+) -> Option<Vec<String>> {
     let instruction = ast::find_parent(token, SyntaxKind::INSTRUCTION)?;
 
     let docs = documentation::load_documentation(arch).ok()?;
@@ -441,7 +466,8 @@ fn get_hover_mnemonic(token: &SyntaxToken, arch: &Architecture) -> Option<Vec<St
     let template = crate::documentation::find_correct_instruction_template(
         &instruction,
         instructions,
-        &registers_for_architecture(arch),
+        registers_for_architecture(arch),
+        alias,
     );
 
     if let Some(template) = template {
@@ -458,6 +484,15 @@ fn get_hover_mnemonic(token: &SyntaxToken, arch: &Architecture) -> Option<Vec<St
                 .collect(),
         )
     }
+}
+
+fn get_alias_hover(token: &SyntaxToken, alias: &Alias) -> Option<Vec<String>> {
+    let register = alias.get_register_for_alias(token.text())?;
+    Some(vec![format!(
+        "`{}` is an alias to register `{}`",
+        token.text(),
+        register
+    )])
 }
 
 fn find_references<'a>(

@@ -20,6 +20,7 @@ pub enum SyntaxKind {
     TOKEN,
     FLOAT,
     NUMBER,
+    REGISTER_ALIAS,
     WHITESPACE,
     COMMA,
     OPERATOR,
@@ -31,6 +32,7 @@ pub enum SyntaxKind {
     INSTRUCTION,
     DIRECTIVE,
     BRACKETS,
+    ALIAS,
 
     METADATA,
     // ROOT should be the last element
