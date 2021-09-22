@@ -31,13 +31,11 @@ pub(super) fn run_mca(
     }
 
     let mut command = command.spawn()?;
-    let input = command
+    command
         .stdin
         .as_mut()
         .ok_or_else(|| std::io::Error::new(ErrorKind::Other, "Failed to get stdin for llvm-mca"))?
         .write_all(data.as_bytes())?;
-    // Drop input to close stdin
-    drop(input);
 
     let result = command.wait_with_output()?;
     if result.status.success() {
