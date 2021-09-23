@@ -139,12 +139,16 @@ fn parse_template(template: &str, operands: &[OperandInfo]) -> Vec<String> {
     }
     let positions = positions.iter().filter(|(open, close)| {
         let text = &template[(*open + 1)..*close];
-        let text = text.trim_start_matches(|c| c == ' ' || c == ',' || c == '#');
+        if text.starts_with(',') {
+            return true;
+        }
+        let start = text.chars().take_while(|c| c != &'<').count();
+        let text = &text[start..];
         let text = text
             .find(|c| c == ' ' || c == ',')
             .map(|p| &text[..p])
             .unwrap_or(text)
-            .trim_end_matches('}');
+            .trim_end_matches(|c| c == '{' || c == '}');
 
         let optional = operands
             .iter()
@@ -152,6 +156,7 @@ fn parse_template(template: &str, operands: &[OperandInfo]) -> Vec<String> {
             .map(|op| {
                 assert!(!op.name.starts_with('#'));
                 op.description.to_lowercase().contains("optional")
+                    || op.description.to_lowercase().contains("default")
             })
             .unwrap_or(false);
 
@@ -338,6 +343,35 @@ mod test {
             vec![
                 String::from("LD1W    { <Zt>.S }, <Pg>/Z, [<Xn|SP>, #<imm>, MUL VL]"),
                 String::from("LD1W    { <Zt>.S }, <Pg>/Z, [<Xn|SP>]"),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_template_expansion_with_default() {
+        let operands = vec![
+            OperandInfo {
+                name: "<Xdn>".into(),
+                description: "general-purpose register".into(),
+            },
+            OperandInfo {
+                name: "<pattern>".into(),
+                description: "Optional pattern specifier".into(),
+            },
+            OperandInfo {
+                name: "<imm>".into(),
+                description: "multiplier, default 1 ".into(),
+            }
+        ];
+        let input = "INCB    <Xdn>{, <pattern>{, MUL #<imm>}}";
+        let result = parse_template(&input, &operands);
+
+        assert_eq!(
+            result,
+            vec![
+                String::from("INCB    <Xdn>, <pattern>, MUL #<imm>"),
+                String::from("INCB    <Xdn>, <pattern>"),
+                String::from("INCB    <Xdn>"),
             ]
         );
     }
