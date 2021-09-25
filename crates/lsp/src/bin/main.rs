@@ -100,7 +100,7 @@ fn lsp_loop(
         .flatten()
         .unwrap_or_default();
 
-    debug!("Config: {:#?}", params);
+    info!("Config: {:#?}", params);
     let handler = Arc::new(LangServerHandler::new(params));
     let connection = Arc::new(connection);
     let rt = Builder::new_multi_thread()

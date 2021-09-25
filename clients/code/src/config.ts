@@ -7,8 +7,8 @@ export class Config {
     return {
       "architecture": this.get<string>("architecture"),
       "codelens": {
-        "enabled_filesize": this.get<string>("codelens.filesizeThreshold"),
-        "loc_enabled": this.get<string>("codelens.locEnabled")
+        "enabledFilesize": this.get<string>("codelens.filesizeThreshold"),
+        "locEnabled": this.get<string>("codelens.locEnabled")
       }
     }
   }

@@ -86,9 +86,9 @@
 (defun lsp-asm--make-init-options ()
   "Init options for lsp-asm."
   `(:architecture ,lsp-asm-default-architecture
-    :codelens (:enabled_filesize ,lsp-asm-codelens-filesize-threshold
-               :loc_enabled ,(lsp-json-bool lsp-asm-codelens-loc-enabled))
-    :analysis (:default_cpus ,(json-read-from-string (json-encode-alist lsp-asm-analysis-cpus)))))
+    :codelens (:enabledFilesize ,lsp-asm-codelens-filesize-threshold
+               :locEnabled ,(lsp-json-bool lsp-asm-codelens-loc-enabled))
+    :analysis (:defaultCpus ,(json-read-from-string (json-encode-alist lsp-asm-analysis-cpus)))))
 
 (lsp-defun lsp-asm--open-loc
   ((&Command :title :arguments? [location]))

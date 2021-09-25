@@ -7,21 +7,38 @@ use serde::{Deserialize, Deserializer};
 use base::Architecture;
 
 #[derive(Clone, Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LSPConfig {
+    #[serde(deserialize_with = "null_as_default")]
+    #[serde(default)]
     pub architecture: Architecture,
+
+    #[serde(deserialize_with = "null_as_default")]
+    #[serde(default)]
     pub codelens: CodelensConfig,
+
+    #[serde(deserialize_with = "null_as_default")]
+    #[serde(default)]
     pub analysis: AnalysisConfig,
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CodelensConfig {
+    #[serde(deserialize_with = "null_as_default")]
+    #[serde(default)]
     pub enabled_filesize: Byte,
+
+    #[serde(deserialize_with = "null_as_default")]
+    #[serde(default)]
     pub loc_enabled: bool,
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AnalysisConfig {
     #[serde(deserialize_with = "null_as_default")]
+    #[serde(default)]
     pub default_cpus: HashMap<Architecture, String>,
 }
 
