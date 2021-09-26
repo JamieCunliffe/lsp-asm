@@ -1,8 +1,9 @@
 #![allow(deprecated)]
-use super::ast::{AstNode, LabelNode, LabelToken, LocalLabelNode, NumericToken, RegisterToken};
+use super::ast::{AstNode, LabelNode, LabelToken, LocalLabelNode, RegisterToken};
 use super::llvm_mca::run_mca;
 use super::parser::{Parser, PositionInfo};
 use super::registers::registers_for_architecture;
+use crate::asm::hovers;
 use crate::asm::signature;
 use crate::completion;
 use crate::config::LSPConfig;
@@ -12,7 +13,6 @@ use crate::handler::types::DocumentChange;
 use crate::handler::LanguageServerProtocol;
 use crate::types::{DocumentPosition, DocumentRange};
 use base::register::RegisterKind;
-use base::Architecture;
 use itertools::*;
 use lsp_server::ResponseError;
 use lsp_types::{
@@ -21,8 +21,6 @@ use lsp_types::{
     SemanticTokens, SemanticTokensResult, SignatureHelp, SymbolKind, Url,
 };
 use rowan::TextRange;
-use std::iter;
-use syntax::alias::Alias;
 use syntax::ast::{self, find_kind_index, SyntaxKind, SyntaxToken};
 
 pub struct AssemblyLanguageServerProtocol {
@@ -139,22 +137,22 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             .ok_or_else(|| lsp_error_map(ErrorCode::TokenNotFound))?;
 
         let hover = match token.kind() {
-            SyntaxKind::NUMBER => get_numeric_hover(
+            SyntaxKind::NUMBER => hovers::get_numeric_hover(
                 &self
                     .parser
                     .token(&token)
                     .ok_or_else(|| lsp_error_map(ErrorCode::CastFailed))?,
             ),
-            SyntaxKind::LABEL => get_label_hover(
+            SyntaxKind::LABEL => hovers::get_label_hover(
                 &self
                     .parser
                     .token(&token)
                     .ok_or_else(|| lsp_error_map(ErrorCode::CastFailed))?,
             ),
             SyntaxKind::MNEMONIC => {
-                get_hover_mnemonic(&token, self.parser.architecture(), self.parser.alias())
+                hovers::get_hover_mnemonic(&token, self.parser.architecture(), self.parser.alias())
             }
-            SyntaxKind::REGISTER_ALIAS => get_alias_hover(&token, self.parser.alias()),
+            SyntaxKind::REGISTER_ALIAS => hovers::get_alias_hover(&token, self.parser.alias()),
             SyntaxKind::L_PAREN
             | SyntaxKind::R_PAREN
             | SyntaxKind::L_SQ
@@ -449,68 +447,6 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
     }
 }
 
-fn get_numeric_hover(value: &NumericToken) -> Option<Vec<String>> {
-    let value = value.value();
-    Some(vec![
-        "# Number".to_string(),
-        format!("Decimal: {}", value),
-        format!("Hex: {:#X}", value),
-    ])
-}
-
-fn get_label_hover(label: &LabelToken) -> Option<Vec<String>> {
-    let mut symbols = Vec::new();
-
-    if let Some((sym, lang)) = label.demangle() {
-        symbols.push(String::from("# Demangled Symbol"));
-        symbols.push(format!("**{}**: `{}`", lang, sym));
-    }
-
-    Some(symbols)
-}
-
-fn get_hover_mnemonic(
-    token: &SyntaxToken,
-    arch: &Architecture,
-    alias: &Alias,
-) -> Option<Vec<String>> {
-    let instruction = ast::find_parent(token, SyntaxKind::INSTRUCTION)?;
-
-    let docs = documentation::load_documentation(arch).ok()?;
-    let instructions = docs.get(&token.text().to_lowercase())?;
-
-    let template = crate::documentation::find_correct_instruction_template(
-        &instruction,
-        instructions,
-        registers_for_architecture(arch),
-        alias,
-    );
-
-    if let Some(template) = template {
-        let instruction = crate::documentation::instruction_from_template(instructions, template)?;
-
-        Some(vec![format!("{}", instruction)])
-    } else {
-        // Couldn't resolve which instruction we are on so print them all.
-        Some(
-            instructions
-                .iter()
-                .map(|i| format!("{}", i))
-                .interleave_shortest(iter::repeat(String::from("---")))
-                .collect(),
-        )
-    }
-}
-
-fn get_alias_hover(token: &SyntaxToken, alias: &Alias) -> Option<Vec<String>> {
-    let register = alias.get_register_for_alias(token.text())?;
-    Some(vec![format!(
-        "`{}` is an alias to register `{}`",
-        token.text(),
-        register
-    )])
-}
-
 fn find_references<'a>(
     parser: &'a Parser,
     token: &'a SyntaxToken,
@@ -604,6 +540,7 @@ impl AssemblyLanguageServerProtocol {
 
 #[cfg(test)]
 mod tests {
+    use base::Architecture;
     use lsp_types::{
         DocumentHighlight, DocumentSymbol, DocumentSymbolResponse, GotoDefinitionResponse, Position,
     };
