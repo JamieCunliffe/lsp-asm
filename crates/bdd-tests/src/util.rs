@@ -8,7 +8,8 @@ use lsp_asm::types::{
 use lsp_server::ResponseError;
 use lsp_types::{
     CodeLens, Command, CompletionList, DocumentHighlight, DocumentHighlightKind, DocumentSymbol,
-    Location, Range, SemanticToken, SymbolKind, Url,
+    Documentation, Location, ParameterInformation, ParameterLabel, Range, SemanticToken,
+    SignatureHelp, SignatureInformation, SymbolKind, Url,
 };
 use serde_json::Value;
 use std::collections::HashMap;
@@ -208,4 +209,48 @@ pub(crate) fn sort_completions(mut list: CompletionList) -> CompletionList {
     });
 
     list
+}
+
+pub(crate) fn make_signature_help(table: &Vec<Vec<String>>) -> SignatureHelp {
+    let signatures = table
+        .iter()
+        .skip(1)
+        .map(|signature| SignatureInformation {
+            label: signature.get(2).unwrap().replace("%PIPE%", "|"),
+            documentation: signature
+                .get(3)
+                .map(|x| Documentation::String(x.to_string())),
+            parameters: Some(
+                signature
+                    .get(4)
+                    .unwrap()
+                    .split("%%NEXT%%")
+                    .zip(signature.get(5).unwrap().split("%%NEXT%%"))
+                    .map(|(label, documentation)| ParameterInformation {
+                        label: ParameterLabel::Simple(label.replace("%PIPE%", "|")),
+                        documentation: Some(Documentation::String(documentation.to_string())),
+                    })
+                    .collect(),
+            ),
+            active_parameter: signature.get(1).map(|x| x.parse().unwrap()),
+        })
+        .collect::<Vec<_>>();
+
+    let active = table.iter().skip(1).enumerate().find_map(|(idx, sig)| {
+        sig.get(0)
+            .map(|x| x == "*")
+            .unwrap_or(false)
+            .then(|| idx as u32)
+    });
+
+    let active_parameter = active
+        .map(|a| signatures.get(a as usize).map(|s| s.active_parameter))
+        .flatten()
+        .flatten();
+
+    SignatureHelp {
+        signatures,
+        active_signature: active,
+        active_parameter,
+    }
 }

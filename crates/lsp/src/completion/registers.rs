@@ -1,5 +1,5 @@
-use base::register::{RegisterKind, RegisterSize};
-use base::{register::Registers, Architecture};
+use base::register::{RegisterKind, RegisterSize, Registers};
+use base::Architecture;
 use documentation::registers::DOC_REGISTERS;
 use itertools::Itertools;
 use parser::Register;

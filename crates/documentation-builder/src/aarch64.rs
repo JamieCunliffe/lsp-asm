@@ -4,9 +4,8 @@ use std::ffi::OsStr;
 use std::io::prelude::*;
 use textwrap::fill;
 
-use documentation::{
-    registers::to_documentation_name, Instruction, InstructionTemplate, OperandInfo,
-};
+use documentation::registers::to_documentation_name;
+use documentation::{Instruction, InstructionTemplate, OperandInfo};
 use log::warn;
 
 const A64_ISA: &str = "https://developer.arm.com/-/media/developer/products/architecture/armv8-a-architecture/2021-06/A64_ISA_xml_v87A-2021-06.tar.gz";
@@ -361,7 +360,7 @@ mod test {
             OperandInfo {
                 name: "<imm>".into(),
                 description: "multiplier, default 1 ".into(),
-            }
+            },
         ];
         let input = "INCB    <Xdn>{, <pattern>{, MUL #<imm>}}";
         let result = parse_template(&input, &operands);

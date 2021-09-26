@@ -3,6 +3,7 @@ use super::ast::{AstNode, LabelNode, LabelToken, LocalLabelNode, NumericToken, R
 use super::llvm_mca::run_mca;
 use super::parser::{Parser, PositionInfo};
 use super::registers::registers_for_architecture;
+use crate::asm::signature;
 use crate::completion;
 use crate::config::LSPConfig;
 use crate::handler::error::{lsp_error_map, ErrorCode};
@@ -17,7 +18,7 @@ use lsp_server::ResponseError;
 use lsp_types::{
     CodeLens, Command, CompletionList, DocumentHighlightKind, DocumentSymbol,
     DocumentSymbolResponse, HoverContents, Location, MarkupContent, Range, SemanticToken,
-    SemanticTokens, SemanticTokensResult, SymbolKind, Url,
+    SemanticTokens, SemanticTokensResult, SignatureHelp, SymbolKind, Url,
 };
 use rowan::TextRange;
 use std::iter;
@@ -407,6 +408,21 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             is_incomplete: true,
             items,
         })
+    }
+
+    fn signature_help(
+        &self,
+        position: &DocumentPosition,
+    ) -> Result<Option<SignatureHelp>, ResponseError> {
+        let location = self
+            .parser
+            .position()
+            .point_for_position(position)
+            .ok_or_else(|| lsp_error_map(ErrorCode::InvalidPosition))?;
+
+        let signatures = signature::get_signature_help(&location, &self.parser);
+
+        Ok(signatures)
     }
 
     fn syntax_tree(&self) -> Result<String, ResponseError> {

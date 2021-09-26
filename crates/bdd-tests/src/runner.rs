@@ -233,6 +233,7 @@ async fn run_command(
                 .await
                 .map(|i| sort_completions(i)),
         ),
+        "signature help" => util::make_result(&handler.signature_help(&location).await),
         _ => "".into(),
     };
 
@@ -277,6 +278,7 @@ fn expect_response(state: &mut LSPWorld, #[then(context)] step: &StepContext) {
             "document symbols" => serde_json::to_value(util::make_doc_symbol(rows)),
             "codelens" => serde_json::to_value(util::make_codelens(rows)),
             "completion" => serde_json::to_value(sort_completions(util::make_completion(rows))),
+            "signature help" => serde_json::to_value(util::make_signature_help(rows)),
             _ => panic!("Unknown cmd: {}", cmd),
         }
     } else {

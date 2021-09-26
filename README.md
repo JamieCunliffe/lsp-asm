@@ -9,6 +9,7 @@ It currently supports the following LSP messages:
 * Document Symbols
 * Codelens (shows line `.loc` directive refers to)
 * Completion (based on the documentation, experimental)
+* Signature help (based on the documentation, experimental)
 
 ## Additional commands
 * `runAnalysis` Run LLVM MCA on the file/region

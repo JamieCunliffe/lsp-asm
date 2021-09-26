@@ -49,13 +49,20 @@ pub fn find_potential_instruction_templates<'a>(
     instructions
         .iter()
         .flat_map(|x| &x.asm_template)
-        .filter(|template| {
-            template
-                .asm
-                .iter()
-                .any(|template| check_template(template, node, false, lookup, alias))
-        })
+        .filter(|template| is_potential_instruction_template(node, template, lookup, alias))
         .collect_vec()
+}
+
+pub fn is_potential_instruction_template(
+    node: &SyntaxNode,
+    template: &InstructionTemplate,
+    lookup: &dyn Registers,
+    alias: &Alias,
+) -> bool {
+    template
+        .asm
+        .iter()
+        .any(|template| check_template(template, node, false, lookup, alias))
 }
 
 /// Given an an instruction template, find the instruction that it belongs to.

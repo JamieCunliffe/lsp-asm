@@ -11,12 +11,13 @@ use lsp_types::notification::{DidChangeTextDocument, DidCloseTextDocument, DidOp
 use lsp_types::request::{
     CodeLensRequest, Completion, DocumentHighlightRequest, DocumentSymbolRequest, GotoDefinition,
     HoverRequest, References, SemanticTokensFullRequest, SemanticTokensRangeRequest,
+    SignatureHelpRequest,
 };
 use lsp_types::{
     CodeLensOptions, CompletionOptions, CompletionOptionsCompletionItem, HoverProviderCapability,
     OneOf, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
-    SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability,
-    TextDocumentSyncKind, WorkDoneProgressOptions,
+    SemanticTokensServerCapabilities, ServerCapabilities, SignatureHelpOptions,
+    TextDocumentSyncCapability, TextDocumentSyncKind, WorkDoneProgressOptions,
 };
 
 use serde_json::Value;
@@ -42,6 +43,13 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
         references_provider: Some(OneOf::Left(true)),
         document_highlight_provider: Some(OneOf::Left(true)),
         document_symbol_provider: Some(OneOf::Left(true)),
+        signature_help_provider: Some(SignatureHelpOptions {
+            trigger_characters: Some(vec![String::from(" ")]),
+            retrigger_characters: Some(vec![String::from(",")]),
+            work_done_progress_options: WorkDoneProgressOptions {
+                work_done_progress: None,
+            },
+        }),
         code_lens_provider: Some(CodeLensOptions {
             resolve_provider: None,
         }),
@@ -182,6 +190,14 @@ async fn process_message(
                 "textDocument/codeLens" => {
                     let (_, data) = get_message::<CodeLensRequest>(request).unwrap();
                     make_result(handler.code_lens(data.text_document.uri).await)
+                }
+                "textDocument/signatureHelp" => {
+                    let (_, data) = get_message::<SignatureHelpRequest>(request).unwrap();
+                    make_result(
+                        handler
+                            .signature_help(&data.text_document_position_params.into())
+                            .await,
+                    )
                 }
                 "asm/syntaxTree" => {
                     let (_, data) =
