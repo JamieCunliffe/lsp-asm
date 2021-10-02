@@ -103,6 +103,7 @@ fn test(generate_coverage: bool) -> Result<(), DynError> {
     let mut env = HashMap::new();
 
     if generate_coverage {
+        env.insert("CARGO_TARGET_DIR", "coverage");
         clean(&env)?;
 
         env.insert("CARGO_INCREMENTAL", "0");
@@ -119,7 +120,7 @@ fn test(generate_coverage: bool) -> Result<(), DynError> {
     run_command(format!("{} test --color always", cargo).as_str(), &env)?;
     if generate_coverage {
         run_command(
-            r#"grcov . -s . --binary-path ./target/debug/ -t html --branch --ignore-not-existing -o ./target/debug/coverage/ --ignore "xtask/*""#,
+            r#"grcov . -s . --binary-path ./coverage/debug/ -t html --branch --ignore-not-existing -o ./coverage/debug/coverage/ --ignore "xtask/*""#,
             &env,
         )?;
     }
