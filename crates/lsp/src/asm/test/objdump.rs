@@ -172,3 +172,42 @@ Disassembly of section .text:
 "#
     );
 }
+
+#[test]
+fn test_objdump_directive() {
+    assert_listing!(
+        r#"
+a.out:     file format elf64-littleaarch64
+
+
+Disassembly of section .text:
+
+00000000002105e8 <_start>:
+  210cac:	00000000 	.inst	0x00000000 ; undefined
+"#,
+        r#"ROOT@0..153
+  WHITESPACE@0..1 "\n"
+  METADATA@1..43 "a.out:     file forma ..."
+  WHITESPACE@43..46 "\n\n\n"
+  METADATA@46..75 "Disassembly of sectio ..."
+  WHITESPACE@75..77 "\n\n"
+  LABEL@77..153
+    METADATA@77..93 "00000000002105e8"
+    WHITESPACE@93..94 " "
+    LABEL@94..103 "<_start>:"
+    WHITESPACE@103..106 "\n  "
+    DIRECTIVE@106..152
+      METADATA@106..112 "210cac"
+      METADATA@112..113 ":"
+      WHITESPACE@113..114 "\t"
+      METADATA@114..123 "00000000 "
+      WHITESPACE@123..124 "\t"
+      MNEMONIC@124..129 ".inst"
+      WHITESPACE@129..130 "\t"
+      NUMBER@130..140 "0x00000000"
+      WHITESPACE@140..141 " "
+      COMMENT@141..152 "; undefined"
+    WHITESPACE@152..153 "\n"
+"#
+    );
+}

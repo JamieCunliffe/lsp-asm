@@ -74,6 +74,10 @@ macro_rules! process_comment(
             return parse_comment($e);
         }
 
+        if matches!($e.extra().config.file_type, FileType::ObjDump) && $e.as_str().starts_with(';') {
+            return parse_comment($e);
+        }
+
         if $e.as_str().starts_with("/*") {
             return parse_multiline_comment($e);
         }
@@ -239,8 +243,13 @@ fn pre_process_next(line: &str, config: &ParserConfig) -> SyntaxKind {
         FileType::ObjDump => {
             let remaining = line.trim_start_matches(|a| a == ' ');
             let remaining = remaining.trim_start_matches(|a| is_hex(a) || a == ' ');
+
             if remaining.starts_with(':') {
-                remaining.trim_start_matches(|a| a != '\t')
+                remaining
+                    .trim_start_matches(|a| a == ':')
+                    .trim_start_matches(|a| a == '\t')
+                    .trim_start_matches(|a| is_hex(a) || a == ' ')
+                    .trim_start()
             } else {
                 remaining.trim_start_matches(|a| a == ' ')
             }
@@ -409,10 +418,6 @@ fn parse_brackets(remaining: Span, tokens: (SyntaxKind, SyntaxKind)) -> NomResul
 /// * `remaining` the string containing the comment. It's the callers responsibility for ensuring
 /// that this string is actually a comment string.
 fn parse_comment(remaining: Span) -> NomResultElement {
-    assert!(remaining
-        .as_str()
-        .starts_with(&remaining.config().comment_start));
-
     let (remaining, comment) = take_while(|a| a != '\n')(remaining)?;
     remaining.token(SyntaxKind::COMMENT, comment.as_str());
 
@@ -597,7 +602,8 @@ mod test {
     fn objdump_peek() {
         let data = r#"00000000002015a0 <_start>:
   2015a0:	f3 0f 1e fa          	endbr64
-  2015a4:	31 ed                	xor    %ebp,%ebp"#;
+  2015a4:	31 ed                	xor    %ebp,%ebp
+  210cac:	00000000 	.inst	0x00000000 ; undefined"#;
         let mut lines = data.split('\n');
         let config = ParserConfig {
             architecture: Architecture::X86_64,
@@ -617,6 +623,10 @@ mod test {
         assert_eq!(
             pre_process_next(lines.next().unwrap(), &config),
             SyntaxKind::INSTRUCTION
+        );
+        assert_eq!(
+            pre_process_next(lines.next().unwrap(), &config),
+            SyntaxKind::DIRECTIVE
         );
     }
 
