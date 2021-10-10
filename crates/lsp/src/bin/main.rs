@@ -7,7 +7,9 @@ use std::sync::Arc;
 
 use lsp_server::{Connection, Message, Notification, Request, RequestId, Response, ResponseError};
 
-use lsp_types::notification::{DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument};
+use lsp_types::notification::{
+    DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, DidSaveTextDocument,
+};
 use lsp_types::request::{
     CodeLensRequest, Completion, DocumentHighlightRequest, DocumentSymbolRequest, GotoDefinition,
     HoverRequest, References, SemanticTokensFullRequest, SemanticTokensRangeRequest,
@@ -15,9 +17,10 @@ use lsp_types::request::{
 };
 use lsp_types::{
     CodeLensOptions, CompletionOptions, CompletionOptionsCompletionItem, HoverProviderCapability,
-    OneOf, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
-    SemanticTokensServerCapabilities, ServerCapabilities, SignatureHelpOptions,
-    TextDocumentSyncCapability, TextDocumentSyncKind, WorkDoneProgressOptions,
+    OneOf, PublishDiagnosticsParams, SemanticTokensFullOptions, SemanticTokensLegend,
+    SemanticTokensOptions, SemanticTokensServerCapabilities, ServerCapabilities,
+    SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind, Url,
+    WorkDoneProgressOptions,
 };
 
 use serde_json::Value;
@@ -95,6 +98,12 @@ fn lsp_loop(
 ) -> Result<(), Box<dyn Error + Sync + Send>> {
     debug!("Starting lsp loop");
     info!("Initialization params: {:#?}", params);
+    let root = params
+        .root_uri
+        .map(|uri| uri.to_file_path().ok())
+        .flatten()
+        .map(|path| path.to_str().map(|p| p.to_string()))
+        .flatten();
 
     let params = params
         .initialization_options
@@ -109,7 +118,7 @@ fn lsp_loop(
         .unwrap_or_default();
 
     info!("Config: {:#?}", params);
-    let handler = Arc::new(LangServerHandler::new(params));
+    let handler = Arc::new(LangServerHandler::new(params, root));
     let connection = Arc::new(connection);
     let rt = Builder::new_multi_thread()
         .thread_name_fn(|| {
@@ -226,9 +235,16 @@ async fn process_message(
                 "textDocument/didOpen" => {
                     let data = get_notification::<DidOpenTextDocument>(notification).unwrap();
                     let data = data.text_document;
-                    handler
-                        .open_file(&data.language_id, data.uri, &data.text, data.version as _)
-                        .await
+                    let _ = handler
+                        .open_file(
+                            &data.language_id,
+                            data.uri.clone(),
+                            &data.text,
+                            data.version as _,
+                        )
+                        .await;
+                    handle_diagnostics(connection.clone(), handler.clone(), data.uri);
+                    Ok(())
                 }
                 "textDocument/didChange" => {
                     let data = get_notification::<DidChangeTextDocument>(notification).unwrap();
@@ -244,7 +260,11 @@ async fn process_message(
 
                     Ok(())
                 }
-                "textDocument/didSave" => Ok(()),
+                "textDocument/didSave" => {
+                    let data = get_notification::<DidSaveTextDocument>(notification).unwrap();
+                    handle_diagnostics(connection.clone(), handler.clone(), data.text_document.uri);
+                    Ok(())
+                }
                 "textDocument/didClose" => {
                     let data = get_notification::<DidCloseTextDocument>(notification).unwrap();
                     handler.close_file(data.text_document.uri).await
@@ -261,6 +281,36 @@ async fn process_message(
         }
         _ => (),
     }
+}
+
+fn handle_diagnostics(connection: Arc<Connection>, handler: Arc<LangServerHandler>, uri: Url) {
+    if !handler.config().diagnostics.enabled {
+        return;
+    }
+    info!("Handling diagnostics for file: {}", uri);
+
+    tokio::spawn(async move {
+        let diagnostics = handler
+            .get_diagnostics(&uri)
+            .await
+            .unwrap_or_default()
+            .into_iter()
+            .map(|e| e.into())
+            .collect();
+
+        let params = PublishDiagnosticsParams {
+            uri,
+            diagnostics,
+            version: None,
+        };
+
+        let diagnotics = Message::Notification(Notification {
+            method: String::from("textDocument/publishDiagnostics"),
+            params: serde_json::to_value(params).unwrap_or_default(),
+        });
+
+        let _ = connection.sender.send(diagnotics);
+    });
 }
 
 fn make_result<T>(result: Result<T, ResponseError>) -> LangServerResult

@@ -49,6 +49,11 @@
           "type": "boolean",
           "default": true,
           "description": "Provide a code lens showing the line a .loc directive refers to."
+        },
+        "lsp-asm.diagnostics.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Should diagnostics be provided by the server."
         }
       }
     },

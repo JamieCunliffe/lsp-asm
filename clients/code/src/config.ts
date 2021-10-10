@@ -9,6 +9,9 @@ export class Config {
       "codelens": {
         "enabledFilesize": this.get<string>("codelens.filesizeThreshold"),
         "locEnabled": this.get<string>("codelens.locEnabled")
+      },
+      "diagnostics": {
+        "enabled": this.get<boolean>("diagnostics.enabled")
       }
     }
   }

@@ -20,6 +20,10 @@ pub struct LSPConfig {
     #[serde(deserialize_with = "null_as_default")]
     #[serde(default)]
     pub analysis: AnalysisConfig,
+
+    #[serde(deserialize_with = "null_as_default")]
+    #[serde(default)]
+    pub diagnostics: DiagnosticsConfig,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -42,6 +46,14 @@ pub struct AnalysisConfig {
     pub default_cpus: HashMap<Architecture, String>,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiagnosticsConfig {
+    #[serde(deserialize_with = "null_as_default")]
+    #[serde(default)]
+    pub enabled: bool,
+}
+
 impl Default for CodelensConfig {
     fn default() -> Self {
         Self {
@@ -56,6 +68,12 @@ impl Default for AnalysisConfig {
         Self {
             default_cpus: Default::default(),
         }
+    }
+}
+
+impl Default for DiagnosticsConfig {
+    fn default() -> Self {
+        Self { enabled: true }
     }
 }
 

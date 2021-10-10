@@ -6,6 +6,7 @@ extern crate lazy_static;
 pub mod asm;
 mod completion;
 pub mod config;
+pub mod diagnostics;
 mod documentation;
 pub mod handler;
 pub mod types;

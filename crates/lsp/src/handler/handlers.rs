@@ -5,6 +5,9 @@ use tokio::sync::RwLock;
 
 use crate::asm::handler::AssemblyLanguageServerProtocol;
 use crate::config::LSPConfig;
+use crate::diagnostics::assembler_flags::AssemblerFlags;
+use crate::diagnostics::compile_commands::CompileCommands;
+use crate::diagnostics::{Diagnostics, Error};
 
 use super::error::{lsp_error_map, ErrorCode};
 use super::types::{DocumentChange, DocumentRangeMessage, FindReferencesMessage, LocationMessage};
@@ -16,14 +19,32 @@ use lsp_types::{CompletionList, DidChangeTextDocumentParams, SignatureHelp, Url}
 pub struct LangServerHandler {
     actors: RwLock<HashMap<Url, RwLock<Box<dyn LanguageServerProtocol + Send + Sync>>>>,
     config: LSPConfig,
+    commands: Option<Box<dyn Diagnostics + Send + Sync>>,
 }
 
 impl LangServerHandler {
-    pub fn new(config: LSPConfig) -> Self {
+    pub fn new(config: LSPConfig, root: Option<String>) -> Self {
+        let root = root.unwrap_or_default();
+        info!("Initializing workspace: {}", root);
+
+        let commands: Option<Box<dyn Diagnostics + Send + Sync>> =
+            if let Some(compile_commands) = CompileCommands::new(&root) {
+                Some(Box::new(compile_commands))
+            } else if let Some(flags) = AssemblerFlags::new(&root) {
+                Some(Box::new(flags))
+            } else {
+                None
+            };
+
         Self {
             actors: RwLock::new(HashMap::new()),
             config,
+            commands,
         }
+    }
+
+    pub fn config(&self) -> &LSPConfig {
+        &self.config
     }
 
     pub async fn open_file(
@@ -212,6 +233,15 @@ impl LangServerHandler {
             .read()
             .await
             .signature_help(&request.position)
+    }
+
+    pub async fn get_diagnostics(&self, uri: &Url) -> Option<Vec<Error>> {
+        Some(
+            self.commands
+                .as_ref()?
+                .assembler_for_file(uri)?
+                .get_errors(),
+        )
     }
 
     pub async fn syntax_tree(&self, url: Url) -> Result<String, ResponseError> {

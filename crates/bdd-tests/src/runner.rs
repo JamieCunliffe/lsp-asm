@@ -15,9 +15,9 @@ use pretty_assertions::assert_eq;
 use serde_json::Value;
 use util::{get_doc_position, parse_config};
 
-use lsp_asm::handler::handlers::LangServerHandler;
+use lsp_asm::{diagnostics::Error, handler::handlers::LangServerHandler};
 
-use crate::util::sort_completions;
+use crate::util::{full_path, sort_completions};
 
 mod util;
 
@@ -51,6 +51,7 @@ impl Default for LastResponse {
 pub struct LSPWorld {
     pub handler: LangServerHandler,
     last_response: LastResponse,
+    errors: Option<Vec<Error>>,
 }
 
 #[async_trait(?Send)]
@@ -59,8 +60,9 @@ impl World for LSPWorld {
 
     async fn new() -> Result<Self, Self::Error> {
         Ok(LSPWorld {
-            handler: LangServerHandler::new(Default::default()),
+            handler: LangServerHandler::new(Default::default(), Default::default()),
             last_response: Default::default(),
+            errors: Default::default(),
         })
     }
 }
@@ -77,7 +79,26 @@ async fn check_doc(_state: &mut LSPWorld, arch: String) {
 async fn init_lsp(state: &mut LSPWorld, #[given(context)] step: &StepContext) {
     let step = step.step.clone();
     let config = parse_config(&step.table.as_ref().unwrap().rows);
-    state.handler = LangServerHandler::new(config);
+    state.handler = LangServerHandler::new(config, Default::default());
+}
+
+#[given(regex = r#"an lsp initialized in "(.*)" with the following parameters"#)]
+async fn init_lsp_with_location(
+    state: &mut LSPWorld,
+    #[given(context)] step: &StepContext,
+    root: String,
+) {
+    let root = std::path::Path::new(&root)
+        .canonicalize()
+        .unwrap()
+        .as_os_str()
+        .to_str()
+        .unwrap()
+        .to_string();
+
+    let step = step.step.clone();
+    let config = parse_config(&step.table.as_ref().unwrap().rows);
+    state.handler = LangServerHandler::new(config, Some(root));
 }
 
 #[when(regex = r#"I open the temporary file "(.*)""#)]
@@ -94,7 +115,7 @@ async fn open_temp_file(state: &mut LSPWorld, #[when(context)] step: &StepContex
 async fn open_file(state: &mut LSPWorld, file: String) {
     let path = Path::new(&file);
     let data = std::fs::read_to_string(path).unwrap();
-    let url = Url::parse(&format!("file://{}", file)).unwrap();
+    let url = util::file_to_uri(&file);
 
     state.handler.open_file("asm", url, &data, 0).await.unwrap();
 }
@@ -111,7 +132,7 @@ async fn insert_file(
 ) {
     let step = step.step.clone();
     let pos = get_doc_position(pos.as_str());
-    let url = Url::parse(&format!("file://{}", file)).unwrap();
+    let url = util::file_to_uri(&file);
     let data = step.docstring.as_ref().unwrap();
     let data = &data[1..data.len() - 1];
 
@@ -141,7 +162,7 @@ async fn update_file(
 ) {
     let step = step.step.clone();
     let pos = util::make_range(&pos);
-    let url = Url::parse(&format!("file://{}", file)).unwrap();
+    let url = util::file_to_uri(&file);
     let data = step.docstring.as_ref().unwrap();
     let data = &data[1..data.len() - 1];
 
@@ -167,7 +188,7 @@ async fn full_sync_file(
     version: i32,
 ) {
     let step = step.step.clone();
-    let url = Url::parse(&format!("file://{}", file)).unwrap();
+    let url = util::file_to_uri(&file);
     let data = step.docstring.as_ref().unwrap();
     let data = &data[1..data.len() - 1];
 
@@ -199,7 +220,7 @@ async fn run_command(
     } else {
         (get_doc_position(&pos), None)
     };
-    let url = Url::parse(&format!("file://{}", file)).unwrap();
+    let url = util::file_to_uri(&file);
     let additional = additional.trim();
     let location = LocationMessage {
         url: url.clone(),
@@ -287,4 +308,26 @@ fn expect_response(state: &mut LSPWorld, #[then(context)] step: &StepContext) {
     .unwrap();
 
     assert_eq!(actual, expected);
+}
+
+#[when(regex = r#"I run diagnostics on the file "(.*)""#)]
+async fn run_diagnostics(state: &mut LSPWorld, file: String) {
+    let url = util::file_to_uri(&file);
+    let handler = &state.handler;
+    state.errors = handler.get_diagnostics(&url).await;
+}
+
+#[then("I expect the following errors")]
+fn expect_errors(state: &mut LSPWorld, #[then(context)] step: &StepContext) {
+    let step = step.step.clone();
+    let rows = &step.table.as_ref().unwrap().rows;
+    let expected_errors = util::get_errors(rows);
+    state
+        .errors
+        .as_mut()
+        .unwrap()
+        .iter_mut()
+        .for_each(|mut e| e.file = full_path(&e.file));
+
+    assert_eq!(state.errors.as_ref().unwrap(), &expected_errors);
 }

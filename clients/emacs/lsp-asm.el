@@ -29,6 +29,11 @@
   :type '(alist :key-type (string) :value-type (string))
   :group 'lsp-asm)
 
+(defcustom lsp-asm-diagnostics-enabled 't
+  "Should diagnostics be provided by the server."
+  :type 'boolean
+  :group 'lsp-asm)
+
 (defcustom lsp-asm-log-level "error"
   "The logging level to use."
   :type '(choice (const "error")
@@ -88,7 +93,8 @@
   `(:architecture ,lsp-asm-default-architecture
     :codelens (:enabledFilesize ,lsp-asm-codelens-filesize-threshold
                :locEnabled ,(lsp-json-bool lsp-asm-codelens-loc-enabled))
-    :analysis (:defaultCpus ,(json-read-from-string (json-encode-alist lsp-asm-analysis-cpus)))))
+    :analysis (:defaultCpus ,(json-read-from-string (json-encode-alist lsp-asm-analysis-cpus)))
+    :diagnostics (:enabled ,(lsp-json-bool lsp-asm-diagnostics-enabled))))
 
 (lsp-defun lsp-asm--open-loc
   ((&Command :title :arguments? [location]))

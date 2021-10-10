@@ -1,6 +1,7 @@
 #![allow(deprecated)]
 use base::Architecture;
 use lsp_asm::config::LSPConfig;
+use lsp_asm::diagnostics::Error;
 use lsp_asm::handler::semantic;
 use lsp_asm::types::{
     CompletionItem, CompletionKind, DocumentLocation, DocumentPosition, DocumentRange,
@@ -13,6 +14,7 @@ use lsp_types::{
 };
 use serde_json::Value;
 use std::collections::HashMap;
+use std::path::Path;
 
 pub(crate) fn parse_config(rows: &Vec<Vec<String>>) -> LSPConfig {
     let mut config: LSPConfig = Default::default();
@@ -253,4 +255,38 @@ pub(crate) fn make_signature_help(table: &Vec<Vec<String>>) -> SignatureHelp {
         active_signature: active,
         active_parameter,
     }
+}
+
+pub(crate) fn get_errors(table: &Vec<Vec<String>>) -> Vec<Error> {
+    table
+        .iter()
+        .skip(1)
+        .map(|err| Error {
+            file: full_path(err.get(0).unwrap()),
+            line: err.get(1).unwrap().parse::<u32>().unwrap() - 1, // Subtract one as LSP is 0 based
+            column: err.get(2).unwrap().parse::<u32>().unwrap(),
+            level: err.get(3).unwrap().as_str().into(),
+            code: Default::default(),
+            description: err.get(4).unwrap().to_string(),
+        })
+        .collect()
+}
+
+pub(crate) fn file_to_uri(file: &str) -> Url {
+    || -> Option<Url> {
+        let file = Path::new(file).canonicalize().ok()?;
+        Url::from_file_path(file).ok()
+    }()
+    .unwrap_or_else(|| Url::parse(&format!("file://{}", file)).unwrap())
+}
+
+pub(crate) fn full_path(p: &str) -> String {
+    Path::new(p)
+        .canonicalize()
+        .ok()
+        .unwrap()
+        .as_os_str()
+        .to_str()
+        .unwrap()
+        .to_string()
 }
