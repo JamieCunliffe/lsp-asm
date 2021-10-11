@@ -8,6 +8,7 @@ use std::io::prelude::*;
 
 mod aarch64;
 mod register_replacements;
+mod util;
 
 pub async fn build_aarch64_instructions() -> Result<(), Box<dyn Error + Sync + Send>> {
     println!("Building AArch64 instruction set reference");

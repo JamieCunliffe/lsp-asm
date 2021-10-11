@@ -121,6 +121,7 @@ impl From<CompletionItem> for lsp_types::CompletionItem {
                 crate::types::CompletionKind::Label => CompletionItemKind::Constant,
                 crate::types::CompletionKind::Register => CompletionItemKind::Variable,
                 crate::types::CompletionKind::Mnemonic => CompletionItemKind::Function,
+                crate::types::CompletionKind::Text => CompletionItemKind::Text,
             }),
             detail: Some(item.details),
             documentation: item.documentation.map(|d| {

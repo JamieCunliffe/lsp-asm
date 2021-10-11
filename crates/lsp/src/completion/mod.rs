@@ -15,6 +15,7 @@ use crate::types::{CompletionItem, DocumentPosition};
 mod label;
 mod mnemonic;
 mod registers;
+mod value_list;
 
 pub fn handle_completion(
     parser: &Parser,
@@ -36,8 +37,12 @@ pub fn handle_completion(
             mnemonic::handle_mnemonic(docs)
         }
         _ => {
-            let completion_kinds =
-                find_documentation_token_for_instruction(docs, &token, registers, parser.alias())?;
+            let completion_kinds = find_documentation_token_for_instruction(
+                docs.clone(),
+                &token,
+                registers,
+                parser.alias(),
+            )?;
 
             let root = parser.tree();
             completion_kinds
@@ -50,6 +55,19 @@ pub fn handle_completion(
                         parser.architecture(),
                         parser.alias(),
                     ),
+                    (SyntaxKind::TOKEN, ident)
+                        if value_list::ident_can_complete(
+                            ident.trim_start_matches('#'),
+                            token,
+                            docs.clone(),
+                        ) =>
+                    {
+                        value_list::complete_ident(
+                            ident.trim_start_matches('#'),
+                            token,
+                            docs.clone(),
+                        )
+                    }
                     _ => Default::default(),
                 })
                 .collect_vec()
@@ -100,19 +118,13 @@ fn find_documentation_token_for_instruction(
         .token_at_offset(token.text_range().start())
         .right_biased()
     {
-        token.detach();
+        if !matches!(token.kind(), SyntaxKind::COMMA) {
+            token.detach();
+        }
     }
 
     let templates =
         find_potential_instruction_templates(&instruction, instructions, registers, alias);
-    let templates = if templates.is_empty() {
-        instructions
-            .iter()
-            .flat_map(|i| &i.asm_template)
-            .collect_vec()
-    } else {
-        templates
-    };
 
     let mut tokens = templates
         .iter()

@@ -3,7 +3,7 @@ pub mod registers;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 
-use base::Architecture;
+use base::{null_as_default, Architecture};
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -22,6 +22,10 @@ pub type DocumentationMap = HashMap<String, Vec<Instruction>>;
 pub struct OperandInfo {
     pub name: String,
     pub description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "null_as_default")]
+    #[serde(default)]
+    pub completion_values: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

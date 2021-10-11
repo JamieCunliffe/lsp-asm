@@ -181,22 +181,27 @@ mod tests {
                 OperandInfo {
                     name: "<ab>".into(),
                     description: "ab".into(),
+                    completion_values: Default::default(),
                 },
                 OperandInfo {
                     name: "<x>".into(),
                     description: "x".into(),
+                    completion_values: Default::default(),
                 },
                 OperandInfo {
                     name: "<x>".into(),
                     description: "x".into(),
+                    completion_values: Default::default(),
                 },
                 OperandInfo {
                     name: "<test>".into(),
                     description: "test".into(),
+                    completion_values: Default::default(),
                 },
                 OperandInfo {
                     name: "<imm>".into(),
                     description: "imm".into(),
+                    completion_values: Default::default(),
                 },
             ],
         };

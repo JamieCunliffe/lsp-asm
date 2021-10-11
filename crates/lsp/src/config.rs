@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 
 use byte_unit::{Byte, ByteUnit};
-use serde::{Deserialize, Deserializer};
+use serde::Deserialize;
 
-use base::Architecture;
+use base::{null_as_default, Architecture};
 
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -75,12 +75,4 @@ impl Default for DiagnosticsConfig {
     fn default() -> Self {
         Self { enabled: true }
     }
-}
-
-fn null_as_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
-where
-    D: Deserializer<'de>,
-    T: Default + Deserialize<'de>,
-{
-    Ok(Option::deserialize(deserializer)?.unwrap_or_default())
 }

@@ -86,13 +86,20 @@ fn process_isa_ref(data: &str, file: &str) -> Vec<Instruction> {
 
     let operands = asm_template.map(|x| {
         x.filter(|c| c.tag_name().name() == "a")
-            .map(|n| OperandInfo {
-                name: n.text().unwrap_or("").to_string(),
-                description: n
+            .map(|n| {
+                let description = n
                     .attribute_node("hover")
                     .map(|a| a.value())
                     .unwrap_or("")
-                    .to_string(),
+                    .to_string();
+
+                let completion_values = get_completion_values(&description);
+
+                OperandInfo {
+                    name: n.text().unwrap_or("").to_string(),
+                    description,
+                    completion_values,
+                }
             })
             .collect_vec()
     });
@@ -185,6 +192,35 @@ fn parse_template(template: &str, operands: &[OperandInfo]) -> Vec<String> {
     ret
 }
 
+fn get_completion_values(description: &str) -> Option<Vec<String>> {
+    let start = description.find('[')?;
+    let process_item = |part: &str| -> Option<Vec<String>> {
+        if let Some(stripped) = part.strip_prefix('#') {
+            // If we start with a # only allow it if the part following it is numeric
+            stripped.parse::<i64>().ok()?;
+            Some(vec![part.to_string()])
+        } else if part.contains('-') {
+            crate::util::range_to_list(part)
+        } else {
+            Some(vec![part.to_string()])
+        }
+    };
+
+    if let Some(end) = description.find(']') {
+        let items = &description[(start + 1)..end];
+        Some(
+            items
+                .split(',')
+                .filter_map(process_item)
+                .flatten()
+                .collect::<Vec<_>>(),
+        )
+    } else {
+        warn!("Description: {} doesn't have a closing ]", description);
+        None
+    }
+}
+
 pub(crate) async fn get_instructions() -> Result<Vec<Instruction>, Box<dyn Error>> {
     println!("Downloading XML reference from {}", A64_ISA);
     let isa_data = reqwest::get(A64_ISA).await?.bytes().await?.to_vec();
@@ -220,22 +256,26 @@ mod test {
             OperandInfo {
                 name: "<Xt1>".into(),
                 description: "Register".into(),
+                completion_values: Default::default(),
             },
             OperandInfo {
                 name: "<Xt2>".into(),
                 description: "Another register".into(),
+                completion_values: Default::default(),
             },
             OperandInfo {
                 name: "<Xn|SP>".into(),
                 description: "Another register".into(),
+                completion_values: Default::default(),
             },
             OperandInfo {
                 name: "<imm>".into(),
                 description: "Optional immediate".into(),
+                completion_values: Default::default(),
             },
         ];
         let input = "STP  <Xt1>, <Xt2>, [<Xn|SP>{, #<imm>}]";
-        let result = parse_template(&input, &operands);
+        let result = parse_template(input, &operands);
         assert_eq!(
             result,
             vec![
@@ -251,26 +291,31 @@ mod test {
             OperandInfo {
                 name: "<Xd>".into(),
                 description: "Register".into(),
+                completion_values: Default::default(),
             },
             OperandInfo {
                 name: "<Xn|SP>".into(),
                 description: "Another register".into(),
+                completion_values: Default::default(),
             },
             OperandInfo {
                 name: "<R><m>".into(),
                 description: "Something".into(),
+                completion_values: Default::default(),
             },
             OperandInfo {
                 name: "<extend>".into(),
                 description: "Optional extend".into(),
+                completion_values: Default::default(),
             },
             OperandInfo {
                 name: "<amount>".into(),
                 description: "Optional immediate".into(),
+                completion_values: Default::default(),
             },
         ];
         let input = "ADDS  <Xd>, <Xn|SP>, <R><m>{, <extend> {#<amount>}}";
-        let result = parse_template(&input, &operands);
+        let result = parse_template(input, &operands);
 
         assert_eq!(
             result,
@@ -288,22 +333,26 @@ mod test {
             OperandInfo {
                 name: "<Zt>".into(),
                 description: "Register".into(),
+                completion_values: Default::default(),
             },
             OperandInfo {
                 name: "<Pg>".into(),
                 description: "Predicate".into(),
+                completion_values: Default::default(),
             },
             OperandInfo {
                 name: "<Zn>".into(),
                 description: "Another register".into(),
+                completion_values: Default::default(),
             },
             OperandInfo {
                 name: "<imm>".into(),
                 description: "Optional immediate".into(),
+                completion_values: Default::default(),
             },
         ];
         let input = "LD1W    { <Zt>.S }, <Pg>/Z, [<Zn>.S{, #<imm>}]";
-        let result = parse_template(&input, &operands);
+        let result = parse_template(input, &operands);
 
         assert_eq!(
             result,
@@ -320,22 +369,26 @@ mod test {
             OperandInfo {
                 name: "<Zt>".into(),
                 description: "Register".into(),
+                completion_values: Default::default(),
             },
             OperandInfo {
                 name: "<Pg>".into(),
                 description: "Predicate".into(),
+                completion_values: Default::default(),
             },
             OperandInfo {
                 name: "<Xn|SP>".into(),
                 description: "Another register".into(),
+                completion_values: Default::default(),
             },
             OperandInfo {
                 name: "<imm>".into(),
                 description: "Optional immediate".into(),
+                completion_values: Default::default(),
             },
         ];
         let input = "LD1W    { <Zt>.S }, <Pg>/Z, [<Xn|SP>{, #<imm>, MUL VL}]";
-        let result = parse_template(&input, &operands);
+        let result = parse_template(input, &operands);
 
         assert_eq!(
             result,
@@ -352,18 +405,21 @@ mod test {
             OperandInfo {
                 name: "<Xdn>".into(),
                 description: "general-purpose register".into(),
+                completion_values: Default::default(),
             },
             OperandInfo {
                 name: "<pattern>".into(),
                 description: "Optional pattern specifier".into(),
+                completion_values: Default::default(),
             },
             OperandInfo {
                 name: "<imm>".into(),
                 description: "multiplier, default 1 ".into(),
+                completion_values: Default::default(),
             },
         ];
         let input = "INCB    <Xdn>{, <pattern>{, MUL #<imm>}}";
-        let result = parse_template(&input, &operands);
+        let result = parse_template(input, &operands);
 
         assert_eq!(
             result,

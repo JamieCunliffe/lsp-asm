@@ -27,6 +27,7 @@ pub enum CompletionKind {
     Label,
     Register,
     Mnemonic,
+    Text,
 }
 
 #[derive(Debug, PartialOrd, Ord, Eq, PartialEq, Clone)]
