@@ -10,7 +10,7 @@ use nom::character::is_hex_digit;
 use nom::error::ErrorKind;
 use nom::multi::many0;
 use nom::sequence::{delimited, preceded, terminated};
-use nom::{IResult, InputTake};
+use nom::{IResult, InputLength, InputTake};
 use rowan::GreenNode;
 use std::num::{ParseFloatError, ParseIntError};
 use syntax::ast::SyntaxKind;
@@ -57,6 +57,9 @@ impl<'a> Span<'a> {
     }
     pub(self) fn current_indent_is_kind(&self, kind: SyntaxKind) -> bool {
         self.extra().builder.current_indent_is_kind(kind)
+    }
+    pub(self) fn last_kind(&self) -> SyntaxKind {
+        self.extra().builder.last_kind()
     }
 }
 
@@ -489,6 +492,27 @@ where
     }
 }
 
+pub fn take_while_skip_first<F, T, Input, Error: nom::error::ParseError<Input>>(
+    cond: F,
+) -> impl Fn(Input) -> IResult<Input, Input, Error>
+where
+    Input: nom::InputTakeAtPosition<Item = T>
+        + nom::InputIter<Item = T>
+        + nom::InputTake
+        + InputLength,
+    F: Fn(T) -> bool,
+{
+    move |i: Input| {
+        for (index, val) in i.iter_indices() {
+            if index > 0 && !cond(val) {
+                return Ok(i.take_split(index));
+            }
+        }
+
+        Ok(i.take_split(i.input_len()))
+    }
+}
+
 fn str_parse<T, Input>(data: Input) -> IResult<Input, Input>
 where
     Input: nom::InputTake + nom::InputIter<Item = T>,
@@ -553,6 +577,17 @@ fn get_action(c: char, config: &ParserConfig) -> Option<Either<SyntaxKind, Proce
             remaining.token(SyntaxKind::STRING, &str);
             Ok((remaining, ()))
         }))),
+        '@' => Some(Either::Right(Box::new(|expr| {
+            let config = expr.extra().config;
+            let (remaining, token) =
+                take_while_skip_first(|a: char| !is_special_char(a, config))(expr)?;
+            let kind = (remaining.last_kind() == SyntaxKind::TOKEN)
+                .then(|| SyntaxKind::RELOCATION)
+                .unwrap_or(SyntaxKind::TOKEN);
+
+            remaining.token(kind, token.as_str());
+            Ok((remaining, ()))
+        }))),
         '<' if config.file_type == FileType::ObjDump => {
             Some(Either::Right(Box::new(objdump_angle_brackets)))
         }
@@ -563,6 +598,26 @@ fn get_action(c: char, config: &ParserConfig) -> Option<Either<SyntaxKind, Proce
                 Ok((remaining, token))
             })))
         }
+        ':' if config.architecture == Architecture::AArch64 => {
+            Some(Either::Right(Box::new(|expr| {
+                let config = expr.extra().config;
+                let split = expr.as_str()[1..]
+                    .find(|c| is_special_char(c, config))
+                    .map(|i| i + 1)
+                    .unwrap_or_else(|| expr.as_str().len());
+
+                let (kind, split) = if expr.as_str().get(split..=split) == Some(":") {
+                    (SyntaxKind::RELOCATION, split + 1)
+                } else {
+                    (SyntaxKind::TOKEN, split)
+                };
+
+                let (remaining, relocation) = expr.take_split(split);
+                remaining.token(kind, relocation.as_str());
+
+                Ok((remaining, ()))
+            })))
+        }
         _ => None,
     }
 }
@@ -570,9 +625,9 @@ fn get_action(c: char, config: &ParserConfig) -> Option<Either<SyntaxKind, Proce
 #[inline]
 fn is_special_char(c: char, config: &ParserConfig) -> bool {
     match c {
-        ',' | '+' | '-' | ' ' | '\t' | '\n' | '(' | '[' | '{' | '"' => true,
+        ',' | '+' | '-' | ' ' | '\t' | '\n' | '(' | '[' | '{' | '"' | '@' => true,
         '<' if config.file_type == FileType::ObjDump => true,
-        '#' if config.architecture == Architecture::AArch64 => true,
+        '#' | ':' if config.architecture == Architecture::AArch64 => true,
         _ => false,
     }
 }

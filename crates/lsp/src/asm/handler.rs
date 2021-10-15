@@ -171,6 +171,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             | SyntaxKind::COMMENT
             | SyntaxKind::FLOAT
             | SyntaxKind::ALIAS
+            | SyntaxKind::RELOCATION
             | SyntaxKind::INSTRUCTION
             | SyntaxKind::DIRECTIVE
             | SyntaxKind::BRACKETS
@@ -293,6 +294,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                     SyntaxKind::LABEL | SyntaxKind::LOCAL_LABEL => {
                         Some(crate::handler::semantic::LABEL_INDEX)
                     }
+                    SyntaxKind::RELOCATION => Some(crate::handler::semantic::RELOCATION_INDEX),
                     SyntaxKind::L_PAREN
                     | SyntaxKind::R_PAREN
                     | SyntaxKind::L_SQ

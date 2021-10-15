@@ -170,6 +170,7 @@ impl Parser {
             SyntaxKind::LABEL => self
                 .token::<LabelToken>(token)
                 .map(|t| SemanticEq::String(t.name())),
+            SyntaxKind::RELOCATION => Some(SemanticEq::String(token.text())),
             SyntaxKind::L_PAREN
             | SyntaxKind::R_PAREN
             | SyntaxKind::L_SQ

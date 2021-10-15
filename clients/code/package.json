@@ -89,6 +89,10 @@
         "id": "metadata",
         "description": "Style for metadata",
         "superType": "comment"
+      },
+      {
+        "id": "relocation",
+        "description": "Style for relocation"
       }
     ]
   },

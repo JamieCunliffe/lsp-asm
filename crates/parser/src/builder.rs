@@ -1,9 +1,9 @@
 use std::cell::{Ref, RefCell};
 
-use rowan::{GreenNode, GreenToken, NodeOrToken};
+use rowan::{GreenNode, GreenToken, Language, NodeOrToken};
 
 use syntax::alias::Alias;
-use syntax::ast::SyntaxKind;
+use syntax::ast::{AssemblyLanguage, SyntaxKind};
 
 pub struct Builder {
     child: RefCell<Vec<NodeOrToken<GreenNode, GreenToken>>>,
@@ -89,5 +89,12 @@ impl Builder {
             .last()
             .map(|(_, k)| k == &kind)
             .unwrap_or(false)
+    }
+    pub(super) fn last_kind(&self) -> SyntaxKind {
+        self.child
+            .borrow()
+            .last()
+            .map(|n| AssemblyLanguage::kind_from_raw(n.kind()))
+            .unwrap_or(SyntaxKind::ROOT)
     }
 }

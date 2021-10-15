@@ -21,6 +21,7 @@ pub enum SyntaxKind {
     FLOAT,
     NUMBER,
     REGISTER_ALIAS,
+    RELOCATION,
     WHITESPACE,
     COMMA,
     OPERATOR,

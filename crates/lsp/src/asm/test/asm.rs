@@ -514,3 +514,70 @@ fn test_arm_req_alias() {
         Architecture::AArch64
     );
 }
+
+#[test]
+fn test_arm_relocation() {
+    assert_listing!(
+        "ldr d0, [x9, :lo12:.LCPI0_0]",
+        r#"ROOT@0..28
+  INSTRUCTION@0..28
+    MNEMONIC@0..3 "ldr"
+    WHITESPACE@3..4 " "
+    REGISTER@4..6 "d0"
+    COMMA@6..7 ","
+    WHITESPACE@7..8 " "
+    BRACKETS@8..28
+      L_SQ@8..9 "["
+      REGISTER@9..11 "x9"
+      COMMA@11..12 ","
+      WHITESPACE@12..13 " "
+      RELOCATION@13..19 ":lo12:"
+      TOKEN@19..27 ".LCPI0_0"
+      R_SQ@27..28 "]"
+"#,
+        Architecture::AArch64
+    );
+}
+
+#[test]
+fn test_arm_relocation_incomplete() {
+    assert_listing!(
+        "ldr d0, [x9, :lo12 ]",
+        r#"ROOT@0..20
+  INSTRUCTION@0..20
+    MNEMONIC@0..3 "ldr"
+    WHITESPACE@3..4 " "
+    REGISTER@4..6 "d0"
+    COMMA@6..7 ","
+    WHITESPACE@7..8 " "
+    BRACKETS@8..20
+      L_SQ@8..9 "["
+      REGISTER@9..11 "x9"
+      COMMA@11..12 ","
+      WHITESPACE@12..13 " "
+      TOKEN@13..18 ":lo12"
+      WHITESPACE@18..19 " "
+      R_SQ@19..20 "]"
+"#,
+        Architecture::AArch64
+    );
+}
+
+#[test]
+fn test_relocation_at() {
+    assert_listing!(
+        "callq *_ZN4core6result19Result$LT$T$C$E$GT$2ok17h6d27845e2c2d1976E@GOTPCREL(%rip)",
+        r#"ROOT@0..81
+  INSTRUCTION@0..81
+    MNEMONIC@0..5 "callq"
+    WHITESPACE@5..6 " "
+    TOKEN@6..66 "*_ZN4core6result19Res ..."
+    RELOCATION@66..75 "@GOTPCREL"
+    BRACKETS@75..81
+      L_PAREN@75..76 "("
+      REGISTER@76..80 "%rip"
+      R_PAREN@80..81 ")"
+"#,
+        Architecture::X86_64
+    );
+}

@@ -98,7 +98,10 @@ fn check_template(
         .filter(|c| {
             !matches!(
                 c.kind(),
-                SyntaxKind::WHITESPACE | SyntaxKind::METADATA | SyntaxKind::COMMENT
+                SyntaxKind::WHITESPACE
+                    | SyntaxKind::METADATA
+                    | SyntaxKind::COMMENT
+                    | SyntaxKind::RELOCATION
             )
         })
         .collect_vec();
