@@ -301,8 +301,8 @@ fn parse_line(expr: Span) -> NomResultElement {
     }
 }
 
-pub fn register_name(name: &str) -> &str {
-    name.strip_prefix('%').unwrap_or(name)
+pub fn register_name(name: &str) -> String {
+    name.strip_prefix('%').unwrap_or(name).to_lowercase()
 }
 
 /// Determine if `name` is a valid register
@@ -311,7 +311,7 @@ fn is_register(name: &str, config: &ParserConfig) -> bool {
         let name = register_name(name);
         registers
             .iter()
-            .any(|register| register.names.contains(&name))
+            .any(|register| register.names.contains(&name.as_str()))
     } else {
         false
     }

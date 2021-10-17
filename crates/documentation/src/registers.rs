@@ -11,12 +11,12 @@ impl Registers for DocRegisters {
 
         if kind.get(0..=0) == Some("<") {
             match kind.get(1..).unwrap_or("\0") {
-                "GP" => RegisterKind::GENERAL_PURPOSE,
-                "GP|SP" => RegisterKind::GP_OR_SP,
-                "FP" => RegisterKind::FLOATING_POINT,
-                "SIMD" => RegisterKind::SIMD,
-                "SCALE" => RegisterKind::SCALABLE,
-                "PRED" => RegisterKind::PREDICATE,
+                "gp" => RegisterKind::GENERAL_PURPOSE,
+                "gp|sp" => RegisterKind::GP_OR_SP,
+                "fp" => RegisterKind::FLOATING_POINT,
+                "simd" => RegisterKind::SIMD,
+                "scale" => RegisterKind::SCALABLE,
+                "pred" => RegisterKind::PREDICATE,
                 _ => RegisterKind::NONE,
             }
         } else {
@@ -33,14 +33,14 @@ impl Registers for DocRegisters {
             "32" => RegisterSize::Bits32,
             "64" => RegisterSize::Bits64,
             "128" => RegisterSize::Bits128,
-            "V" => RegisterSize::Vector,
-            "U" => RegisterSize::Unknown,
+            "v" => RegisterSize::Vector,
+            "u" => RegisterSize::Unknown,
             _ => RegisterSize::Unknown,
         }
     }
 
     fn is_sp(&self, name: &str) -> bool {
-        name.contains("SP")
+        name.contains("sp")
     }
 }
 
@@ -51,16 +51,16 @@ pub fn to_documentation_name(kind: &RegisterKind, size: &RegisterSize) -> String
 }
 
 pub const DOCUMENTATION_REGISTERS: [Register; 1] = [Register::new(&[
-    "<FP_128>",
-    "<FP_16>",
-    "<FP_32>",
-    "<FP_64>",
-    "<FP_8>",
-    "<GP_32>",
-    "<GP_64>",
-    "<GP_U>",
-    "<GP|SP_64>",
-    "<PRED_V>",
-    "<SCALE_V>",
-    "<SIMD_V>",
+    "<fp_128>",
+    "<fp_16>",
+    "<fp_32>",
+    "<fp_64>",
+    "<fp_8>",
+    "<gp_32>",
+    "<gp_64>",
+    "<gp_u>",
+    "<gp|sp_64>",
+    "<pred_v>",
+    "<scale_v>",
+    "<simd_v>",
 ])];

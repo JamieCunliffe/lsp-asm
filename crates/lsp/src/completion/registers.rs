@@ -72,7 +72,7 @@ mod tests {
 
     #[test]
     fn test_aarch64_x_registers() {
-        let register = "<GP_64>";
+        let register = "<gp_64>";
         let expected = (0..=30)
             .map(|x| CompletionItem {
                 text: format!("x{}", x),
@@ -101,7 +101,7 @@ mod tests {
 
     #[test]
     fn test_aarch64_x_inc_sp_registers() {
-        let register = "<GP|SP_64>";
+        let register = "<gp|sp_64>";
         let expected = (0..=30)
             .map(|x| CompletionItem {
                 text: format!("x{}", x),

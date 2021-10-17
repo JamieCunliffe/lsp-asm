@@ -6,13 +6,15 @@ use parser::Register;
 pub struct AArch64 {}
 impl Registers for AArch64 {
     fn get_kind(&self, name: &str) -> RegisterKind {
+        let name = name.to_lowercase();
+
         match name.get(0..=0).unwrap_or("\0") {
             "x" | "r" => RegisterKind::GENERAL_PURPOSE,
             "w" => RegisterKind::GENERAL_PURPOSE,
-            "s" if name == "sp" => RegisterKind::SP,
+            "s" if self.is_sp(&name) => RegisterKind::SP,
             "q" => RegisterKind::FLOATING_POINT,
             "d" => RegisterKind::FLOATING_POINT,
-            "s" if name != "sp" => RegisterKind::FLOATING_POINT,
+            "s" if !self.is_sp(&name) => RegisterKind::FLOATING_POINT,
             "h" => RegisterKind::FLOATING_POINT,
             "b" => RegisterKind::FLOATING_POINT,
             "v" => {
@@ -32,9 +34,11 @@ impl Registers for AArch64 {
     }
 
     fn get_size(&self, name: &str) -> RegisterSize {
+        let name = name.to_lowercase();
+
         match name.get(0..=0).unwrap_or("\0") {
             "x" | "r" => RegisterSize::Bits64,
-            "s" if name == "sp" => RegisterSize::Bits64,
+            "s" if self.is_sp(&name) => RegisterSize::Bits64,
             "w" => RegisterSize::Bits32,
             "q" => RegisterSize::Bits128,
             "d" => RegisterSize::Bits64,
@@ -58,7 +62,7 @@ impl Registers for AArch64 {
     }
 
     fn is_sp(&self, name: &str) -> bool {
-        name == "sp"
+        name.eq_ignore_ascii_case("sp")
     }
 }
 
@@ -96,7 +100,7 @@ pub(crate) fn register_id(name: &str, config: &ParserConfig) -> Option<i8> {
         registers
             .iter()
             .enumerate()
-            .find(|(_, register)| register.names.contains(&name))
+            .find(|(_, register)| register.names.contains(&name.as_str()))
             .map(|(idx, _)| idx as _)
     } else {
         None

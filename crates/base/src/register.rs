@@ -44,8 +44,8 @@ impl Display for RegisterSize {
                 RegisterSize::Bits32 => "32",
                 RegisterSize::Bits64 => "64",
                 RegisterSize::Bits128 => "128",
-                RegisterSize::Vector => "V",
-                RegisterSize::Unknown => "U",
+                RegisterSize::Vector => "v",
+                RegisterSize::Unknown => "u",
             }
         )
     }
@@ -55,22 +55,22 @@ impl Display for RegisterKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut r = Vec::new();
         if self.contains(RegisterKind::GENERAL_PURPOSE) {
-            r.push("GP");
+            r.push("gp");
         }
         if self.contains(RegisterKind::FLOATING_POINT) {
-            r.push("FP");
+            r.push("fp");
         }
         if self.contains(RegisterKind::SIMD) {
-            r.push("SIMD");
+            r.push("simd");
         }
         if self.contains(RegisterKind::SCALABLE) {
-            r.push("SCALE");
+            r.push("scale");
         }
         if self.contains(RegisterKind::PREDICATE) {
-            r.push("PRED");
+            r.push("pred");
         }
         if self.contains(RegisterKind::SP) {
-            r.push("SP");
+            r.push("sp");
         }
 
         write!(f, "{}", r.join("|"))

@@ -10,7 +10,7 @@ pub(super) fn make_instruction() -> Instruction {
   "asm_template": [
     {
       "asm": [
-        "stp  <GP_32>, <GP_32>, [<GP|SP_64>], #<imm>"
+        "stp  <gp_32>, <gp_32>, [<gp|sp_64>], #<imm>"
       ],
       "display_asm": "stp  <Wt1>, <Wt2>, [<Xn|SP>], #<imm>",
       "items": [
@@ -34,7 +34,7 @@ pub(super) fn make_instruction() -> Instruction {
     },
     {
       "asm": [
-        "stp  <GP_64>, <GP_64>, [<GP|SP_64>], #<imm>"
+        "stp  <gp_64>, <gp_64>, [<gp|sp_64>], #<imm>"
       ],
       "display_asm": "stp  <Xt1>, <Xt2>, [<Xn|SP>], #<imm>",
       "items": [
@@ -58,7 +58,7 @@ pub(super) fn make_instruction() -> Instruction {
     },
     {
       "asm": [
-        "stp  <GP_32>, <GP_32>, [<GP|SP_64>, #<imm>]!"
+        "stp  <gp_32>, <gp_32>, [<gp|sp_64>, #<imm>]!"
       ],
       "display_asm": "stp  <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]!",
       "items": [
@@ -82,7 +82,7 @@ pub(super) fn make_instruction() -> Instruction {
     },
     {
       "asm": [
-        "stp  <GP_64>, <GP_64>, [<GP|SP_64>, #<imm>]!"
+        "stp  <gp_64>, <gp_64>, [<gp|sp_64>, #<imm>]!"
       ],
       "display_asm": "stp  <Xt1>, <Xt2>, [<Xn|SP>, #<imm>]!",
       "items": [
@@ -106,8 +106,8 @@ pub(super) fn make_instruction() -> Instruction {
     },
     {
       "asm": [
-        "stp  <GP_32>, <GP_32>, [<GP|SP_64>, #<imm>]",
-        "stp  <GP_32>, <GP_32>, [<GP|SP_64>]"
+        "stp  <gp_32>, <gp_32>, [<gp|sp_64>, #<imm>]",
+        "stp  <gp_32>, <gp_32>, [<gp|sp_64>]"
       ],
       "display_asm": "stp  <Wt1>, <Wt2>, [<Xn|SP>{, #<imm>}]",
       "items": [
@@ -131,8 +131,8 @@ pub(super) fn make_instruction() -> Instruction {
     },
     {
       "asm": [
-        "stp  <GP_64>, <GP_64>, [<GP|SP_64>, #<imm>]",
-        "stp  <GP_64>, <GP_64>, [<GP|SP_64>]"
+        "stp  <gp_64>, <gp_64>, [<gp|sp_64>, #<imm>]",
+        "stp  <gp_64>, <gp_64>, [<gp|sp_64>]"
       ],
       "display_asm": "stp  <Xt1>, <Xt2>, [<Xn|SP>{, #<imm>}]",
       "items": [

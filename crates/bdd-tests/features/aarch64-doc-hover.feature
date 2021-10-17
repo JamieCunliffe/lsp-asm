@@ -7,7 +7,7 @@ Feature: Document hover
     When I open the temporary file "doc"
       """
       sub sp, sp, #48                    // =48
-      stp x29, x30, [sp, #32]            // 16-byte Folded Spill
+      stp x29, X30, [sp, #32]            // 16-byte Folded Spill
       add x29, sp, #32                   // =32
       ld1w	{ z0.s }, p0/z, [x8]
       """
