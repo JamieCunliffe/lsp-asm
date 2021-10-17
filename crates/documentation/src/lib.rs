@@ -1,3 +1,4 @@
+mod map;
 pub mod registers;
 
 use itertools::Itertools;
@@ -13,10 +14,7 @@ use std::fs::File;
 use std::io::BufReader;
 use std::sync::{Arc, RwLock};
 
-/// The documentation map type
-/// The key for this type **MUST** be lowercase.
-/// Each mnemonic in here can have mutliple instructions
-pub type DocumentationMap = HashMap<String, Vec<Instruction>>;
+pub use map::*;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct OperandInfo {

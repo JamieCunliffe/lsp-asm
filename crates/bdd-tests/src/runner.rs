@@ -108,7 +108,7 @@ async fn open_temp_file(state: &mut LSPWorld, #[when(context)] step: &StepContex
     let data = &data[1..data.len() - 1];
     let url = Url::parse(&format!("file://{}", name)).unwrap();
 
-    state.handler.open_file("asm", url, &data, 0).await.unwrap();
+    state.handler.open_file("asm", url, data, 0).await.unwrap();
 }
 
 #[when(regex = r#"I open the file "(.*)""#)]
@@ -248,12 +248,9 @@ async fn run_command(
         "document symbols" => util::make_result(&handler.document_symbols(location.url).await),
         "codelens" => util::make_result(&handler.code_lens(location.url).await),
         "syntax tree" => util::make_result(&handler.syntax_tree(location.url).await),
-        "completion" => util::make_result(
-            &handler
-                .completion(location)
-                .await
-                .map(|i| sort_completions(i)),
-        ),
+        "completion" => {
+            util::make_result(&handler.completion(location).await.map(sort_completions))
+        }
         "signature help" => util::make_result(&handler.signature_help(&location).await),
         _ => "".into(),
     };

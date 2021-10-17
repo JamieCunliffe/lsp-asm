@@ -88,9 +88,6 @@ mod test {
 
     #[test]
     fn test_no_tokens() {
-        assert_eq!(
-            Vec::<SemanticToken>::new(),
-            semantic_delta_transform(&vec![])
-        );
+        assert_eq!(Vec::<SemanticToken>::new(), semantic_delta_transform(&[]));
     }
 }

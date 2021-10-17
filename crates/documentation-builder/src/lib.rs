@@ -1,7 +1,8 @@
 use base::Architecture;
-use documentation::{DocumentationMap, Instruction};
+use documentation::Instruction;
 use itertools::Itertools;
 use log::info;
+use std::collections::HashMap;
 use std::error::Error;
 use std::fs::{self, File};
 use std::io::prelude::*;
@@ -22,7 +23,7 @@ pub async fn build_aarch64_instructions() -> Result<(), Box<dyn Error + Sync + S
     Ok(())
 }
 
-fn make_hash_map(instructions: &mut Vec<Instruction>) -> DocumentationMap {
+fn make_hash_map(instructions: &mut Vec<Instruction>) -> HashMap<String, Vec<Instruction>> {
     instructions
         .drain(..)
         .into_group_map_by(|i| i.opcode.to_lowercase())

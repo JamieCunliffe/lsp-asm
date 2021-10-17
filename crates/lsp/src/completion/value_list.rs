@@ -1,20 +1,17 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
-use documentation::Instruction;
-use syntax::ast::{find_kind_index, find_parent, SyntaxKind, SyntaxToken};
+use documentation::DocumentationMap;
+use syntax::ast::SyntaxToken;
 
 use crate::types::{CompletionItem, CompletionKind};
 
 pub(super) fn ident_can_complete(
     ident: &str,
     token: &SyntaxToken,
-    docs: Arc<HashMap<String, Vec<Instruction>>>,
+    docs: Arc<DocumentationMap>,
 ) -> bool {
     || -> Option<bool> {
-        let instruction = find_parent(token, SyntaxKind::INSTRUCTION)?;
-        let op = find_kind_index(&instruction, 0, SyntaxKind::MNEMONIC)?.into_token()?;
-        let instructions = docs.get(&op.text().to_lowercase())?;
+        let instructions = docs.get_from_token(token)?;
 
         Some(instructions.iter().any(|instruction| {
             instruction.asm_template.iter().any(|t| {
@@ -35,12 +32,10 @@ pub(super) fn ident_can_complete(
 pub(super) fn complete_ident(
     ident: &str,
     token: &SyntaxToken,
-    docs: Arc<HashMap<String, Vec<Instruction>>>,
+    docs: Arc<DocumentationMap>,
 ) -> Vec<CompletionItem> {
     || -> Option<Vec<_>> {
-        let instruction = find_parent(token, SyntaxKind::INSTRUCTION)?;
-        let op = find_kind_index(&instruction, 0, SyntaxKind::MNEMONIC)?.into_token()?;
-        let instructions = docs.get(&op.text().to_lowercase())?;
+        let instructions = docs.get_from_token(token)?;
 
         Some(
             instructions
@@ -73,7 +68,10 @@ fn to_completion(value: String) -> CompletionItem {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use documentation::{DocumentationMap, Instruction, InstructionTemplate, OperandInfo};
+    use syntax::ast::{find_kind_index, SyntaxKind};
 
     use super::*;
     use crate::{asm::parser::Parser, types::CompletionItem};
@@ -81,8 +79,8 @@ mod tests {
 
     #[test]
     fn test_mnemonic_completion() {
-        let mut map = DocumentationMap::new();
-        map.insert(
+        let mut docs = HashMap::new();
+        docs.insert(
             "complete".into(),
             vec![Instruction {
                 opcode: "COMPLETE".into(),
@@ -111,7 +109,7 @@ mod tests {
                 }],
             }],
         );
-        let map = Arc::new(map);
+        let map = Arc::new(DocumentationMap::from(docs));
 
         let expected = vec![
             CompletionItem {

@@ -17,7 +17,7 @@ pub(super) fn get_signature_help(location: &TextSize, parser: &Parser) -> Option
     let mnemonic =
         find_kind_index(&instruction_node, 0, SyntaxKind::MNEMONIC).map(|x| x.into_token())??;
     let docs = documentation::load_documentation(parser.architecture()).ok()?;
-    let instructions = docs.get(&mnemonic.text().to_lowercase())?;
+    let instructions = docs.get(mnemonic.text())?;
     let registers = registers_for_architecture(parser.architecture());
 
     let comma_index = get_comma_position(&instruction_node, &token);

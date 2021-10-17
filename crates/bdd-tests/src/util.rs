@@ -16,7 +16,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::path::Path;
 
-pub(crate) fn parse_config(rows: &Vec<Vec<String>>) -> LSPConfig {
+pub(crate) fn parse_config(rows: &[Vec<String>]) -> LSPConfig {
     let mut config: LSPConfig = Default::default();
     for row in rows.iter().skip(1) {
         let key = row[0].as_str();
@@ -38,7 +38,7 @@ pub(crate) fn get_doc_position(pos: &str) -> DocumentPosition {
     DocumentPosition { line, column }
 }
 
-pub(crate) fn make_doc_location_vec(table: &Vec<Vec<String>>, file: &Url) -> Vec<DocumentLocation> {
+pub(crate) fn make_doc_location_vec(table: &[Vec<String>], file: &Url) -> Vec<DocumentLocation> {
     table
         .iter()
         .skip(1)
@@ -56,14 +56,14 @@ pub(crate) fn make_doc_location_vec(table: &Vec<Vec<String>>, file: &Url) -> Vec
         .collect::<Vec<_>>()
 }
 
-pub(crate) fn make_lsp_doc_location(file: &Url, table: &Vec<Vec<String>>) -> Vec<Location> {
+pub(crate) fn make_lsp_doc_location(file: &Url, table: &[Vec<String>]) -> Vec<Location> {
     make_doc_location_vec(table, file)
         .drain(..)
         .map(|range| range.into())
         .collect()
 }
 
-pub(crate) fn make_doc_symbol(table: &Vec<Vec<String>>) -> Vec<DocumentSymbol> {
+pub(crate) fn make_doc_symbol(table: &[Vec<String>]) -> Vec<DocumentSymbol> {
     let mut symbols: HashMap<u32, DocumentSymbol> = HashMap::new();
 
     for row in table.iter().skip(1) {
@@ -84,7 +84,7 @@ pub(crate) fn make_doc_symbol(table: &Vec<Vec<String>>) -> Vec<DocumentSymbol> {
             .get(5)
             .unwrap()
             .parse::<u32>()
-            .unwrap_or(row.get(0).unwrap().parse().unwrap());
+            .unwrap_or_else(|_| row.get(0).unwrap().parse().unwrap());
 
         if let Some(parent) = symbols.get_mut(&pid) {
             if let Some(c) = parent.children.as_mut() {
@@ -102,7 +102,7 @@ pub(crate) fn make_doc_symbol(table: &Vec<Vec<String>>) -> Vec<DocumentSymbol> {
     v
 }
 
-pub(crate) fn make_doc_highlight(table: &Vec<Vec<String>>) -> Vec<DocumentHighlight> {
+pub(crate) fn make_doc_highlight(table: &[Vec<String>]) -> Vec<DocumentHighlight> {
     table
         .iter()
         .skip(1)
@@ -116,7 +116,7 @@ pub(crate) fn make_doc_highlight(table: &Vec<Vec<String>>) -> Vec<DocumentHighli
         .collect()
 }
 
-pub(crate) fn make_semantic(table: &Vec<Vec<String>>) -> Vec<SemanticToken> {
+pub(crate) fn make_semantic(table: &[Vec<String>]) -> Vec<SemanticToken> {
     table
         .iter()
         .skip(1)
@@ -142,7 +142,7 @@ pub(crate) fn make_semantic(table: &Vec<Vec<String>>) -> Vec<SemanticToken> {
         .collect()
 }
 
-pub(crate) fn make_range(range: &String) -> Range {
+pub(crate) fn make_range(range: &str) -> Range {
     let mut range = range.split('-');
     let start = get_doc_position(range.next().unwrap());
     let end = get_doc_position(range.next().unwrap());
@@ -160,7 +160,7 @@ where
     }
 }
 
-pub(crate) fn make_codelens(table: &Vec<Vec<String>>) -> Option<Vec<CodeLens>> {
+pub(crate) fn make_codelens(table: &[Vec<String>]) -> Option<Vec<CodeLens>> {
     (table.len() > 1).then(|| {
         table
             .iter()
@@ -178,7 +178,7 @@ pub(crate) fn make_codelens(table: &Vec<Vec<String>>) -> Option<Vec<CodeLens>> {
     })
 }
 
-pub(crate) fn make_completion(table: &Vec<Vec<String>>) -> CompletionList {
+pub(crate) fn make_completion(table: &[Vec<String>]) -> CompletionList {
     let items = table
         .iter()
         .skip(1)
@@ -213,7 +213,7 @@ pub(crate) fn sort_completions(mut list: CompletionList) -> CompletionList {
     list
 }
 
-pub(crate) fn make_signature_help(table: &Vec<Vec<String>>) -> SignatureHelp {
+pub(crate) fn make_signature_help(table: &[Vec<String>]) -> SignatureHelp {
     let signatures = table
         .iter()
         .skip(1)
@@ -257,7 +257,7 @@ pub(crate) fn make_signature_help(table: &Vec<Vec<String>>) -> SignatureHelp {
     }
 }
 
-pub(crate) fn get_errors(table: &Vec<Vec<String>>) -> Vec<Error> {
+pub(crate) fn get_errors(table: &[Vec<String>]) -> Vec<Error> {
     table
         .iter()
         .skip(1)

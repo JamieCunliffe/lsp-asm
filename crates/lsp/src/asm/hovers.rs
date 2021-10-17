@@ -34,7 +34,7 @@ pub fn get_hover_mnemonic(
     let instruction = ast::find_parent(token, SyntaxKind::INSTRUCTION)?;
 
     let docs = documentation::load_documentation(arch).ok()?;
-    let instructions = docs.get(&token.text().to_lowercase())?;
+    let instructions = docs.get(token.text())?;
 
     let template = crate::documentation::find_correct_instruction_template(
         &instruction,

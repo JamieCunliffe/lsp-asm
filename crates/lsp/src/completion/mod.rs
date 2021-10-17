@@ -5,7 +5,7 @@ use documentation::DocumentationMap;
 use itertools::Itertools;
 use rowan::NodeOrToken;
 use syntax::alias::Alias;
-use syntax::ast::{find_kind_index, find_parent, SyntaxElement, SyntaxKind, SyntaxToken};
+use syntax::ast::{find_parent, SyntaxElement, SyntaxKind, SyntaxToken};
 
 use crate::asm::parser::Parser;
 use crate::asm::registers::registers_for_architecture;
@@ -108,8 +108,7 @@ fn find_documentation_token_for_instruction(
         })
         .or_else(|| matches!(token.kind(), SyntaxKind::MNEMONIC).then(|| 0))?;
 
-    let op = find_kind_index(&instruction, 0, SyntaxKind::MNEMONIC)?.into_token()?;
-    let instructions = docs.get(&op.text().to_lowercase())?;
+    let instructions = docs.get_from_instruction_node(&instruction)?;
 
     // Remove the current token as this would interfere with the potential matches, for instance,
     // if x was typed this would be in the tree as a `SyntaxKind::TOKEN` and the match could be

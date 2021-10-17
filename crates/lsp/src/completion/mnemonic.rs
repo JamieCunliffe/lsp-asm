@@ -7,7 +7,7 @@ use crate::types::{CompletionItem, CompletionKind};
 
 pub(super) fn handle_mnemonic(docs: Arc<DocumentationMap>) -> Vec<CompletionItem> {
     let mut completions = docs
-        .values()
+        .instructions()
         .flatten()
         .flat_map(|i| {
             i.asm_template.iter().map(move |t| CompletionItem {
@@ -24,6 +24,8 @@ pub(super) fn handle_mnemonic(docs: Arc<DocumentationMap>) -> Vec<CompletionItem
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use documentation::{DocumentationMap, Instruction, InstructionTemplate};
 
     use super::*;
@@ -32,8 +34,8 @@ mod tests {
 
     #[test]
     fn test_mnemonic_completion() {
-        let mut map = DocumentationMap::new();
-        map.insert(
+        let mut docs = HashMap::new();
+        docs.insert(
             "addvl".into(),
             vec![Instruction {
                 opcode: "addvl".into(),
@@ -47,7 +49,7 @@ mod tests {
                 }],
             }],
         );
-        map.insert(
+        docs.insert(
             "cnt".into(),
             vec![Instruction {
                 opcode: "cnt".into(),
@@ -77,6 +79,9 @@ mod tests {
             },
         ];
 
-        assert_eq!(handle_mnemonic(Arc::new(map)), expected);
+        assert_eq!(
+            handle_mnemonic(Arc::new(DocumentationMap::from(docs))),
+            expected
+        );
     }
 }
