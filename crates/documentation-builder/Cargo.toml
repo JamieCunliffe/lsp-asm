@@ -2,7 +2,7 @@
 name = "documentation-builder"
 version = "0.1.0"
 authors = ["Jamie Cunliffe <Jamie.Cunliffe@outlook.com>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 base = { path = "../base" }
