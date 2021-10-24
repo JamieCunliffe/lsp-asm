@@ -156,7 +156,7 @@ fn node_or_token_match(
 
 fn register_match(actual: &str, template: &str, lookup: &dyn Registers) -> bool {
     let doc_size = DOC_REGISTERS.get_size(template);
-    let size = lookup.get_size(actual) == doc_size || doc_size == RegisterSize::Unknown;
+    let size = lookup.get_size(actual) == doc_size || doc_size == RegisterSize::Any;
 
     size && DOC_REGISTERS
         .get_kind(template)

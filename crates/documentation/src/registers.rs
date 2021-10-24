@@ -34,7 +34,7 @@ impl Registers for DocRegisters {
             "64" => RegisterSize::Bits64,
             "128" => RegisterSize::Bits128,
             "v" => RegisterSize::Vector,
-            "u" => RegisterSize::Unknown,
+            "a" => RegisterSize::Any,
             _ => RegisterSize::Unknown,
         }
     }
@@ -58,9 +58,24 @@ pub const DOCUMENTATION_REGISTERS: [Register; 1] = [Register::new(&[
     "<fp_8>",
     "<gp_32>",
     "<gp_64>",
-    "<gp_u>",
+    "<gp_a>",
     "<gp|sp_64>",
     "<pred_v>",
     "<scale_v>",
     "<simd_v>",
 ])];
+
+#[cfg(test)]
+mod tests {
+    use super::{DOCUMENTATION_REGISTERS, DOC_REGISTERS};
+    use base::register::{RegisterSize, Registers};
+    use pretty_assertions::assert_ne;
+
+    #[test]
+    fn test_documentation_registers_are_known() {
+        for register in DOCUMENTATION_REGISTERS.iter().flat_map(|x| x.names) {
+            assert!(!DOC_REGISTERS.get_kind(register).is_empty());
+            assert_ne!(RegisterSize::Unknown, DOC_REGISTERS.get_size(register));
+        }
+    }
+}

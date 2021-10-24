@@ -24,6 +24,7 @@ pub enum RegisterSize {
     Bits64,
     Bits128,
     Vector,
+    Any,
     Unknown,
 }
 
@@ -45,6 +46,7 @@ impl Display for RegisterSize {
                 RegisterSize::Bits64 => "64",
                 RegisterSize::Bits128 => "128",
                 RegisterSize::Vector => "v",
+                RegisterSize::Any => "a",
                 RegisterSize::Unknown => "u",
             }
         )

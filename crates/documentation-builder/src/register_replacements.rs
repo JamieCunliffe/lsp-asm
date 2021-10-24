@@ -119,16 +119,8 @@ pub(crate) const REGISTER_REPLACEMENTS: &[(&str, &RegisterSize, &RegisterKind)] 
     ("<Pt>.S", &RegisterSize::Vector, &RegisterKind::PREDICATE),
     ("<Pt>/M", &RegisterSize::Vector, &RegisterKind::PREDICATE),
     ("<Pt>/Z", &RegisterSize::Vector, &RegisterKind::PREDICATE),
-    (
-        "<R><m>",
-        &RegisterSize::Unknown,
-        &RegisterKind::GENERAL_PURPOSE,
-    ),
-    (
-        "<R><n>",
-        &RegisterSize::Unknown,
-        &RegisterKind::GENERAL_PURPOSE,
-    ),
+    ("<R><m>", &RegisterSize::Any, &RegisterKind::GENERAL_PURPOSE),
+    ("<R><n>", &RegisterSize::Any, &RegisterKind::GENERAL_PURPOSE),
     ("<Zm>.B", &RegisterSize::Vector, &RegisterKind::SCALABLE),
     ("<Zm>.D", &RegisterSize::Vector, &RegisterKind::SCALABLE),
     ("<Zm>.H", &RegisterSize::Vector, &RegisterKind::SCALABLE),
