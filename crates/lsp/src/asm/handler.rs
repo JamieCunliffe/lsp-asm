@@ -1,5 +1,6 @@
 #![allow(deprecated)]
-use super::ast::{AstNode, LabelNode, LabelToken, LocalLabelNode, RegisterToken};
+use super::ast::{AstNode, LabelNode, LocalLabelNode, RegisterToken};
+use super::definition;
 use super::llvm_mca::run_mca;
 use super::parser::{Parser, PositionInfo};
 use super::registers::registers_for_architecture;
@@ -21,7 +22,7 @@ use lsp_types::{
     SemanticTokens, SemanticTokensResult, SignatureHelp, SymbolKind, Url,
 };
 use rowan::TextRange;
-use syntax::ast::{self, find_kind_index, SyntaxKind, SyntaxToken};
+use syntax::ast::{self, find_kind_index, find_parent, SyntaxKind, SyntaxToken};
 
 pub struct AssemblyLanguageServerProtocol {
     parser: Parser,
@@ -57,38 +58,40 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             .parser
             .token_at_point(&position)
             .ok_or_else(|| lsp_error_map(ErrorCode::TokenNotFound))?;
-        let position = self.parser.position();
+
+        let get_mnemonic = || {
+            find_parent(&token, SyntaxKind::DIRECTIVE)
+                .or_else(|| find_parent(&token, SyntaxKind::INSTRUCTION))
+                .map(|n| find_kind_index(&n, 0, SyntaxKind::MNEMONIC))
+                .flatten()
+                .map(|token| token.into_token())
+                .flatten()
+        };
 
         let res = match token.kind() {
-            SyntaxKind::TOKEN => self
-                .parser
-                .tree()
-                .descendants_with_tokens()
-                .filter_map(|d| d.into_token())
-                .filter(|token| token.kind() == SyntaxKind::LABEL)
-                .filter(|label| {
-                    self.parser
-                        .token::<LabelToken>(label)
-                        .map(|name| name.name() == token.text())
-                        .unwrap_or(false)
+            SyntaxKind::TOKEN => {
+                definition::goto_definition_label(&self.parser, &token, &self.uri)?
+            }
+            SyntaxKind::MNEMONIC if token.text() == ".loc" => {
+                definition::goto_definition_loc(&self.parser, &token)?
+            }
+            SyntaxKind::MNEMONIC
+                if token.text().eq_ignore_ascii_case(".include")
+                    || token.text().eq_ignore_ascii_case("include")
+                    || token.text().eq_ignore_ascii_case("get") =>
+            {
+                definition::goto_definition_label_include(&token)?
+            }
+            _ if get_mnemonic()
+                .map(|token| {
+                    token.text().eq_ignore_ascii_case(".include")
+                        || token.text().eq_ignore_ascii_case("include")
+                        || token.text().eq_ignore_ascii_case("get")
                 })
-                .filter_map(|token| {
-                    Some(lsp_types::Location::new(
-                        self.uri.clone(),
-                        position.range_for_token(&token)?.into(),
-                    ))
-                })
-                .collect(),
-            SyntaxKind::MNEMONIC if token.text() == ".loc" => vec![self
-                .parser
-                .debug_map()
-                .get_file_location(
-                    &token
-                        .parent()
-                        .ok_or_else(|| lsp_error_map(ErrorCode::MissingParentNode))?,
-                )
-                .map(|l| l.into())
-                .ok_or_else(|| lsp_error_map(ErrorCode::InvalidPosition))?],
+                .unwrap_or(false) =>
+            {
+                definition::goto_definition_label_include(&token)?
+            }
             _ => Vec::new(),
         };
 

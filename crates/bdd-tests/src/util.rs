@@ -45,8 +45,7 @@ pub(crate) fn make_doc_location_vec(table: &[Vec<String>], file: &Url) -> Vec<Do
         .map(|cols| DocumentLocation {
             uri: cols
                 .get(2)
-                .map(|f| Url::parse(format!("file://{}", f).as_str()).ok())
-                .flatten()
+                .map(|f| file_to_uri(f.as_str()))
                 .unwrap_or_else(|| file.clone()),
             range: DocumentRange {
                 start: get_doc_position(cols.get(0).unwrap()),
