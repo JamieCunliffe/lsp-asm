@@ -8,20 +8,23 @@ use syntax::alias::Alias;
 use crate::asm::registers::{AARCH64_REGISTERS, X86_64_REGISTERS};
 use crate::types::{CompletionItem, CompletionKind};
 
+use super::CompletionContext;
+
 pub(super) fn complete_registers(
-    token: &str,
-    registers: &dyn Registers,
-    architecture: &Architecture,
-    alias: &Alias,
+    to_complete: &str,
+    context: &CompletionContext,
 ) -> Vec<CompletionItem> {
+    let architecture = context.architecture();
+    let registers = context.registers;
+
     let register_names: &[Register] = match architecture {
-        Architecture::X86_64 => &X86_64_REGISTERS,
         Architecture::AArch64 => &AARCH64_REGISTERS,
+        Architecture::X86_64 => &X86_64_REGISTERS,
         Architecture::Unknown => return Default::default(),
     };
 
-    let register_kind = DOC_REGISTERS.get_kind(token);
-    let register_size = DOC_REGISTERS.get_size(token);
+    let register_kind = DOC_REGISTERS.get_kind(to_complete);
+    let register_size = DOC_REGISTERS.get_size(to_complete);
 
     let mut completions = register_names
         .iter()
@@ -32,7 +35,12 @@ pub(super) fn complete_registers(
         .map(to_completion)
         .collect_vec();
 
-    completions.extend(get_aliases(alias, register_kind, register_size, registers));
+    completions.extend(get_aliases(
+        context.alias(),
+        register_kind,
+        register_size,
+        registers,
+    ));
 
     completions
 }
@@ -62,13 +70,14 @@ where
 
 #[cfg(test)]
 mod tests {
-
     use std::iter;
 
-    use crate::asm::registers::registers_for_architecture;
+    use crate::asm::parser::Parser;
+    use crate::config::LSPConfig;
 
     use super::*;
     use pretty_assertions::assert_eq;
+    use syntax::ast::{find_kind_index, SyntaxKind};
 
     #[test]
     fn test_aarch64_x_registers() {
@@ -87,16 +96,22 @@ mod tests {
                 kind: CompletionKind::Register,
             }))
             .collect_vec();
-
-        assert_eq!(
-            complete_registers(
-                register,
-                registers_for_architecture(&Architecture::AArch64),
-                &Architecture::AArch64,
-                &Default::default(),
-            ),
-            expected,
+        let parser = Parser::from(
+            " ",
+            &LSPConfig {
+                architecture: Architecture::AArch64,
+                ..Default::default()
+            },
         );
+        let context = CompletionContext::new(
+            &parser,
+            find_kind_index(&parser.tree(), 0, SyntaxKind::WHITESPACE)
+                .unwrap()
+                .into_token()
+                .unwrap(),
+            Default::default(),
+        );
+        assert_eq!(complete_registers(register, &context), expected,);
     }
 
     #[test]
@@ -123,14 +138,21 @@ mod tests {
             }))
             .collect_vec();
 
-        assert_eq!(
-            complete_registers(
-                register,
-                registers_for_architecture(&Architecture::AArch64),
-                &Architecture::AArch64,
-                &Default::default()
-            ),
-            expected,
+        let parser = Parser::from(
+            " ",
+            &LSPConfig {
+                architecture: Architecture::AArch64,
+                ..Default::default()
+            },
         );
+        let context = CompletionContext::new(
+            &parser,
+            find_kind_index(&parser.tree(), 0, SyntaxKind::WHITESPACE)
+                .unwrap()
+                .into_token()
+                .unwrap(),
+            Default::default(),
+        );
+        assert_eq!(complete_registers(register, &context), expected,);
     }
 }

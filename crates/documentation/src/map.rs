@@ -4,6 +4,7 @@ use syntax::ast::{find_kind_index, find_parent, SyntaxKind, SyntaxNode, SyntaxTo
 
 use crate::Instruction;
 
+#[derive(Debug, Default)]
 pub struct DocumentationMap {
     docs: HashMap<String, Vec<Instruction>>,
 }

@@ -1,17 +1,10 @@
-use std::sync::Arc;
-
-use documentation::DocumentationMap;
-use syntax::ast::SyntaxToken;
-
 use crate::types::{CompletionItem, CompletionKind};
 
-pub(super) fn ident_can_complete(
-    ident: &str,
-    token: &SyntaxToken,
-    docs: Arc<DocumentationMap>,
-) -> bool {
+use super::CompletionContext;
+
+pub(super) fn ident_can_complete(ident: &str, context: &CompletionContext) -> bool {
     || -> Option<bool> {
-        let instructions = docs.get_from_token(token)?;
+        let instructions = context.docs.get_from_token(&context.token)?;
 
         Some(instructions.iter().any(|instruction| {
             instruction.asm_template.iter().any(|t| {
@@ -29,13 +22,9 @@ pub(super) fn ident_can_complete(
     .unwrap_or(false)
 }
 
-pub(super) fn complete_ident(
-    ident: &str,
-    token: &SyntaxToken,
-    docs: Arc<DocumentationMap>,
-) -> Vec<CompletionItem> {
+pub(super) fn complete_ident(ident: &str, context: &CompletionContext) -> Vec<CompletionItem> {
     || -> Option<Vec<_>> {
-        let instructions = docs.get_from_token(token)?;
+        let instructions = context.docs.get_from_token(&context.token)?;
 
         Some(
             instructions
@@ -47,14 +36,14 @@ pub(super) fn complete_ident(
                             .find(|op| op.name == ident)
                             .map(|t| t.completion_values.clone())
                             .flatten()
-                            .unwrap_or_else(Default::default)
+                            .unwrap_or_default()
                     })
                 })
                 .map(to_completion)
                 .collect(),
         )
     }()
-    .unwrap_or_else(Default::default)
+    .unwrap_or_default()
 }
 
 fn to_completion(value: String) -> CompletionItem {
@@ -69,6 +58,7 @@ fn to_completion(value: String) -> CompletionItem {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+    use std::sync::Arc;
 
     use documentation::{DocumentationMap, Instruction, InstructionTemplate, OperandInfo};
     use syntax::ast::{find_kind_index, SyntaxKind};
@@ -139,7 +129,9 @@ mod tests {
             .unwrap()
             .into_token()
             .unwrap();
-        assert_eq!(ident_can_complete("<pattern>", &token, map.clone()), true);
-        assert_eq!(complete_ident("<pattern>", &token, map), expected);
+        let context = CompletionContext::new(&parser, token, map);
+
+        assert_eq!(ident_can_complete("<pattern>", &context), true);
+        assert_eq!(complete_ident("<pattern>", &context), expected);
     }
 }

@@ -111,7 +111,14 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         if !matches!(token.kind(), SyntaxKind::LABEL | SyntaxKind::TOKEN) {
             return Ok(Vec::new());
         }
-        let range = self.parser.tree().text_range();
+
+        let range = token
+            .text()
+            .starts_with('.')
+            .then(|| find_parent(&token, SyntaxKind::LABEL).map(|label| label.text_range()))
+            .flatten()
+            .unwrap_or_else(|| self.parser.tree().text_range());
+
         let references = find_references(&self.parser, &token, &range);
         let position = self.parser.position();
         let locations = references
@@ -202,7 +209,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             .token_at_point(&position)
             .ok_or_else(|| lsp_error_map(ErrorCode::TokenNotFound))?;
 
-        if matches!(token.kind(), SyntaxKind::NUMBER) {
+        if matches!(token.kind(), SyntaxKind::NUMBER | SyntaxKind::MNEMONIC) {
             return Ok(Vec::new());
         }
         let position_cache = self.parser.position();
@@ -210,6 +217,13 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             position.line.saturating_sub(200),
             position.line.saturating_add(200),
         );
+
+        let range = token
+            .text()
+            .starts_with('.')
+            .then(|| find_parent(&token, SyntaxKind::LABEL).map(|label| label.text_range()))
+            .flatten()
+            .unwrap_or(range);
 
         let references = find_references(&self.parser, &token, &range);
         let locations = references

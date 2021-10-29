@@ -503,5 +503,27 @@
         }
       ]
     }
+  ],
+  "bl": [
+    {
+      "opcode": "BL",
+      "header": "BL",
+      "architecture": null,
+      "description": "bl",
+      "asm_template": [
+        {
+          "asm": [
+            "BL  <label>"
+          ],
+          "display_asm": "BL <label>",
+          "items": [
+            {
+              "name": "<label>",
+              "description": "label"
+            }
+          ]
+        }
+      ]
+    }
   ]
 }

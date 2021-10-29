@@ -13,6 +13,7 @@ Feature: Completion of mnemonic
     # LD1W is deduplicated here due to the display asm being the same for each in our test json.
     Then I expect the following response
       | label | details                                     | kind     | documentation      |
+      | BL    | BL <label>                                  | mnemonic | bl                 |
       | LD1W  | LD1W ...                                    | mnemonic | LD1W 0             |
       | LD1W  | LD1W ...                                    | mnemonic | LD1W 18            |
       | LD1W  | LD1W ...                                    | mnemonic | LD1W 27            |

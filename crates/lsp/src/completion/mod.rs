@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use base::register::Registers;
+use base::Architecture;
 use documentation::DocumentationMap;
 use itertools::Itertools;
 use rowan::NodeOrToken;
@@ -43,30 +44,22 @@ pub fn handle_completion(
                 registers,
                 parser.alias(),
             )?;
+            let context = CompletionContext::new(parser, token, docs);
 
-            let root = parser.tree();
             completion_kinds
                 .iter()
                 .flat_map(|token| match (token.kind(), token.text()) {
-                    (_, "<label>") => label::complete_label(&root),
-                    (SyntaxKind::REGISTER, _) => registers::complete_registers(
-                        token.text(),
-                        registers,
-                        parser.architecture(),
-                        parser.alias(),
-                    ),
+                    (_, "<label>") => label::complete_label(&context),
+                    (SyntaxKind::REGISTER, _) => {
+                        registers::complete_registers(token.text(), &context)
+                    }
                     (SyntaxKind::TOKEN, ident)
                         if value_list::ident_can_complete(
                             ident.trim_start_matches('#'),
-                            token,
-                            docs.clone(),
+                            &context,
                         ) =>
                     {
-                        value_list::complete_ident(
-                            ident.trim_start_matches('#'),
-                            token,
-                            docs.clone(),
-                        )
+                        value_list::complete_ident(ident.trim_start_matches('#'), &context)
                     }
                     _ => Default::default(),
                 })
@@ -150,4 +143,31 @@ fn is_real_token(t: &SyntaxElement) -> bool {
             | SyntaxKind::TOKEN
             | SyntaxKind::COMMA
     )
+}
+
+pub(self) struct CompletionContext<'p> {
+    parser: &'p Parser,
+    registers: &'p dyn Registers,
+    token: SyntaxToken,
+    docs: Arc<DocumentationMap>,
+}
+impl<'p> CompletionContext<'p> {
+    pub fn new(parser: &'p Parser, token: SyntaxToken, docs: Arc<DocumentationMap>) -> Self {
+        let registers = registers_for_architecture(parser.architecture());
+
+        Self {
+            parser,
+            token,
+            registers,
+            docs,
+        }
+    }
+
+    pub fn architecture(&self) -> &Architecture {
+        self.parser.architecture()
+    }
+
+    pub fn alias(&self) -> &Alias {
+        self.parser.alias()
+    }
 }
