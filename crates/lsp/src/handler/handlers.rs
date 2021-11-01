@@ -23,8 +23,7 @@ pub struct LangServerHandler {
 }
 
 impl LangServerHandler {
-    pub fn new(config: LSPConfig, root: Option<String>) -> Self {
-        let root = root.unwrap_or_default();
+    pub fn new(config: LSPConfig, root: String) -> Self {
         info!("Initializing workspace: {}", root);
 
         let commands: Option<Box<dyn Diagnostics + Send + Sync>> =

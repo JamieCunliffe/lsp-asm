@@ -100,10 +100,14 @@ fn lsp_loop(
     info!("Initialization params: {:#?}", params);
     let root = params
         .root_uri
-        .map(|uri| uri.to_file_path().ok())
-        .flatten()
-        .map(|path| path.to_str().map(|p| p.to_string()))
-        .flatten();
+        .and_then(|uri| uri.to_file_path().ok())
+        .and_then(|path| path.to_str().map(|p| p.to_string()))
+        .or_else(|| {
+            std::env::current_dir()
+                .ok()
+                .and_then(|p| p.as_os_str().to_str().map(|p| p.to_string()))
+        })
+        .unwrap_or_default();
 
     let params = params
         .initialization_options

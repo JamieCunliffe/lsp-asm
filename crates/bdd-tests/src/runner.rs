@@ -79,7 +79,7 @@ async fn check_doc(_state: &mut LSPWorld, arch: String) {
 async fn init_lsp(state: &mut LSPWorld, #[given(context)] step: &StepContext) {
     let step = step.step.clone();
     let config = parse_config(&step.table.as_ref().unwrap().rows);
-    state.handler = LangServerHandler::new(config, Default::default());
+    state.handler = LangServerHandler::new(config, String::from(""));
 }
 
 #[given(regex = r#"an lsp initialized in "(.*)" with the following parameters"#)]
@@ -98,7 +98,7 @@ async fn init_lsp_with_location(
 
     let step = step.step.clone();
     let config = parse_config(&step.table.as_ref().unwrap().rows);
-    state.handler = LangServerHandler::new(config, Some(root));
+    state.handler = LangServerHandler::new(config, root);
 }
 
 #[when(regex = r#"I open the temporary file "(.*)""#)]
