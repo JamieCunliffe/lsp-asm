@@ -1995,6 +1995,7 @@ name = "syntax"
 version = "0.1.0"
 dependencies = [
  "base",
+ "itertools 0.10.1",
  "rowan",
 ]
 

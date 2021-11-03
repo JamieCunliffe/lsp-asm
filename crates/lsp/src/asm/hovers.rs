@@ -67,3 +67,12 @@ pub fn get_alias_hover(token: &SyntaxToken, alias: &Alias) -> Option<Vec<String>
         register
     )])
 }
+
+pub fn get_constant_hover(token: &SyntaxToken, alias: &Alias) -> Option<Vec<String>> {
+    let value = alias.get_constant_for_token(token.text())?;
+    Some(vec![format!(
+        "`{}` is defined as `{}`",
+        token.text(),
+        value.trim()
+    )])
+}

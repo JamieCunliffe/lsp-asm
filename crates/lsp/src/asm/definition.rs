@@ -73,3 +73,29 @@ pub(super) fn goto_definition_label_include(
 
     Ok(vec![location])
 }
+
+pub(crate) fn goto_definition_const(
+    token: &SyntaxToken,
+    parser: &Parser,
+    uri: &Url,
+) -> Result<Vec<Location>, lsp_server::ResponseError> {
+    let position = parser.position();
+    let name = token.text().trim_start_matches('#');
+
+    let def = parser
+        .tree()
+        .descendants()
+        .filter(|d| matches!(d.kind(), SyntaxKind::CONST_DEF))
+        .filter_map(|d| find_kind_index(&d, 0, SyntaxKind::NAME))
+        .filter_map(|t| t.into_token())
+        .filter(|t| t.text() == name)
+        .filter_map(|token| {
+            Some(lsp_types::Location::new(
+                uri.clone(),
+                position.range_for_token(&token)?.into(),
+            ))
+        })
+        .collect();
+
+    Ok(def)
+}

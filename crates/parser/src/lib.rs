@@ -6,6 +6,7 @@ extern crate log;
 mod builder;
 mod combinators;
 pub mod config;
+mod equ;
 mod span;
 
 pub use combinators::*;

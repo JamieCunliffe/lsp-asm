@@ -516,6 +516,93 @@ fn test_arm_req_alias() {
 }
 
 #[test]
+fn test_equ_expr() {
+    assert_listing!(
+        r#"two EQU 2
+label_add_64 EQU label+64"#,
+        r#"ROOT@0..35
+  CONST_DEF@0..9
+    NAME@0..3 "two"
+    WHITESPACE@3..4 " "
+    MNEMONIC@4..7 "EQU"
+    EXPR@7..9
+      WHITESPACE@7..8 " "
+      NUMBER@8..9 "2"
+  WHITESPACE@9..10 "\n"
+  CONST_DEF@10..35
+    NAME@10..22 "label_add_64"
+    WHITESPACE@22..23 " "
+    MNEMONIC@23..26 "EQU"
+    EXPR@26..35
+      WHITESPACE@26..27 " "
+      TOKEN@27..32 "label"
+      OPERATOR@32..33 "+"
+      NUMBER@33..35 "64"
+"#,
+        Architecture::AArch64
+    );
+}
+
+#[test]
+fn test_equ_as_syntax() {
+    assert_listing!(
+        r#".equ number, 10
+.equ label_add_64, label+64"#,
+        r#"ROOT@0..43
+  CONST_DEF@0..15
+    MNEMONIC@0..4 ".equ"
+    WHITESPACE@4..5 " "
+    NAME@5..11 "number"
+    COMMA@11..12 ","
+    EXPR@12..15
+      WHITESPACE@12..13 " "
+      NUMBER@13..15 "10"
+  WHITESPACE@15..16 "\n"
+  CONST_DEF@16..43
+    MNEMONIC@16..20 ".equ"
+    WHITESPACE@20..21 " "
+    NAME@21..33 "label_add_64"
+    COMMA@33..34 ","
+    EXPR@34..43
+      WHITESPACE@34..35 " "
+      TOKEN@35..40 "label"
+      OPERATOR@40..41 "+"
+      NUMBER@41..43 "64"
+"#,
+        Architecture::AArch64
+    );
+}
+
+#[test]
+fn test_equ_const_token() {
+    assert_listing!(
+        r#"two EQU 2
+orr x1, x1, two"#,
+        r#"ROOT@0..25
+  CONST_DEF@0..9
+    NAME@0..3 "two"
+    WHITESPACE@3..4 " "
+    MNEMONIC@4..7 "EQU"
+    EXPR@7..9
+      WHITESPACE@7..8 " "
+      NUMBER@8..9 "2"
+  WHITESPACE@9..10 "\n"
+  INSTRUCTION@10..25
+    MNEMONIC@10..13 "orr"
+    WHITESPACE@13..14 " "
+    REGISTER@14..16 "x1"
+    COMMA@16..17 ","
+    WHITESPACE@17..18 " "
+    REGISTER@18..20 "x1"
+    COMMA@20..21 ","
+    WHITESPACE@21..22 " "
+    CONSTANT@22..25 "two"
+"#,
+        Architecture::AArch64
+    );
+}
+
+#[test]
 fn test_arm_relocation() {
     assert_listing!(
         "ldr d0, [x9, :lo12:.LCPI0_0]",

@@ -149,6 +149,7 @@ fn node_or_token_match(
                 .map(|t| t.text().starts_with('#'))
                 .unwrap_or(false)
         }
+        (a, t) if matches!(a.kind(), SyntaxKind::CONSTANT) && t.kind() == SyntaxKind::TOKEN => true,
         (a, t) if a.kind() == t.kind() => true,
         _ => false,
     }

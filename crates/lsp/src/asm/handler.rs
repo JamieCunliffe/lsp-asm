@@ -82,6 +82,9 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             {
                 definition::goto_definition_label_include(&token)?
             }
+            SyntaxKind::CONSTANT => {
+                definition::goto_definition_const(&token, &self.parser, &self.uri)?
+            }
             _ if get_mnemonic()
                 .map(|token| {
                     token.text().eq_ignore_ascii_case(".include")
@@ -108,31 +111,49 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             .token_at_point(&position)
             .ok_or_else(|| lsp_error_map(ErrorCode::TokenNotFound))?;
 
-        if !matches!(token.kind(), SyntaxKind::LABEL | SyntaxKind::TOKEN) {
+        if !matches!(
+            token.kind(),
+            SyntaxKind::LABEL | SyntaxKind::TOKEN | SyntaxKind::NAME | SyntaxKind::CONSTANT
+        ) {
             return Ok(Vec::new());
         }
 
-        let range = token
-            .text()
-            .starts_with('.')
-            .then(|| find_parent(&token, SyntaxKind::LABEL).map(|label| label.text_range()))
-            .flatten()
-            .unwrap_or_else(|| self.parser.tree().text_range());
+        let range = if matches!(token.kind(), SyntaxKind::TOKEN | SyntaxKind::LABEL) {
+            token
+                .text()
+                .starts_with('.')
+                .then(|| find_parent(&token, SyntaxKind::LABEL).map(|label| label.text_range()))
+                .flatten()
+                .unwrap_or_else(|| self.parser.tree().text_range())
+        } else {
+            self.parser.tree().text_range()
+        };
+
+        let position = self.parser.position();
+        let make_location = |token| {
+            Some(lsp_types::Location::new(
+                self.uri.clone(),
+                position.range_for_token(&token)?.into(),
+            ))
+        };
 
         let references = find_references(&self.parser, &token, &range);
-        let position = self.parser.position();
-        let locations = references
-            .filter(|t| {
-                include_decl
-                    || !(t.kind() == SyntaxKind::LABEL || t.kind() == SyntaxKind::LOCAL_LABEL)
-            })
-            .filter_map(|token| {
-                Some(lsp_types::Location::new(
-                    self.uri.clone(),
-                    position.range_for_token(&token)?.into(),
-                ))
-            })
-            .collect();
+
+        let locations = if include_decl {
+            references.filter_map(make_location).collect_vec()
+        } else if matches!(token.kind(), SyntaxKind::LABEL | SyntaxKind::TOKEN) {
+            references
+                .filter(|t| !(t.kind() == SyntaxKind::LABEL || t.kind() == SyntaxKind::LOCAL_LABEL))
+                .filter_map(make_location)
+                .collect_vec()
+        } else if matches!(token.kind(), SyntaxKind::CONSTANT | SyntaxKind::NAME) {
+            references
+                .filter(|t| find_parent(t, SyntaxKind::CONST_DEF).is_none())
+                .filter_map(make_location)
+                .collect_vec()
+        } else {
+            references.filter_map(make_location).collect_vec()
+        };
 
         Ok(locations)
     }
@@ -163,6 +184,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                 hovers::get_hover_mnemonic(&token, self.parser.architecture(), self.parser.alias())
             }
             SyntaxKind::REGISTER_ALIAS => hovers::get_alias_hover(&token, self.parser.alias()),
+            SyntaxKind::CONSTANT => hovers::get_constant_hover(&token, self.parser.alias()),
             SyntaxKind::L_PAREN
             | SyntaxKind::R_PAREN
             | SyntaxKind::L_SQ
@@ -186,6 +208,9 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             | SyntaxKind::DIRECTIVE
             | SyntaxKind::BRACKETS
             | SyntaxKind::METADATA
+            | SyntaxKind::CONST_DEF
+            | SyntaxKind::EXPR
+            | SyntaxKind::NAME
             | SyntaxKind::ROOT => None,
         };
 
@@ -213,17 +238,20 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             return Ok(Vec::new());
         }
         let position_cache = self.parser.position();
-        let range = position_cache.make_range_for_lines(
-            position.line.saturating_sub(200),
-            position.line.saturating_add(200),
-        );
 
-        let range = token
-            .text()
-            .starts_with('.')
-            .then(|| find_parent(&token, SyntaxKind::LABEL).map(|label| label.text_range()))
-            .flatten()
-            .unwrap_or(range);
+        let range = if matches!(token.kind(), SyntaxKind::TOKEN | SyntaxKind::LABEL) {
+            token
+                .text()
+                .starts_with('.')
+                .then(|| find_parent(&token, SyntaxKind::LABEL).map(|label| label.text_range()))
+                .flatten()
+                .unwrap_or_else(|| self.parser.tree().text_range())
+        } else {
+            position_cache.make_range_for_lines(
+                position.line.saturating_sub(200),
+                position.line.saturating_add(200),
+            )
+        };
 
         let references = find_references(&self.parser, &token, &range);
         let locations = references
@@ -270,7 +298,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                     SyntaxKind::METADATA => Some(crate::handler::semantic::METADATA_INDEX),
                     SyntaxKind::MNEMONIC => match token.parent()?.kind() {
                         SyntaxKind::INSTRUCTION => Some(crate::handler::semantic::OPCODE_INDEX),
-                        SyntaxKind::DIRECTIVE | SyntaxKind::ALIAS => {
+                        SyntaxKind::DIRECTIVE | SyntaxKind::ALIAS | SyntaxKind::CONST_DEF => {
                             Some(crate::handler::semantic::DIRECTIVE_INDEX)
                         }
                         _ => unreachable!("Invalid parent kind"),
@@ -312,6 +340,13 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                         Some(crate::handler::semantic::LABEL_INDEX)
                     }
                     SyntaxKind::RELOCATION => Some(crate::handler::semantic::RELOCATION_INDEX),
+                    SyntaxKind::CONSTANT => Some(crate::handler::semantic::CONSTANT_INDEX),
+                    SyntaxKind::NAME
+                        if syntax::ast::find_parent(&token, SyntaxKind::CONST_DEF).is_some() =>
+                    {
+                        Some(crate::handler::semantic::CONSTANT_INDEX)
+                    }
+                    SyntaxKind::NAME | SyntaxKind::CONST_DEF | SyntaxKind::EXPR => None,
                     SyntaxKind::L_PAREN
                     | SyntaxKind::R_PAREN
                     | SyntaxKind::L_SQ

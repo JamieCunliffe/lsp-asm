@@ -156,6 +156,8 @@
              '("metadata" . lsp-face-semhl-metadata))
 (add-to-list 'lsp-semantic-token-faces
              '("relocation" . lsp-face-semhl-relocation))
+(add-to-list 'lsp-semantic-token-faces
+             '("constant" . lsp-face-semhl-constant))
 
 (provide 'lsp-asm)
 ;;; lsp-asm.el ends here

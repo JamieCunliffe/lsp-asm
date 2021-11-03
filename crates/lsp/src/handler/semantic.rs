@@ -15,6 +15,7 @@ lazy_static! {
         SemanticTokenType::new("gp-register"),
         SemanticTokenType::new("fp-register"),
         SemanticTokenType::new("relocation"),
+        SemanticTokenType::new("constant"),
     ];
 }
 
@@ -29,6 +30,7 @@ pub const METADATA_INDEX: u32 = 7;
 pub const GP_REGISTER_INDEX: u32 = 8;
 pub const FP_REGISTER_INDEX: u32 = 9;
 pub const RELOCATION_INDEX: u32 = 10;
+pub const CONSTANT_INDEX: u32 = 11;
 
 pub(crate) fn semantic_delta_transform(tokens: &[SemanticToken]) -> Vec<SemanticToken> {
     let prev = tokens.iter();

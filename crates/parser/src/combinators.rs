@@ -231,6 +231,10 @@ fn parse_next(expr: Span) -> NomResultElement {
                 }
             };
 
+            if x.current_indent_is_kind(SyntaxKind::EXPR) {
+                x.finish_node();
+            }
+
             if matches!(kind, SyntaxKind::DIRECTIVE | SyntaxKind::INSTRUCTION) {
                 x.finish_node();
             }
@@ -334,8 +338,21 @@ fn span_to_token(token: &Span) {
             .builder
             .change_previous_token_kind(1, SyntaxKind::REGISTER_ALIAS);
         token.token(SyntaxKind::MNEMONIC, token.as_str());
-    } else if token.extra().builder.alias().is_alias(token.as_str()) {
-        token.token(SyntaxKind::REGISTER_ALIAS, token.as_str());
+    } else if token.as_str().eq_ignore_ascii_case(".equ")
+        || token.as_str().eq_ignore_ascii_case("equ")
+    {
+        token
+            .extra()
+            .builder
+            .change_node_kind(SyntaxKind::CONST_DEF);
+        token
+            .extra()
+            .builder
+            .change_previous_token_kind(1, SyntaxKind::NAME);
+        token.token(SyntaxKind::MNEMONIC, token.as_str());
+        token.start_node(SyntaxKind::EXPR);
+    } else if let Some(kind) = token.extra().builder.alias().get_kind(token.as_str()) {
+        token.token(kind, token.as_str());
     } else {
         token.token(SyntaxKind::TOKEN, token.as_str());
     }

@@ -63,6 +63,35 @@ stp reg_alias, x30, [sp, #32]"#;
 }
 
 #[test]
+fn determine_instruction_from_template_with_equ() {
+    let line = r#"number equ 32
+stp x29, x30, [sp, #number]"#;
+    let parser = Parser::from(
+        line,
+        &LSPConfig {
+            architecture: Architecture::AArch64,
+            ..Default::default()
+        },
+    );
+    let op = parser.tree();
+    let instructions = vec![util::make_instruction()];
+
+    assert_eq!(
+        instructions[0].asm_template.get(5).unwrap(),
+        find_correct_instruction_template(
+            find_kind_index(&op, 0, SyntaxKind::INSTRUCTION)
+                .unwrap()
+                .as_node()
+                .unwrap(),
+            &instructions,
+            registers_for_architecture(&Architecture::AArch64),
+            parser.alias(),
+        )
+        .unwrap(),
+    );
+}
+
+#[test]
 fn determine_instruction_from_template_end_comment() {
     let line = "stp w29, w30, [sp, #32]    // Comment";
     let parser = Parser::from(

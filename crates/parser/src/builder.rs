@@ -5,6 +5,8 @@ use rowan::{GreenNode, GreenToken, Language, NodeOrToken};
 use syntax::alias::Alias;
 use syntax::ast::{AssemblyLanguage, SyntaxKind};
 
+use crate::equ;
+
 pub struct Builder {
     child: RefCell<Vec<NodeOrToken<GreenNode, GreenToken>>>,
     parent: RefCell<Vec<(usize, SyntaxKind)>>,
@@ -39,12 +41,25 @@ impl Builder {
         let mut parent = self.parent.borrow_mut();
         let mut child = self.child.borrow_mut();
 
-        let (start_pos, kind) = parent.pop().unwrap();
-        let items = child.drain(start_pos..).collect::<Vec<_>>();
+        let (start_pos, mut kind) = parent.pop().unwrap();
+        let mut items = child.drain(start_pos..).collect::<Vec<_>>();
+        if kind == SyntaxKind::DIRECTIVE
+            && items
+                .first()
+                .map(|f| f.as_token().map(|t| t.text().eq_ignore_ascii_case(".equ")))
+                .flatten()
+                .unwrap_or(false)
+        {
+            equ::transform_equ_node(&mut items);
+            kind = SyntaxKind::CONST_DEF;
+        }
+
         let node = GreenNode::new(kind.into(), items);
 
         if kind == SyntaxKind::ALIAS {
             self.alias.borrow_mut().add_alias(&node)
+        } else if kind == SyntaxKind::CONST_DEF {
+            self.alias.borrow_mut().add_equ(&node);
         }
 
         child.push(NodeOrToken::Node(node));
