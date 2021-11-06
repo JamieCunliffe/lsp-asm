@@ -668,3 +668,51 @@ fn test_relocation_at() {
         Architecture::X86_64
     );
 }
+
+#[test]
+fn test_label_mnemonic_line() {
+    assert_listing!(
+        "label: mnemonic operand1, operand2",
+        r#"ROOT@0..34
+  LABEL@0..34
+    LABEL@0..6 "label:"
+    WHITESPACE@6..7 " "
+    INSTRUCTION@7..34
+      MNEMONIC@7..15 "mnemonic"
+      WHITESPACE@15..16 " "
+      TOKEN@16..24 "operand1"
+      COMMA@24..25 ","
+      WHITESPACE@25..26 " "
+      TOKEN@26..34 "operand2"
+"#
+    );
+}
+
+#[test]
+fn test_label_mnemonic_line_2() {
+    assert_listing!(
+        r#"label: mnemonic operand1, operand2
+.loc	1 3 0"#,
+        r#"ROOT@0..45
+  LABEL@0..45
+    LABEL@0..6 "label:"
+    WHITESPACE@6..7 " "
+    INSTRUCTION@7..34
+      MNEMONIC@7..15 "mnemonic"
+      WHITESPACE@15..16 " "
+      TOKEN@16..24 "operand1"
+      COMMA@24..25 ","
+      WHITESPACE@25..26 " "
+      TOKEN@26..34 "operand2"
+    WHITESPACE@34..35 "\n"
+    DIRECTIVE@35..45
+      MNEMONIC@35..39 ".loc"
+      WHITESPACE@39..40 "\t"
+      NUMBER@40..41 "1"
+      WHITESPACE@41..42 " "
+      NUMBER@42..43 "3"
+      WHITESPACE@43..44 " "
+      NUMBER@44..45 "0"
+"#
+    );
+}

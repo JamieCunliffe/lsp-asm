@@ -181,67 +181,75 @@ fn parse_next(expr: Span) -> NomResultElement {
             Ok((remaining, ()))
         }
         _ => {
-            // Extract the current line from the input for processing
             process_comment!(expr);
+
+            // Extract the current line from the input for processing
             let (remaining, expr) = take_while(|a| a != '\n')(expr)?;
 
-            // Check to see if we need to end any nodes before processing this one
-            let kind = {
-                let kind = pre_process_next(expr.as_str(), expr.extra().config);
-
-                if matches!(kind, SyntaxKind::LOCAL_LABEL | SyntaxKind::LABEL)
-                    && expr.current_indent_is_kind(SyntaxKind::LOCAL_LABEL)
-                {
-                    expr.finish_node();
-                }
-
-                if matches!(kind, SyntaxKind::LABEL)
-                    && expr.current_indent_is_kind(SyntaxKind::LABEL)
-                {
-                    expr.finish_node();
-                }
-
-                kind
-            };
-
-            expr.start_node(kind);
-            let expr = match expr.config().file_type {
-                FileType::Assembly => expr,
-                FileType::ObjDump => parse_objdump_line_start(expr)?.0,
-            };
-
-            // Process the first token.
-            let (expr, _) = skip_whitespace(expr, false)?;
-            let (expr, token) = take_while(|a: char| !a.is_whitespace())(expr)?;
-
-            let actual_kind = start_kind(token.as_str());
-            assert_eq!(kind, actual_kind);
-            if matches!(kind, SyntaxKind::DIRECTIVE | SyntaxKind::INSTRUCTION) {
-                expr.token(SyntaxKind::MNEMONIC, token.as_str());
-            } else {
-                expr.token(SyntaxKind::LABEL, token.as_str());
-            }
-
-            // Process the remainder of the line
-            let (x, _) = match many0(parse_line)(expr) {
-                Ok(a) => a,
-                Err(e) => {
-                    error!("Failed to parse line: {:#?}", e);
-                    return Err(e);
-                }
-            };
-
-            if x.current_indent_is_kind(SyntaxKind::EXPR) {
-                x.finish_node();
-            }
-
-            if matches!(kind, SyntaxKind::DIRECTIVE | SyntaxKind::INSTRUCTION) {
-                x.finish_node();
-            }
+            process_line(expr)?;
 
             Ok((remaining, ()))
         }
     }
+}
+
+fn process_line(expr: Span) -> NomResultElement {
+    process_comment!(expr);
+    // Check to see if we need to end any nodes before processing this one
+    let kind = {
+        let kind = pre_process_next(expr.as_str(), expr.extra().config);
+
+        if matches!(kind, SyntaxKind::LOCAL_LABEL | SyntaxKind::LABEL)
+            && expr.current_indent_is_kind(SyntaxKind::LOCAL_LABEL)
+        {
+            expr.finish_node();
+        }
+
+        if matches!(kind, SyntaxKind::LABEL) && expr.current_indent_is_kind(SyntaxKind::LABEL) {
+            expr.finish_node();
+        }
+
+        kind
+    };
+    expr.start_node(kind);
+    let expr = match expr.config().file_type {
+        FileType::Assembly => expr,
+        FileType::ObjDump => parse_objdump_line_start(expr)?.0,
+    };
+    let (expr, _) = skip_whitespace(expr, false)?;
+    let (expr, token) = take_while(|a: char| !a.is_whitespace())(expr)?;
+    let actual_kind = start_kind(token.as_str());
+    assert_eq!(kind, actual_kind);
+
+    let expr = if matches!(kind, SyntaxKind::DIRECTIVE | SyntaxKind::INSTRUCTION) {
+        expr.token(SyntaxKind::MNEMONIC, token.as_str());
+        expr
+    } else {
+        expr.token(SyntaxKind::LABEL, token.as_str());
+        let (expr, _) = skip_whitespace(expr, false)?;
+        if !expr.as_str().is_empty() {
+            return process_line(expr);
+        }
+        expr
+    };
+
+    let (x, _) = match many0(parse_line)(expr) {
+        Ok(a) => a,
+        Err(e) => {
+            error!("Failed to parse line: {:#?}", e);
+            return Err(e);
+        }
+    };
+    if x.current_indent_is_kind(SyntaxKind::EXPR) {
+        x.finish_node();
+    }
+    if matches!(kind, SyntaxKind::DIRECTIVE | SyntaxKind::INSTRUCTION) {
+        x.finish_node();
+    }
+
+    assert!(x.as_str().is_empty());
+
+    Ok((x, ()))
 }
 
 fn pre_process_next(line: &str, config: &ParserConfig) -> SyntaxKind {
