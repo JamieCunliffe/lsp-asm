@@ -2,8 +2,8 @@ use std::fmt::Display;
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum Architecture {
-    X86_64,
     AArch64,
+    X86_64,
     Unknown,
 }
 

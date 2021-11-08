@@ -1,7 +1,7 @@
 mod map;
 pub mod registers;
 
-use itertools::Itertools;
+use itertools::{Either, Itertools};
 use lazy_static::lazy_static;
 
 use base::{null_as_default, Architecture};
@@ -12,9 +12,12 @@ use std::error::Error;
 use std::fmt::Display;
 use std::fs::File;
 use std::io::BufReader;
+use std::ops::Range;
 use std::sync::{Arc, RwLock};
 
 pub use map::*;
+
+pub type CompletionValue = Either<String, Range<i64>>;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct OperandInfo {
@@ -23,7 +26,7 @@ pub struct OperandInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(deserialize_with = "null_as_default")]
     #[serde(default)]
-    pub completion_values: Option<Vec<String>>,
+    pub completion_values: Option<Vec<CompletionValue>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -129,7 +132,13 @@ pub fn load_documentation(arch: &Architecture) -> Result<Arc<DocumentationMap>, 
 
     let file = File::open(path)?;
     let reader = BufReader::new(file);
-    let data = serde_json::from_reader(reader)?;
+    let data = serde_json::from_reader(reader).map_err(|e| {
+        log::error!(
+            "Failed to parse documentation due to error: {}",
+            e.to_string()
+        );
+        e
+    })?;
 
     {
         let mut cache = DOCUMENTATION_CACHE.write()?;

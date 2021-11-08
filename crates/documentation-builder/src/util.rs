@@ -1,6 +1,6 @@
-use itertools::Itertools;
+use documentation::CompletionValue;
 
-pub fn range_to_list(range: &str) -> Option<Vec<String>> {
+pub fn process_range(range: &str) -> Option<CompletionValue> {
     let split = if let Some(stripped) = range.strip_prefix('-') {
         stripped.find('-').map(|x| x + 1)
     } else {
@@ -11,12 +11,12 @@ pub fn range_to_list(range: &str) -> Option<Vec<String>> {
         let start = &range[..split];
         let end = &range[(split + 1)..];
 
-        let start = start.parse::<i32>().ok()?;
-        let end = end.parse::<i32>().ok()?;
+        let start = start.parse::<i64>().ok()?;
+        let end = end.parse::<i64>().ok()?;
 
-        Some((start..=end).map(|x| x.to_string()).collect_vec())
+        Some(CompletionValue::Right(start..(end + 1)))
     } else {
-        Some(vec![range.to_string()])
+        Some(CompletionValue::Left(range.to_string()))
     }
 }
 
@@ -27,21 +27,21 @@ mod tests {
 
     #[test]
     fn test_range_parsing() {
+        assert_eq!(process_range("0-63"), Some(CompletionValue::Right(0..64)));
+
         assert_eq!(
-            range_to_list("0-63"),
-            Some((0..=63).map(|x| x.to_string()).collect_vec())
+            process_range("-64-64"),
+            Some(CompletionValue::Right(-64..65))
         );
 
         assert_eq!(
-            range_to_list("-64-64"),
-            Some((-64..=64).map(|x| x.to_string()).collect_vec())
+            process_range("-4"),
+            Some(CompletionValue::Left(String::from("-4")))
         );
-
-        assert_eq!(range_to_list("-4"), Some(vec![String::from("-4")]));
     }
 
     #[test]
     fn test_range_no_number() {
-        assert_eq!(range_to_list("0-number of something"), None);
+        assert_eq!(process_range("0-number of something"), None);
     }
 }

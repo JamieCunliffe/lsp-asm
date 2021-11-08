@@ -5,7 +5,7 @@ use std::io::prelude::*;
 use textwrap::fill;
 
 use documentation::registers::to_documentation_name;
-use documentation::{Instruction, InstructionTemplate, OperandInfo};
+use documentation::{CompletionValue, Instruction, InstructionTemplate, OperandInfo};
 use log::warn;
 
 const A64_ISA: &str = "https://developer.arm.com/-/media/developer/products/architecture/armv8-a-architecture/2021-06/A64_ISA_xml_v87A-2021-06.tar.gz";
@@ -192,17 +192,17 @@ fn parse_template(template: &str, operands: &[OperandInfo]) -> Vec<String> {
     ret
 }
 
-fn get_completion_values(description: &str) -> Option<Vec<String>> {
+fn get_completion_values(description: &str) -> Option<Vec<CompletionValue>> {
     let start = description.find('[')?;
-    let process_item = |part: &str| -> Option<Vec<String>> {
+    let process_item = |part: &str| -> Option<CompletionValue> {
         if let Some(stripped) = part.strip_prefix('#') {
             // If we start with a # only allow it if the part following it is numeric
             stripped.parse::<i64>().ok()?;
-            Some(vec![part.to_string()])
+            Some(CompletionValue::Left(part.to_string()))
         } else if part.contains('-') {
-            crate::util::range_to_list(part)
+            crate::util::process_range(part)
         } else {
-            Some(vec![part.to_string()])
+            Some(CompletionValue::Left(part.to_string()))
         }
     };
 
@@ -212,7 +212,6 @@ fn get_completion_values(description: &str) -> Option<Vec<String>> {
             items
                 .split(',')
                 .filter_map(process_item)
-                .flatten()
                 .collect::<Vec<_>>(),
         )
     } else {
