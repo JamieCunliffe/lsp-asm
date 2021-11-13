@@ -15,8 +15,15 @@ pub(super) fn goto_definition_label(
 ) -> Result<Vec<Location>, lsp_server::ResponseError> {
     let position = parser.position();
     let text = token.text();
-    Ok(parser
-        .tree()
+
+    let node = if text.starts_with('.') {
+        find_parent(token, SyntaxKind::LABEL)
+            .ok_or_else(|| lsp_error_map(ErrorCode::MissingParentNode))?
+    } else {
+        parser.tree()
+    };
+
+    Ok(node
         .descendants_with_tokens()
         .filter_map(|d| d.into_token())
         .filter(|token| token.kind() == SyntaxKind::LABEL)

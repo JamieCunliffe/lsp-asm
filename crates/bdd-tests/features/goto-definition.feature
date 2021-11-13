@@ -68,3 +68,17 @@ Lfunc_begin0:
     Then I expect the following response
       | start | end | file                           |
       |   1:0 | 1:0 | ./features/test-files/lens.txt |
+
+  Scenario: Goto definition local label
+    Given an lsp initialized with the following parameters
+      | key          | value   |
+      | architecture | aarch64 |
+    When I open the file "./features/test-files/local-labels.s"
+    When I run "goto definition" on the file "./features/test-files/local-labels.s" at position "7:12"
+    Then I expect the following response
+      | start | end |
+      |   6:0 | 6:6 |
+    When I run "goto definition" on the file "./features/test-files/local-labels.s" at position "4:14"
+    Then I expect the following response
+      | start | end |
+      |   3:0 | 3:6 |
