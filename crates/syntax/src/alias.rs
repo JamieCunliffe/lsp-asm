@@ -70,12 +70,10 @@ impl Alias {
     }
 
     pub fn get_kind(&self, token: &str) -> Option<SyntaxKind> {
-        self.alias_map
-            .get(token)
-            .map(|k| match k {
-                Kind::Register(_) => SyntaxKind::REGISTER_ALIAS,
-                Kind::Constant(_) => SyntaxKind::CONSTANT,
-            })
+        self.alias_map.get(token).map(|k| match k {
+            Kind::Register(_) => SyntaxKind::REGISTER_ALIAS,
+            Kind::Constant(_) => SyntaxKind::CONSTANT,
+        })
     }
 
     pub fn get_register_for_alias(&self, name: &str) -> Option<&String> {
@@ -86,12 +84,10 @@ impl Alias {
     }
 
     pub fn get_constant_for_token(&self, name: &str) -> Option<&String> {
-        self.alias_map
-            .get(name)
-            .and_then(|val| match val {
-                Kind::Register(_) => None,
-                Kind::Constant(expr) => Some(expr),
-            })
+        self.alias_map.get(name).and_then(|val| match val {
+            Kind::Register(_) => None,
+            Kind::Constant(expr) => Some(expr),
+        })
     }
 
     pub fn get_alias_for_kind_size<'a>(

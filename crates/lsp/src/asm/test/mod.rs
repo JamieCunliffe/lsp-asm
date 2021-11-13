@@ -1,6 +1,8 @@
+mod aarch64;
 mod asm;
 mod incomplete;
 mod objdump;
+mod x86_64;
 
 #[macro_export]
 macro_rules! assert_listing(
