@@ -23,7 +23,8 @@ ROOT@0..29
       REGISTER@9..11 "sp"
       COMMA@11..12 ","
       WHITESPACE@12..13 " "
-      NUMBER@13..16 "#80"
+      IMMEDIATE@13..14 "#"
+      NUMBER@14..16 "80"
       R_SQ@16..17 "]"
   WHITESPACE@17..18 "\n"
   INSTRUCTION@18..29
@@ -53,6 +54,7 @@ ROOT@0..17
       REGISTER@9..11 "sp"
       COMMA@11..12 ","
       WHITESPACE@12..13 " "
-      NUMBER@13..16 "#80"
+      IMMEDIATE@13..14 "#"
+      NUMBER@14..16 "80"
       R_SQ@16..17 "]"
       """

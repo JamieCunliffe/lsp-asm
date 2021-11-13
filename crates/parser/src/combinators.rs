@@ -390,10 +390,8 @@ fn is_floating_point(token: &str) -> bool {
 }
 
 /// Parse a number into an i128, this will account for any prefixes and use them.
-/// a $ or # will be ignored and skipped any number prefixed with 0x will be
-/// parsed as a base 16 number
 pub fn parse_number(token: &str) -> Result<i128, ParseIntError> {
-    let token = token.trim_start_matches(|c: char| ['$', '#'].contains(&c));
+    let token = token.trim_start_matches('$');
     if let Some(token) = token.strip_prefix("0x") {
         i128::from_str_radix(token, 16)
     } else {
@@ -402,7 +400,7 @@ pub fn parse_number(token: &str) -> Result<i128, ParseIntError> {
 }
 
 pub(crate) fn parse_float(token: &str) -> Result<f64, ParseFloatError> {
-    let token = token.trim_start_matches(|c: char| ['$', '#'].contains(&c));
+    let token = token.trim_start_matches('$');
     token.parse::<f64>()
 }
 
@@ -617,11 +615,7 @@ fn get_action(c: char, config: &ParserConfig) -> Option<Either<SyntaxKind, Proce
             Some(Either::Right(Box::new(objdump_angle_brackets)))
         }
         '#' if config.architecture == Architecture::AArch64 => {
-            Some(Either::Right(Box::new(|expr| {
-                let (remaining, str) = take_while(|a| a != ' ' && a != ',')(expr)?;
-                let token = span_to_token(&str);
-                Ok((remaining, token))
-            })))
+            Some(Either::Left(SyntaxKind::IMMEDIATE))
         }
         ':' if config.architecture == Architecture::AArch64 => {
             Some(Either::Right(Box::new(|expr| {
@@ -668,14 +662,14 @@ mod test {
 
     #[test]
     fn test_is_numeric() {
-        assert_eq!(true, is_numeric("#-42"));
+        assert_eq!(true, is_numeric("-42"));
         assert_eq!(true, is_numeric("0x123456789ABCDEF"));
         assert_eq!(true, is_numeric("0x123456789abcdef"));
     }
 
     #[test]
     fn test_is_numeric_float() {
-        assert_eq!(true, is_floating_point("#1.00000"));
+        assert_eq!(true, is_floating_point("1.00000"));
     }
 
     #[test]

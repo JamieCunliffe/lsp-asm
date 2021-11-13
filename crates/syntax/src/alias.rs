@@ -71,7 +71,7 @@ impl Alias {
 
     pub fn get_kind(&self, token: &str) -> Option<SyntaxKind> {
         self.alias_map
-            .get(token.trim_start_matches('#'))
+            .get(token)
             .map(|k| match k {
                 Kind::Register(_) => SyntaxKind::REGISTER_ALIAS,
                 Kind::Constant(_) => SyntaxKind::CONSTANT,
@@ -87,7 +87,7 @@ impl Alias {
 
     pub fn get_constant_for_token(&self, name: &str) -> Option<&String> {
         self.alias_map
-            .get(name.trim_start_matches('#'))
+            .get(name)
             .and_then(|val| match val {
                 Kind::Register(_) => None,
                 Kind::Constant(expr) => Some(expr),

@@ -201,6 +201,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             | SyntaxKind::STRING
             | SyntaxKind::LOCAL_LABEL
             | SyntaxKind::COMMENT
+            | SyntaxKind::IMMEDIATE
             | SyntaxKind::FLOAT
             | SyntaxKind::ALIAS
             | SyntaxKind::RELOCATION
@@ -360,6 +361,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                     | SyntaxKind::COMMA
                     | SyntaxKind::OPERATOR
                     | SyntaxKind::ALIAS
+                    | SyntaxKind::IMMEDIATE
                     | SyntaxKind::INSTRUCTION
                     | SyntaxKind::DIRECTIVE
                     | SyntaxKind::BRACKETS

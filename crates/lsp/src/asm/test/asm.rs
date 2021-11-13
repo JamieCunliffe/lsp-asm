@@ -319,7 +319,8 @@ fn test_negative_imm() {
       REGISTER@15..17 "sp"
       COMMA@17..18 ","
       WHITESPACE@18..19 " "
-      NUMBER@19..23 "#-32"
+      IMMEDIATE@19..20 "#"
+      NUMBER@20..23 "-32"
       R_SQ@23..24 "]"
     TOKEN@24..25 "!"
 "##,

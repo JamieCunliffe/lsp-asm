@@ -20,7 +20,7 @@ Feature: Testing equ directive
       |     range | kind |
       |  1:0-1:6  | text |
       | 3:14-3:20 | text |
-      | 4:14-4:21 | text |
+      | 4:15-4:21 | text |
     When I run "goto definition" on the file "t1" at position "3:16"
     Then I expect the following response
       | start |  end |
@@ -33,13 +33,13 @@ Feature: Testing equ directive
     Then I expect the following response
       | start |  end |
       |  3:14 | 3:20 |
-      |  4:14 | 4:21 |
+      |  4:15 | 4:21 |
     When I run "find references" on the file "t1" at position "4:16" including decl
     Then I expect the following response
       | start |  end |
       |   1:0 |  1:6 |
       |  3:14 | 3:20 |
-      |  4:14 | 4:21 |
+      |  4:15 | 4:21 |
 
   Scenario: prefix equ directive
     Given an lsp initialized with the following parameters
@@ -62,7 +62,7 @@ Feature: Testing equ directive
       |     range | kind |
       |  1:5-1:11 | text |
       | 3:14-3:20 | text |
-      | 4:14-4:21 | text |
+      | 4:15-4:21 | text |
     When I run "goto definition" on the file "t1" at position "3:16"
     Then I expect the following response
       | start |  end |
@@ -75,10 +75,10 @@ Feature: Testing equ directive
     Then I expect the following response
       | start |  end |
       |  3:14 | 3:20 |
-      |  4:14 | 4:21 |
+      |  4:15 | 4:21 |
     When I run "find references" on the file "t1" at position "4:16" including decl
     Then I expect the following response
       | start |  end |
       |   1:5 | 1:11 |
       |  3:14 | 3:20 |
-      |  4:14 | 4:21 |
+      |  4:15 | 4:21 |

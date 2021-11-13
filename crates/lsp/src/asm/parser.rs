@@ -171,7 +171,7 @@ impl Parser {
                 .token::<LabelToken>(token)
                 .map(|t| SemanticEq::String(t.name())),
             SyntaxKind::RELOCATION => Some(SemanticEq::String(token.text())),
-            SyntaxKind::CONSTANT => Some(SemanticEq::String(token.text().trim_start_matches('#'))),
+            SyntaxKind::CONSTANT => Some(SemanticEq::String(token.text())),
             SyntaxKind::NAME => Some(SemanticEq::String(token.text())),
             SyntaxKind::L_PAREN
             | SyntaxKind::R_PAREN
@@ -188,6 +188,7 @@ impl Parser {
             | SyntaxKind::STRING
             | SyntaxKind::LOCAL_LABEL
             | SyntaxKind::COMMENT
+            | SyntaxKind::IMMEDIATE
             | SyntaxKind::ALIAS
             | SyntaxKind::INSTRUCTION
             | SyntaxKind::DIRECTIVE

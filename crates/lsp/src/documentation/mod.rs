@@ -142,12 +142,7 @@ fn node_or_token_match(
             if matches!(a.kind(), SyntaxKind::NUMBER | SyntaxKind::FLOAT)
                 && t.kind() == SyntaxKind::TOKEN =>
         {
-            // If we have a number and we are expecting a token, it could still
-            // be a match if the token is an immediate
-            t.as_token()
-                // TODO: Could do more validation here
-                .map(|t| t.text().starts_with('#'))
-                .unwrap_or(false)
+            true
         }
         (a, t) if matches!(a.kind(), SyntaxKind::CONSTANT) && t.kind() == SyntaxKind::TOKEN => true,
         (a, t) if a.kind() == t.kind() => true,

@@ -32,6 +32,7 @@ pub enum SyntaxKind {
     LABEL,
     LOCAL_LABEL,
     COMMENT,
+    IMMEDIATE,
 
     INSTRUCTION,
     DIRECTIVE,

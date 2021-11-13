@@ -14,7 +14,7 @@ Feature: Register highlighting semantic tokens
       |          0 |           0 |      3 | opcode      |         0 |
       |          0 |           4 |      2 | gp-register |         0 |
       |          0 |           5 |      2 | register    |         0 |
-      |          0 |           4 |      3 | number      |         0 |
+      |          0 |           5 |      2 | number      |         0 |
       |          1 |           0 |      4 | opcode      |         0 |
       |          0 |           5 |      2 | fp-register |         0 |
       |          0 |           4 |      2 | gp-register |         0 |

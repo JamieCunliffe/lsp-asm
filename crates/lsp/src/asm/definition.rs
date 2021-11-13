@@ -14,6 +14,7 @@ pub(super) fn goto_definition_label(
     uri: &Url,
 ) -> Result<Vec<Location>, lsp_server::ResponseError> {
     let position = parser.position();
+    let text = token.text();
     Ok(parser
         .tree()
         .descendants_with_tokens()
@@ -22,7 +23,7 @@ pub(super) fn goto_definition_label(
         .filter(|label| {
             parser
                 .token::<LabelToken>(label)
-                .map(|name| name.name() == token.text())
+                .map(|name| name.name() == text)
                 .unwrap_or(false)
         })
         .filter_map(|token| {
