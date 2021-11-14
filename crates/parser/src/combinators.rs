@@ -5,7 +5,7 @@ use super::config::ParserConfig;
 
 use base::{Architecture, FileType};
 use either::Either;
-use nom::bytes::complete::{tag, take_until, take_while};
+use nom::bytes::complete::{tag, take_while};
 use nom::character::is_hex_digit;
 use nom::error::ErrorKind;
 use nom::multi::many0;
@@ -72,7 +72,7 @@ macro_rules! end_many0(
     ));
 
 macro_rules! process_comment(
-    ($e:expr) => (
+    ($e:expr, $incomplete:literal) => (
         if $e.as_str().starts_with(&$e.config().comment_start) {
             return parse_comment($e);
         }
@@ -82,7 +82,7 @@ macro_rules! process_comment(
         }
 
         if $e.as_str().starts_with("/*") {
-            return parse_multiline_comment($e);
+            return parse_multiline_comment($e, $incomplete);
         }
     ));
 
@@ -181,12 +181,29 @@ fn parse_next(expr: Span) -> NomResultElement {
             Ok((remaining, ()))
         }
         _ => {
-            process_comment!(expr);
+            process_comment!(expr, true);
 
             // Extract the current line from the input for processing
             let (remaining, expr) = take_while(|a| a != '\n')(expr)?;
 
-            process_line(expr)?;
+            let remaining = match process_line(expr) {
+                Ok(_) => remaining,
+                Err(nom::Err::Error(nom::error::Error {
+                    input,
+                    code: ErrorKind::CrLf,
+                })) if input.as_str().starts_with("/*") => {
+                    let (remaining, comment) = find_multiline_end(remaining.as_str())
+                        .map(|position| Ok(remaining.take_split(position)))
+                        .unwrap_or_else(|| take_while(|a| a != '\0')(remaining))?;
+
+                    remaining.token(
+                        SyntaxKind::COMMENT,
+                        &format!("{}{}", input.as_str(), comment.as_str()),
+                    );
+                    remaining
+                }
+                err => return err,
+            };
 
             Ok((remaining, ()))
         }
@@ -194,7 +211,7 @@ fn parse_next(expr: Span) -> NomResultElement {
 }
 
 fn process_line(expr: Span) -> NomResultElement {
-    process_comment!(expr);
+    process_comment!(expr, false);
     // Check to see if we need to end any nodes before processing this one
     let kind = {
         let kind = pre_process_next(expr.as_str(), expr.extra().config);
@@ -240,6 +257,7 @@ fn process_line(expr: Span) -> NomResultElement {
             return Err(e);
         }
     };
+
     if x.current_indent_is_kind(SyntaxKind::EXPR) {
         x.finish_node();
     }
@@ -247,7 +265,11 @@ fn process_line(expr: Span) -> NomResultElement {
         x.finish_node();
     }
 
-    assert!(x.as_str().is_empty());
+    if x.as_str().starts_with("/*") {
+        return Err(nom::Err::Error(nom::error::Error::new(x, ErrorKind::CrLf)));
+    } else {
+        assert!(x.as_str().is_empty());
+    }
 
     Ok((x, ()))
 }
@@ -304,7 +326,7 @@ fn parse_line(expr: Span) -> NomResultElement {
         Some(Either::Right(action)) => action(expr),
         None => {
             // If we start with a comment parse it.
-            process_comment!(expr);
+            process_comment!(expr, false);
 
             let (remaining, token) = take_while(|a: char| !is_special_char(a, config))(expr)?;
             span_to_token(&token);
@@ -450,23 +472,26 @@ fn parse_comment(remaining: Span) -> NomResultElement {
     Ok((remaining, ()))
 }
 
-fn parse_multiline_comment(remaining: Span) -> NomResultElement {
-    assert!(remaining.as_str().starts_with("/*"));
+fn find_multiline_end(data: &str) -> Option<usize> {
+    data.find("*/").map(|x| x + 2)
+}
 
-    let (remaining, comment) = match take_until("*/")(remaining) {
-        Ok((remaining, comment)) => {
-            let (remaining, end) = remaining.take_split(2);
-            let comment = format!("{}{}", comment.as_str(), end.as_str());
-            (remaining, comment)
+fn parse_multiline_comment(remaining: Span, allow_incomplete: bool) -> NomResultElement {
+    assert!(remaining.as_str().starts_with("/*"));
+    let pos = find_multiline_end(remaining.as_str());
+
+    let (remaining, comment) = match pos {
+        Some(position) => remaining.take_split(position),
+        None if allow_incomplete => take_while(|a| a != '\0')(remaining)?,
+        None => {
+            return Err(nom::Err::Error(nom::error::Error::new(
+                remaining,
+                ErrorKind::CrLf,
+            )));
         }
-        nom::lib::std::result::Result::Err(nom::Err::Error((r, ErrorKind::TakeUntil))) => {
-            let (remaining, comment) = take_while(|a| a != '\0')(r)?;
-            (remaining, comment.as_str().to_string())
-        }
-        e => panic!("Unexpected result for multiline comment: {:#?}", e),
     };
 
-    remaining.token(SyntaxKind::COMMENT, &comment);
+    remaining.token(SyntaxKind::COMMENT, comment.as_str());
 
     Ok((remaining, ()))
 }

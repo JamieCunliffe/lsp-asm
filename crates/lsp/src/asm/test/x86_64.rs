@@ -330,3 +330,47 @@ popq %rbp"#,
         Architecture::X86_64
     );
 }
+
+#[test]
+fn test_multiline_comment_ins_line() {
+    assert_listing!(
+        r#"
+pushq %rbp /* This
+is
+a
+comment
+*/
+popq %rbp"#,
+        r#"ROOT@0..45
+  WHITESPACE@0..1 "\n"
+  INSTRUCTION@1..12
+    MNEMONIC@1..6 "pushq"
+    WHITESPACE@6..7 " "
+    REGISTER@7..11 "%rbp"
+    WHITESPACE@11..12 " "
+  COMMENT@12..35 "/* This\nis\na\ncomment\n*/"
+  WHITESPACE@35..36 "\n"
+  INSTRUCTION@36..45
+    MNEMONIC@36..40 "popq"
+    WHITESPACE@40..41 " "
+    REGISTER@41..45 "%rbp"
+"#,
+        Architecture::X86_64
+    );
+}
+
+#[test]
+fn test_multiline_comment_middle_ins() {
+    assert_listing!(
+        r#"pushq /* register */ %rbp"#,
+        r#"ROOT@0..25
+  INSTRUCTION@0..25
+    MNEMONIC@0..5 "pushq"
+    WHITESPACE@5..6 " "
+    COMMENT@6..20 "/* register */"
+    WHITESPACE@20..21 " "
+    REGISTER@21..25 "%rbp"
+"#,
+        Architecture::X86_64
+    );
+}
