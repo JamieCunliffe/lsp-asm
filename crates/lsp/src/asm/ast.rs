@@ -2,8 +2,6 @@ use super::registers::registers_for_architecture;
 use base::register::RegisterKind;
 use base::FileType;
 use parser::config::ParserConfig;
-use symbolic::common::{Name, NameMangling};
-use symbolic::demangle::{Demangle, DemangleOptions};
 use syntax::ast::{SyntaxKind, SyntaxNode, SyntaxToken};
 
 pub(crate) trait AstToken<'st, 'c> {
@@ -47,15 +45,7 @@ impl<'st, 'ft> LabelToken<'st, 'ft> {
     }
 
     pub(crate) fn demangle(&self) -> Option<(String, String)> {
-        let name = Name::new(
-            self.name(),
-            NameMangling::Mangled,
-            symbolic::common::Language::Unknown,
-        );
-
-        let lang = name.detect_language();
-        name.demangle(DemangleOptions::complete())
-            .map(|sym| (sym, lang.to_string()))
+        super::demangle::demangle(self.name())
     }
 }
 

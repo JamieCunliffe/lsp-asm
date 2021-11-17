@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 use lsp_types::Url;
-use symbolic::common::Uuid;
+use uuid::Uuid;
 
 pub(super) struct UrlPath(PathBuf);
 impl TryFrom<&Url> for UrlPath {

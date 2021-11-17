@@ -1,6 +1,7 @@
 pub(crate) mod ast;
 mod debug;
 mod definition;
+mod demangle;
 pub mod handler;
 mod hovers;
 mod llvm_mca;
