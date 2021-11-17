@@ -39,7 +39,7 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
 
     let capabilities = ServerCapabilities {
         text_document_sync: Some(TextDocumentSyncCapability::Kind(
-            TextDocumentSyncKind::Incremental,
+            TextDocumentSyncKind::INCREMENTAL,
         )),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         definition_provider: Some(OneOf::Left(true)),

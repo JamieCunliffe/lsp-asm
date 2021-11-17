@@ -32,9 +32,9 @@ impl From<&str> for ErrorLevel {
 impl From<ErrorLevel> for DiagnosticSeverity {
     fn from(val: ErrorLevel) -> Self {
         match val {
-            ErrorLevel::Error => DiagnosticSeverity::Error,
-            ErrorLevel::Warning => DiagnosticSeverity::Warning,
-            ErrorLevel::Info => DiagnosticSeverity::Information,
+            ErrorLevel::Error => DiagnosticSeverity::ERROR,
+            ErrorLevel::Warning => DiagnosticSeverity::WARNING,
+            ErrorLevel::Info => DiagnosticSeverity::INFORMATION,
         }
     }
 }

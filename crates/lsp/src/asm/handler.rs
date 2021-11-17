@@ -259,7 +259,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             .filter_map(|token| {
                 Some(lsp_types::DocumentHighlight {
                     range: position_cache.range_for_token(&token)?.into(),
-                    kind: Some(DocumentHighlightKind::Text),
+                    kind: Some(DocumentHighlightKind::TEXT),
                 })
             })
             .collect();
@@ -521,7 +521,7 @@ impl<'s> LabelNode<'s> {
         Some(DocumentSymbol {
             name: token.text().to_string(),
             detail: None,
-            kind: SymbolKind::Function,
+            kind: SymbolKind::FUNCTION,
             tags: None,
             deprecated: None,
             range: position.range_for_node(node).unwrap().into(),
@@ -546,7 +546,7 @@ impl<'s> LocalLabelNode<'s> {
         Some(DocumentSymbol {
             name: token.text().to_string(),
             detail: None,
-            kind: SymbolKind::Function,
+            kind: SymbolKind::FUNCTION,
             tags: None,
             deprecated: None,
             range: position.range_for_node(node).unwrap().into(),
@@ -823,7 +823,7 @@ end:
                 DocumentSymbol {
                     name: "entry:".to_string(),
                     detail: None,
-                    kind: SymbolKind::Function,
+                    kind: SymbolKind::FUNCTION,
                     tags: None,
                     deprecated: None,
                     range: Range {
@@ -849,7 +849,7 @@ end:
                     children: Some(vec![DocumentSymbol {
                         name: ".L2:".to_string(),
                         detail: None,
-                        kind: SymbolKind::Function,
+                        kind: SymbolKind::FUNCTION,
                         tags: None,
                         deprecated: None,
                         range: Range {
@@ -878,7 +878,7 @@ end:
                 DocumentSymbol {
                     name: "end:".to_string(),
                     detail: None,
-                    kind: SymbolKind::Function,
+                    kind: SymbolKind::FUNCTION,
                     tags: None,
                     deprecated: None,
                     range: Range {
@@ -929,14 +929,14 @@ end:
                     start: Position::new(0, 0),
                     end: Position::new(0, 6),
                 },
-                kind: Some(DocumentHighlightKind::Text),
+                kind: Some(DocumentHighlightKind::TEXT),
             },
             DocumentHighlight {
                 range: Range {
                     start: Position::new(1, 6),
                     end: Position::new(1, 11),
                 },
-                kind: Some(DocumentHighlightKind::Text),
+                kind: Some(DocumentHighlightKind::TEXT),
             },
         ];
 

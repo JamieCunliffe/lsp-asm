@@ -70,7 +70,7 @@ pub(crate) fn make_doc_symbol(table: &[Vec<String>]) -> Vec<DocumentSymbol> {
             name: row.get(1).unwrap().to_string(),
             detail: None,
             kind: match row.get(2).unwrap().as_str() {
-                "function" => SymbolKind::Function,
+                "function" => SymbolKind::FUNCTION,
                 x => panic!("Unknown kind: {}", x),
             },
             tags: None,
@@ -108,7 +108,7 @@ pub(crate) fn make_doc_highlight(table: &[Vec<String>]) -> Vec<DocumentHighlight
         .map(|row| DocumentHighlight {
             range: make_range(row.get(0).unwrap()),
             kind: match row.get(1).unwrap().as_str() {
-                "text" => Some(DocumentHighlightKind::Text),
+                "text" => Some(DocumentHighlightKind::TEXT),
                 x => panic!("Unknown kind: {}", x),
             },
         })

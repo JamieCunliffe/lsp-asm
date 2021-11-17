@@ -118,10 +118,10 @@ impl From<CompletionItem> for lsp_types::CompletionItem {
             label: item.text,
             label_details: None,
             kind: Some(match item.kind {
-                crate::types::CompletionKind::Label => CompletionItemKind::Constant,
-                crate::types::CompletionKind::Register => CompletionItemKind::Variable,
-                crate::types::CompletionKind::Mnemonic => CompletionItemKind::Function,
-                crate::types::CompletionKind::Text => CompletionItemKind::Text,
+                crate::types::CompletionKind::Label => CompletionItemKind::CONSTANT,
+                crate::types::CompletionKind::Register => CompletionItemKind::VARIABLE,
+                crate::types::CompletionKind::Mnemonic => CompletionItemKind::FUNCTION,
+                crate::types::CompletionKind::Text => CompletionItemKind::TEXT,
             }),
             detail: Some(item.details),
             documentation: item.documentation.map(|d| {
