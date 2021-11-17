@@ -6,7 +6,7 @@ use textwrap::fill;
 
 use documentation::registers::to_documentation_name;
 use documentation::{CompletionValue, Instruction, InstructionTemplate, OperandInfo};
-use log::warn;
+use log::{debug, warn};
 
 const A64_ISA: &str = "https://developer.arm.com/-/media/developer/products/architecture/armv8-a-architecture/2021-06/A64_ISA_xml_v87A-2021-06.tar.gz";
 const A64_ISA_DIR: &str = "ISA_A64_xml_v87A-2021-06";
@@ -133,6 +133,32 @@ fn process_isa_ref(data: &str, file: &str) -> Vec<Instruction> {
         .collect()
 }
 
+fn extract_brackets(template: &str) -> Vec<&str> {
+    let mut template = template;
+    let mut ret = Vec::with_capacity(3);
+
+    while let Some(start) = template.find('(') {
+        let end = template.find(')').unwrap() + 1;
+        let brackets = &template[start..end];
+        ret.push(brackets);
+
+        template = &template[end..];
+    }
+
+    ret
+}
+
+fn expand_template(template: &str, expansions: &[(&str, &Vec<&str>)]) -> Vec<String> {
+    if let Some(((find, replace), remaining)) = expansions.split_last() {
+        replace
+            .iter()
+            .flat_map(|replace| expand_template(&template.replace(find, replace), remaining))
+            .collect_vec()
+    } else {
+        vec![template.to_string()]
+    }
+}
+
 fn parse_template(template: &str, operands: &[OperandInfo]) -> Vec<String> {
     let mut positions = Vec::new();
     for (i, c) in template.char_indices() {
@@ -189,7 +215,34 @@ fn parse_template(template: &str, operands: &[OperandInfo]) -> Vec<String> {
         .collect_vec();
     ret.push(full);
     ret.reverse();
-    ret
+
+    let expansions = extract_brackets(template)
+        .into_iter()
+        .filter(|exp| exp.contains('|'))
+        .map(|exp| {
+            (
+                exp,
+                exp.trim_start_matches('(')
+                    .trim_end_matches(')')
+                    .split('|')
+                    .collect_vec(),
+            )
+        })
+        .collect_vec();
+
+    if expansions.is_empty() {
+        ret
+    } else {
+        debug!("Performing expansions for template: {}", template);
+        let expansions = expansions
+            .iter()
+            .map(|(expand, parts)| (*expand, parts))
+            .collect_vec();
+
+        ret.iter()
+            .flat_map(|template| expand_template(template, expansions.as_slice()))
+            .collect_vec()
+    }
 }
 
 fn get_completion_values(description: &str) -> Option<Vec<CompletionValue>> {
@@ -358,6 +411,63 @@ mod test {
             vec![
                 String::from("LD1W    { <Zt>.S }, <Pg>/Z, [<Zn>.S, #<imm>]"),
                 String::from("LD1W    { <Zt>.S }, <Pg>/Z, [<Zn>.S]"),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_template_or_token() {
+        let input = "A <Wt>, [<Xn|SP>, (<Wm>|<Xm>), <extend> {<amount>}]";
+        let operands = vec![OperandInfo {
+            name: "<amount>".into(),
+            description: "Optional".into(),
+            completion_values: Default::default(),
+        }];
+        let result = parse_template(input, &operands);
+
+        assert_eq!(
+            result,
+            vec![
+                String::from("A <Wt>, [<Xn|SP>, <Wm>, <extend> <amount>]"),
+                String::from("A <Wt>, [<Xn|SP>, <Xm>, <extend> <amount>]"),
+                String::from("A <Wt>, [<Xn|SP>, <Wm>, <extend> ]"),
+                String::from("A <Wt>, [<Xn|SP>, <Xm>, <extend> ]"),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_template_multiple_or_token() {
+        let input = "A (<op>|#<imm5>), [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]";
+        let operands = vec![
+            OperandInfo {
+                name: "<extend>".into(),
+                description: "Optional".into(),
+                completion_values: Default::default(),
+            },
+            OperandInfo {
+                name: "<amount>".into(),
+                description: "Optional".into(),
+                completion_values: Default::default(),
+            },
+        ];
+        let result = parse_template(input, &operands);
+
+        assert_eq!(
+            result,
+            vec![
+                String::from("A <op>, [<Xn|SP>, <Wm>, <extend> <amount>]"),
+                String::from("A #<imm5>, [<Xn|SP>, <Wm>, <extend> <amount>]"),
+                String::from("A <op>, [<Xn|SP>, <Xm>, <extend> <amount>]"),
+                String::from("A #<imm5>, [<Xn|SP>, <Xm>, <extend> <amount>]"),
+                String::from("A <op>, [<Xn|SP>, <Wm>, <extend> ]"),
+                String::from("A #<imm5>, [<Xn|SP>, <Wm>, <extend> ]"),
+                String::from("A <op>, [<Xn|SP>, <Xm>, <extend> ]"),
+                String::from("A #<imm5>, [<Xn|SP>, <Xm>, <extend> ]"),
+                String::from("A <op>, [<Xn|SP>, <Wm>]"),
+                String::from("A #<imm5>, [<Xn|SP>, <Wm>]"),
+                String::from("A <op>, [<Xn|SP>, <Xm>]"),
+                String::from("A #<imm5>, [<Xn|SP>, <Xm>]"),
             ]
         );
     }
