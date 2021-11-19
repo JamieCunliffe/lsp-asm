@@ -353,9 +353,7 @@ fn is_register(name: &str, config: &ParserConfig) -> bool {
 
 /// Converts the span into a GreenToken
 fn span_to_token(token: &Span) {
-    if is_register(token.as_str(), token.extra().config) {
-        token.token(SyntaxKind::REGISTER, token.as_str());
-    } else if is_numeric(token.as_str()) {
+    if is_numeric(token.as_str()) {
         token.token(SyntaxKind::NUMBER, token.as_str());
     } else if is_floating_point(token.as_str()) {
         token.token(SyntaxKind::FLOAT, token.as_str());
@@ -383,6 +381,8 @@ fn span_to_token(token: &Span) {
         token.start_node(SyntaxKind::EXPR);
     } else if let Some(kind) = token.extra().builder.alias().get_kind(token.as_str()) {
         token.token(kind, token.as_str());
+    } else if is_register(token.as_str(), token.extra().config) {
+        token.token(SyntaxKind::REGISTER, token.as_str());
     } else {
         token.token(SyntaxKind::TOKEN, token.as_str());
     }
