@@ -4,7 +4,6 @@ use super::builder::Builder;
 use super::config::ParserConfig;
 
 use base::{Architecture, FileType};
-use either::Either;
 use nom::bytes::complete::{tag, take_while};
 use nom::character::is_hex_digit;
 use nom::error::ErrorKind;
@@ -318,12 +317,7 @@ fn parse_line(expr: Span) -> NomResultElement {
     let config = expr.extra().config;
     let first = expr.chars().next().unwrap_or('\0');
     match get_action(first, config) {
-        Some(Either::Left(kind)) => {
-            let (remaining, val) = take_while(|a| a == first)(expr)?;
-            remaining.token(kind, val.as_str());
-            Ok((remaining, ()))
-        }
-        Some(Either::Right(action)) => action(expr),
+        Some(action) => action(expr),
         None => {
             // If we start with a comment parse it.
             process_comment!(expr, false);
@@ -333,6 +327,12 @@ fn parse_line(expr: Span) -> NomResultElement {
             Ok((remaining, ()))
         }
     }
+}
+
+fn process_token(expr: Span, val: char, kind: SyntaxKind) -> NomResultElement {
+    let (remaining, val) = take_while(|a| a == val)(expr)?;
+    remaining.token(kind, val.as_str());
+    Ok((remaining, ()))
 }
 
 pub fn register_name(name: &str) -> String {
@@ -578,10 +578,41 @@ where
 }
 
 /// Parse a string constant
-fn parse_string(remaining: Span) -> nom::IResult<Span, String> {
+fn parse_string(remaining: Span) -> NomResultElement {
     let (remaining, inner) = terminated(preceded(tag("\""), str_parse), tag("\""))(remaining)?;
+    remaining.token(SyntaxKind::STRING, &format!(r#""{}""#, inner.as_str()));
 
-    Ok((remaining, format!(r#""{}""#, inner.as_str())))
+    Ok((remaining, ()))
+}
+
+fn handle_arm_relocation(expr: Span) -> NomResultElement {
+    let config = expr.extra().config;
+    let split = expr.as_str()[1..]
+        .find(|c| is_special_char(c, config))
+        .map(|i| i + 1)
+        .unwrap_or_else(|| expr.as_str().len());
+
+    let (kind, split) = if expr.as_str().get(split..=split) == Some(":") {
+        (SyntaxKind::RELOCATION, split + 1)
+    } else {
+        (SyntaxKind::TOKEN, split)
+    };
+
+    let (remaining, relocation) = expr.take_split(split);
+    remaining.token(kind, relocation.as_str());
+
+    Ok((remaining, ()))
+}
+
+fn handle_at_relocation(expr: Span) -> NomResultElement {
+    let config = expr.extra().config;
+    let (remaining, token) = take_while_skip_first(|a: char| !is_special_char(a, config))(expr)?;
+    let kind = (remaining.last_kind() == SyntaxKind::TOKEN)
+        .then(|| SyntaxKind::RELOCATION)
+        .unwrap_or(SyntaxKind::TOKEN);
+
+    remaining.token(kind, token.as_str());
+    Ok((remaining, ()))
 }
 
 /// Parse a minus number, this will start at the - token and use the standard
@@ -601,67 +632,26 @@ fn parse_minus(expr: Span) -> NomResultElement {
     }
 }
 
-type ProcessFunction = Box<dyn Fn(Span) -> NomResultElement>;
+type ProcessFunction = fn(Span) -> NomResultElement;
 #[inline]
-fn get_action(c: char, config: &ParserConfig) -> Option<Either<SyntaxKind, ProcessFunction>> {
+fn get_action(c: char, config: &ParserConfig) -> Option<ProcessFunction> {
     match c {
-        ',' => Some(Either::Left(SyntaxKind::COMMA)),
-        '+' => Some(Either::Left(SyntaxKind::OPERATOR)),
-        '-' => Some(Either::Right(Box::new(parse_minus))),
-        ' ' => Some(Either::Right(Box::new(|expr| skip_whitespace(expr, false)))),
-        '\t' => Some(Either::Right(Box::new(|expr| skip_whitespace(expr, false)))),
-        '\n' => Some(Either::Right(Box::new(|expr| skip_whitespace(expr, false)))),
-        '(' => Some(Either::Right(Box::new(|expr| {
-            parse_brackets(expr, (SyntaxKind::L_PAREN, SyntaxKind::R_PAREN))
-        }))),
-        '[' => Some(Either::Right(Box::new(|expr| {
-            parse_brackets(expr, (SyntaxKind::L_SQ, SyntaxKind::R_SQ))
-        }))),
-        '{' => Some(Either::Right(Box::new(|expr| {
-            parse_brackets(expr, (SyntaxKind::L_CURLY, SyntaxKind::R_CURLY))
-        }))),
-        '"' => Some(Either::Right(Box::new(|expr| {
-            let (remaining, str) = parse_string(expr)?;
-            remaining.token(SyntaxKind::STRING, &str);
-            Ok((remaining, ()))
-        }))),
-        '@' => Some(Either::Right(Box::new(|expr| {
-            let config = expr.extra().config;
-            let (remaining, token) =
-                take_while_skip_first(|a: char| !is_special_char(a, config))(expr)?;
-            let kind = (remaining.last_kind() == SyntaxKind::TOKEN)
-                .then(|| SyntaxKind::RELOCATION)
-                .unwrap_or(SyntaxKind::TOKEN);
-
-            remaining.token(kind, token.as_str());
-            Ok((remaining, ()))
-        }))),
-        '<' if config.file_type == FileType::ObjDump => {
-            Some(Either::Right(Box::new(objdump_angle_brackets)))
-        }
+        ' ' => Some(|expr| skip_whitespace(expr, false)),
+        ',' => Some(|expr| process_token(expr, ',', SyntaxKind::COMMA)),
+        '\t' => Some(|expr| skip_whitespace(expr, false)),
+        '\n' => Some(|expr| skip_whitespace(expr, false)),
+        '+' => Some(|expr| process_token(expr, '+', SyntaxKind::OPERATOR)),
+        '-' => Some(parse_minus),
+        '(' => Some(|expr| parse_brackets(expr, (SyntaxKind::L_PAREN, SyntaxKind::R_PAREN))),
+        '[' => Some(|expr| parse_brackets(expr, (SyntaxKind::L_SQ, SyntaxKind::R_SQ))),
+        '{' => Some(|expr| parse_brackets(expr, (SyntaxKind::L_CURLY, SyntaxKind::R_CURLY))),
+        '"' => Some(parse_string),
+        '@' => Some(handle_at_relocation),
+        '<' if config.file_type == FileType::ObjDump => Some(objdump_angle_brackets),
         '#' if config.architecture == Architecture::AArch64 => {
-            Some(Either::Left(SyntaxKind::IMMEDIATE))
+            Some(|expr| process_token(expr, '#', SyntaxKind::IMMEDIATE))
         }
-        ':' if config.architecture == Architecture::AArch64 => {
-            Some(Either::Right(Box::new(|expr| {
-                let config = expr.extra().config;
-                let split = expr.as_str()[1..]
-                    .find(|c| is_special_char(c, config))
-                    .map(|i| i + 1)
-                    .unwrap_or_else(|| expr.as_str().len());
-
-                let (kind, split) = if expr.as_str().get(split..=split) == Some(":") {
-                    (SyntaxKind::RELOCATION, split + 1)
-                } else {
-                    (SyntaxKind::TOKEN, split)
-                };
-
-                let (remaining, relocation) = expr.take_split(split);
-                remaining.token(kind, relocation.as_str());
-
-                Ok((remaining, ()))
-            })))
-        }
+        ':' if config.architecture == Architecture::AArch64 => Some(handle_arm_relocation),
         _ => None,
     }
 }
@@ -669,7 +659,7 @@ fn get_action(c: char, config: &ParserConfig) -> Option<Either<SyntaxKind, Proce
 #[inline]
 fn is_special_char(c: char, config: &ParserConfig) -> bool {
     match c {
-        ',' | '+' | '-' | ' ' | '\t' | '\n' | '(' | '[' | '{' | '"' | '@' => true,
+        ' ' | ',' | '\n' | '\t' | '+' | '-' | '(' | '[' | '{' | '"' | '@' => true,
         '<' if config.file_type == FileType::ObjDump => true,
         '#' | ':' if config.architecture == Architecture::AArch64 => true,
         _ => false,
