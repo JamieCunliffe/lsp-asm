@@ -97,11 +97,13 @@ pub(crate) fn registers_for_architecture(arch: &Architecture) -> &dyn Registers 
 pub(crate) fn register_id(name: &str, config: &ParserConfig) -> Option<i8> {
     if let Some(registers) = config.registers {
         let name = parser::register_name(name);
-        registers
-            .iter()
-            .enumerate()
-            .find(|(_, register)| register.names.contains(&name.as_str()))
-            .map(|(idx, _)| idx as _)
+        registers.iter().enumerate().find_map(|(idx, register)| {
+            register
+                .names
+                .iter()
+                .any(|reg| reg.eq_ignore_ascii_case(name))
+                .then(|| idx as i8)
+        })
     } else {
         None
     }

@@ -335,17 +335,20 @@ fn process_token(expr: Span, val: char, kind: SyntaxKind) -> NomResultElement {
     Ok((remaining, ()))
 }
 
-pub fn register_name(name: &str) -> String {
-    name.strip_prefix('%').unwrap_or(name).to_lowercase()
+pub fn register_name(name: &str) -> &str {
+    name.strip_prefix('%').unwrap_or(name)
 }
 
 /// Determine if `name` is a valid register
 fn is_register(name: &str, config: &ParserConfig) -> bool {
     if let Some(registers) = config.registers {
         let name = register_name(name);
-        registers
-            .iter()
-            .any(|register| register.names.contains(&name.as_str()))
+        registers.iter().any(|register| {
+            register
+                .names
+                .iter()
+                .any(|reg| reg.eq_ignore_ascii_case(name))
+        })
     } else {
         false
     }
