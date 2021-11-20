@@ -1,13 +1,14 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
+use itertools::Itertools;
 use tokio::sync::RwLock;
 
 use crate::asm::handler::AssemblyLanguageServerProtocol;
 use crate::config::LSPConfig;
 use crate::diagnostics::assembler_flags::AssemblerFlags;
 use crate::diagnostics::compile_commands::CompileCommands;
-use crate::diagnostics::{Diagnostics, Error};
+use crate::diagnostics::{Diagnostics, Error, UrlPath};
 
 use super::error::{lsp_error_map, ErrorCode};
 use super::types::{DocumentChange, DocumentRangeMessage, FindReferencesMessage, LocationMessage};
@@ -239,7 +240,14 @@ impl LangServerHandler {
             self.commands
                 .as_ref()?
                 .assembler_for_file(uri)?
-                .get_errors(),
+                .get_errors()
+                .into_iter()
+                .filter(|err| {
+                    uri.try_into()
+                        .map(|uri: UrlPath| uri.is_file(&err.file))
+                        .unwrap_or(false)
+                })
+                .collect_vec(),
         )
     }
 

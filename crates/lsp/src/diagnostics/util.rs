@@ -5,7 +5,7 @@ use std::process::{Command, Stdio};
 use lsp_types::Url;
 use uuid::Uuid;
 
-pub(super) struct UrlPath(PathBuf);
+pub struct UrlPath(PathBuf);
 impl TryFrom<&Url> for UrlPath {
     type Error = std::io::Error;
 
@@ -20,9 +20,18 @@ impl TryFrom<&Url> for UrlPath {
         )?))
     }
 }
+
 impl UrlPath {
     pub fn as_path(&self) -> &Path {
         self.0.as_path()
+    }
+
+    pub fn is_file(&self, file: &str) -> bool {
+        let file = Path::new(file);
+        std::fs::canonicalize(file)
+            .ok()
+            .map(|full_file| full_file == self.0)
+            .unwrap_or(false)
     }
 }
 

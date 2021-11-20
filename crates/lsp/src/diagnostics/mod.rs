@@ -1,10 +1,9 @@
 use lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range, Url};
 use std::convert::TryInto;
-use std::path::Path;
 
 use crate::types::{ColumnNumber, LineNumber};
 
-use self::util::UrlPath;
+pub use self::util::UrlPath;
 
 pub mod assembler_flags;
 mod clang;
@@ -94,14 +93,7 @@ impl CompileCommand {
     }
 
     fn is_uri(&self, uri: Option<UrlPath>) -> bool {
-        || -> Option<bool> {
-            let uri = uri?;
-            let file = Path::new(&self.file);
-            let full_file = std::fs::canonicalize(file).ok()?;
-
-            Some(full_file == uri.as_path())
-        }()
-        .unwrap_or(false)
+        uri.map(|uri| uri.is_file(&self.file)).unwrap_or(false)
     }
 }
 
