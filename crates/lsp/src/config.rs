@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 
+use base::{null_as_default, Architecture};
 use byte_unit::{Byte, ByteUnit};
 use serde::Deserialize;
-
-use base::{null_as_default, Architecture};
 
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]

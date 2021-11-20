@@ -1,14 +1,14 @@
-use itertools::Itertools;
-
 use base::register::{RegisterSize, Registers};
 use base::Architecture;
 use documentation::registers::DOC_REGISTERS;
 use documentation::{Instruction, InstructionTemplate};
-use lazy_static::lazy_static;
+use itertools::Itertools;
 use parser::config::ParserConfig;
 use parser::ParsedData;
 use syntax::alias::Alias;
 use syntax::ast::{SyntaxElement, SyntaxKind, SyntaxNode};
+
+pub(crate) mod access;
 
 lazy_static! {
     static ref TEMPLATE_CONFIG: ParserConfig = ParserConfig {
@@ -18,6 +18,7 @@ lazy_static! {
         registers: Some(&documentation::registers::DOCUMENTATION_REGISTERS),
     };
 }
+
 /// Finds the instruction template that matches the given node, this will
 /// require an exact match to be found otherwise None is returned
 pub fn find_correct_instruction_template<'a>(

@@ -1,11 +1,9 @@
 mod map;
 pub mod registers;
 
+use base::{null_as_default, Architecture};
 use itertools::{Either, Itertools};
 use lazy_static::lazy_static;
-
-use base::{null_as_default, Architecture};
-
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
@@ -30,10 +28,22 @@ pub struct OperandInfo {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum OperandAccessType {
+    Write,
+    Read,
+    Text,
+    Unknown,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct InstructionTemplate {
     pub asm: Vec<String>,
     pub display_asm: String,
     pub items: Vec<OperandInfo>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(deserialize_with = "null_as_default")]
+    #[serde(default)]
+    pub access_map: Vec<OperandAccessType>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -3,16 +3,14 @@ extern crate log;
 #[macro_use]
 extern crate lazy_static;
 
-mod architecture;
+pub mod register;
 pub use architecture::*;
-
-mod filetype;
 pub use filetype::*;
 
-use serde::Deserialize;
-use serde::Deserializer;
+mod architecture;
+mod filetype;
 
-pub mod register;
+use serde::{Deserialize, Deserializer};
 
 pub fn null_as_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
 where

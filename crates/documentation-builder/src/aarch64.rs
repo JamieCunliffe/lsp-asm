@@ -1,12 +1,15 @@
 use itertools::Itertools;
+use log::{debug, warn};
+use std::collections::HashMap;
 use std::error::Error;
 use std::ffi::OsStr;
 use std::io::prelude::*;
 use textwrap::fill;
 
 use documentation::registers::to_documentation_name;
-use documentation::{CompletionValue, Instruction, InstructionTemplate, OperandInfo};
-use log::{debug, warn};
+use documentation::{
+    CompletionValue, Instruction, InstructionTemplate, OperandAccessType, OperandInfo,
+};
 
 const A64_ISA: &str = "https://developer.arm.com/-/media/developer/products/architecture/armv8-a-architecture/2021-06/A64_ISA_xml_v87A-2021-06.tar.gz";
 const A64_ISA_DIR: &str = "ISA_A64_xml_v87A-2021-06";
@@ -77,15 +80,28 @@ fn process_isa_ref(data: &str, file: &str) -> Vec<Instruction> {
 
     let asm_template = instruction_section
         .descendants()
-        .filter(|d| d.tag_name().name() == "asmtemplate")
-        .map(|x| x.children());
+        .filter(|d| d.tag_name().name() == "asmtemplate");
 
-    let asm = asm_template
-        .clone()
-        .map(|x| x.map(|x| x.text().unwrap_or("").to_string()).join(""));
+    let asm = asm_template.clone().map(|x| {
+        let asm = x
+            .children()
+            .map(|x| x.text().unwrap_or("").to_string())
+            .join("");
+        let doc_vars = x
+            .parent()
+            .unwrap()
+            .descendants()
+            .filter_map(|d| {
+                (d.tag_name().name() == "docvar")
+                    .then(|| (d.attribute("key").unwrap(), d.attribute("value").unwrap()))
+            })
+            .into_group_map();
+        (asm, doc_vars)
+    });
 
     let operands = asm_template.map(|x| {
-        x.filter(|c| c.tag_name().name() == "a")
+        x.children()
+            .filter(|c| c.tag_name().name() == "a")
             .map(|n| {
                 let description = n
                     .attribute_node("hover")
@@ -106,8 +122,8 @@ fn process_isa_ref(data: &str, file: &str) -> Vec<Instruction> {
 
     let asm_template = asm
         .zip(operands)
-        .map(|(asm, items)| InstructionTemplate {
-            asm: parse_template(&asm, &items)
+        .map(|((asm, vars), items)| {
+            let templates = parse_template(&asm, &items)
                 .drain(..)
                 .map(|mut t| {
                     crate::register_replacements::REGISTER_REPLACEMENTS
@@ -115,9 +131,14 @@ fn process_isa_ref(data: &str, file: &str) -> Vec<Instruction> {
                         .for_each(|(f, s, k)| t = t.replace(f, &to_documentation_name(k, s)));
                     t
                 })
-                .collect_vec(),
-            display_asm: asm.clone(),
-            items,
+                .collect_vec();
+            let access_map = build_access_map(&asm, &items, &vars);
+            InstructionTemplate {
+                asm: templates,
+                display_asm: asm,
+                items,
+                access_map,
+            }
         })
         .collect::<Vec<_>>();
 
@@ -156,6 +177,146 @@ fn expand_template(template: &str, expansions: &[(&str, &Vec<&str>)]) -> Vec<Str
             .collect_vec()
     } else {
         vec![template.to_string()]
+    }
+}
+
+fn build_access_map(
+    asm: &str,
+    operands: &[OperandInfo],
+    vars: &HashMap<&str, Vec<&str>>,
+) -> Vec<OperandAccessType> {
+    let start = if let Some(start) = asm.trim().find(' ') {
+        start
+    } else {
+        return Default::default();
+    };
+
+    let parts = asm[start..].split(',');
+    parts
+        .map(|operand| {
+            let operand = operand.trim();
+            if operand.starts_with('#') || operand.starts_with("<label>") {
+                OperandAccessType::Text
+            } else {
+                let desc = operands
+                    .iter()
+                    .filter(|op| operand.contains(&op.name))
+                    .map(|x| &x.description)
+                    .join(" ");
+
+                access_type(asm, &desc, vars)
+            }
+        })
+        .collect()
+}
+
+fn access_type(asm: &str, desc: &str, vars: &HashMap<&str, Vec<&str>>) -> OperandAccessType {
+    let access = [
+        // Write access:
+        ("destination register", OperandAccessType::Write),
+        (
+            "destination general-purpose register",
+            OperandAccessType::Write,
+        ),
+        (
+            "destination scalable vector register",
+            OperandAccessType::Write,
+        ),
+        (
+            "destination scalable predicate register",
+            OperandAccessType::Write,
+        ),
+        ("destination simd&fp register", OperandAccessType::Write),
+        ("source and destination", OperandAccessType::Write),
+        ("register to be loaded", OperandAccessType::Write),
+        (
+            "register to be compared and loaded",
+            OperandAccessType::Write,
+        ),
+        ("accumulator output register", OperandAccessType::Write),
+        (
+            "register into which the status result of store exclusive is written",
+            OperandAccessType::Write,
+        ),
+        (
+            "status result of this instruction is written",
+            OperandAccessType::Write,
+        ),
+        // Read access
+        ("source register", OperandAccessType::Read),
+        ("source general-purpose register", OperandAccessType::Read),
+        ("source scalable vector register", OperandAccessType::Read),
+        (
+            "source scalable predicate register",
+            OperandAccessType::Read,
+        ),
+        (
+            "governing scalable predicate register",
+            OperandAccessType::Read,
+        ),
+        ("simd&fp table register", OperandAccessType::Read),
+        (
+            "holding data value to be operated on with the contents of memory location",
+            OperandAccessType::Read,
+        ),
+        ("register to be stored", OperandAccessType::Read),
+        (
+            "register to be conditionally stored",
+            OperandAccessType::Read,
+        ),
+        ("general-purpose offset register", OperandAccessType::Read),
+        ("offset scalable vector register", OperandAccessType::Read),
+        ("accumulator input register", OperandAccessType::Read),
+        (
+            "register holding address to be branched to",
+            OperandAccessType::Read,
+        ),
+        ("index register", OperandAccessType::Read),
+        ("to be tested", OperandAccessType::Read),
+        // Text access
+        ("width specifier", OperandAccessType::Text),
+        ("immediate index", OperandAccessType::Text),
+        ("element index", OperandAccessType::Text),
+        ("immediate multiplier", OperandAccessType::Text),
+        ("field \"imm", OperandAccessType::Text),
+    ];
+
+    let desc = desc.to_lowercase();
+    if desc.contains("register to be transferred")
+        || desc.contains("scalable predicate transfer register")
+    {
+        if asm.trim().to_lowercase().starts_with("ld") {
+            OperandAccessType::Write
+        } else {
+            OperandAccessType::Read
+        }
+    } else if desc.contains("general-purpose base register") {
+        let addr_form = vars
+            .get("address-form")
+            .map(|form| {
+                assert_eq!(form.len(), 1);
+                form.first().copied()
+            })
+            .flatten();
+
+        match addr_form {
+            Some("pre-indexed") | Some("post-indexed") => OperandAccessType::Write,
+            Some("base-register")
+            | Some("base-plus-offset")
+            | Some("signed-scaled-offset")
+            | Some("unsigned-scaled-offset") => OperandAccessType::Read,
+            Some(form) => {
+                warn!("Unknown form ({}) for asm: {}", form, asm);
+                OperandAccessType::Unknown
+            }
+            None => OperandAccessType::Read,
+        }
+    } else {
+        access
+            .iter()
+            .find_map(|(x, a)| desc.as_str().contains(*x).then(|| a))
+            .cloned()
+            .unwrap_or(OperandAccessType::Unknown)
     }
 }
 
@@ -274,8 +435,15 @@ fn get_completion_values(description: &str) -> Option<Vec<CompletionValue>> {
 }
 
 pub(crate) async fn get_instructions() -> Result<Vec<Instruction>, Box<dyn Error>> {
-    println!("Downloading XML reference from {}", A64_ISA);
-    let isa_data = reqwest::get(A64_ISA).await?.bytes().await?.to_vec();
+    let isa_data = if let Ok(data) = std::fs::read(format!(
+        "data/{}",
+        A64_ISA.split('/').last().unwrap_or_default()
+    )) {
+        data
+    } else {
+        println!("Downloading XML reference from {}", A64_ISA);
+        reqwest::get(A64_ISA).await?.bytes().await?.to_vec()
+    };
 
     println!("Processing arm instruction set reference");
     let mut a = tar::Archive::new(flate2::read::GzDecoder::new(isa_data.as_slice()));
@@ -537,6 +705,54 @@ mod test {
                 String::from("INCB    <Xdn>, <pattern>"),
                 String::from("INCB    <Xdn>"),
             ]
+        );
+    }
+
+    #[test]
+    fn test_build_access_map() {
+        let asm = "NOT_REAL  <R><t>, #<imm>, <label>, <Pg>, <Xt>";
+        let operands = vec![
+            OperandInfo {
+                name: "<R>".into(),
+                description: "Width specifier".into(),
+                completion_values: Default::default(),
+            },
+            OperandInfo {
+                name: "<t>".into(),
+                description: "to be tested or ZR".into(),
+                completion_values: Default::default(),
+            },
+            OperandInfo {
+                name: "<imm>".into(),
+                description: "Bit number to be tested".into(),
+                completion_values: Default::default(),
+            },
+            OperandInfo {
+                name: "<label>".into(),
+                description: "branched to".into(),
+                completion_values: Default::default(),
+            },
+            OperandInfo {
+                name: "<Pg>".into(),
+                description: "governing scalable predicate register".into(),
+                completion_values: Default::default(),
+            },
+            OperandInfo {
+                name: "<Xt>".into(),
+                description: "destination register".into(),
+                completion_values: Default::default(),
+            },
+        ];
+        let expected_map = vec![
+            OperandAccessType::Read,
+            OperandAccessType::Text,
+            OperandAccessType::Text,
+            OperandAccessType::Read,
+            OperandAccessType::Write,
+        ];
+        assert_eq!(
+            expected_map,
+            build_access_map(asm, &operands, &Default::default())
         );
     }
 }

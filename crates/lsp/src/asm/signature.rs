@@ -204,6 +204,7 @@ mod tests {
                     completion_values: Default::default(),
                 },
             ],
+            access_map: Default::default(),
         };
         let sig_info = make_sig_help(&instruction, &template, 0);
 

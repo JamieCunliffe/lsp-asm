@@ -229,7 +229,7 @@ impl Parser {
         }
     }
 
-    fn config_from_arch(arch: &Architecture) -> ParserConfig {
+    pub(crate) fn config_from_arch(arch: &Architecture) -> ParserConfig {
         match arch {
             Architecture::AArch64 => ParserConfig {
                 comment_start: String::from("//"),

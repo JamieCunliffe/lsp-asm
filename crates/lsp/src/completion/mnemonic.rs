@@ -46,6 +46,7 @@ mod tests {
                     asm: vec!["ADDVL   <GP|SP_64>, <GP|SP_64>, #<imm>".into()],
                     display_asm: "".into(),
                     items: vec![],
+                    access_map: Default::default(),
                 }],
             }],
         );
@@ -60,6 +61,7 @@ mod tests {
                     asm: vec!["CNT  <SIMD_V>, <SIMD_V>".into()],
                     display_asm: "CNT  <Vd>, <Vn>".into(),
                     items: vec![],
+                    access_map: Default::default(),
                 }],
             }],
         );

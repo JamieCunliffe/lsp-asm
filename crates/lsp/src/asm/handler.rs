@@ -8,6 +8,7 @@ use crate::asm::hovers;
 use crate::asm::signature;
 use crate::completion;
 use crate::config::LSPConfig;
+use crate::documentation::access::access_type;
 use crate::handler::error::{lsp_error_map, ErrorCode};
 use crate::handler::semantic::semantic_delta_transform;
 use crate::handler::types::DocumentChange;
@@ -254,15 +255,39 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             )
         };
 
+        let docs = documentation::load_documentation(self.parser.architecture()).ok();
+        let registers = registers_for_architecture(self.parser.architecture());
+
         let references = find_references(&self.parser, &token, &range);
-        let locations = references
-            .filter_map(|token| {
-                Some(lsp_types::DocumentHighlight {
-                    range: position_cache.range_for_token(&token)?.into(),
-                    kind: Some(DocumentHighlightKind::TEXT),
+
+        let locations = if let Some(docs) = docs {
+            references
+                .filter_map(|token| {
+                    let kind = access_type(&token, &docs, registers, self.parser.alias())
+                        .map(|k| match k {
+                            documentation::OperandAccessType::Unknown
+                            | documentation::OperandAccessType::Text => DocumentHighlightKind::TEXT,
+                            documentation::OperandAccessType::Read => DocumentHighlightKind::READ,
+                            documentation::OperandAccessType::Write => DocumentHighlightKind::WRITE,
+                        })
+                        .or(Some(DocumentHighlightKind::TEXT));
+
+                    Some(lsp_types::DocumentHighlight {
+                        range: position_cache.range_for_token(&token)?.into(),
+                        kind,
+                    })
                 })
-            })
-            .collect();
+                .collect()
+        } else {
+            references
+                .filter_map(|token| {
+                    Some(lsp_types::DocumentHighlight {
+                        range: position_cache.range_for_token(&token)?.into(),
+                        kind: Some(DocumentHighlightKind::TEXT),
+                    })
+                })
+                .collect()
+        };
 
         Ok(locations)
     }

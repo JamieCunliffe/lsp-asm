@@ -113,6 +113,7 @@ mod tests {
                             completion_values: Some(vec![CompletionValue::Left(String::from("m"))]),
                         },
                     ],
+                    access_map: Default::default(),
                 }],
             }],
         );
@@ -170,6 +171,7 @@ mod tests {
                         description: "".into(),
                         completion_values: Some(vec![CompletionValue::Right(0..5)]),
                     }],
+                    access_map: Default::default(),
                 }],
             }],
         );
