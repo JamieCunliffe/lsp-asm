@@ -13,6 +13,7 @@ use nom::{IResult, InputLength, InputTake};
 use rowan::GreenNode;
 use std::num::{ParseFloatError, ParseIntError};
 use syntax::ast::SyntaxKind;
+use unicase::UniCase;
 
 type Span<'a> = super::span::Span<'a, &'a InternalSpanConfig<'a>>;
 type NomResultElement<'a> = nom::IResult<Span<'a>, ()>;
@@ -343,12 +344,7 @@ pub fn register_name(name: &str) -> &str {
 fn is_register(name: &str, config: &ParserConfig) -> bool {
     if let Some(registers) = config.registers {
         let name = register_name(name);
-        registers.iter().any(|register| {
-            register
-                .names
-                .iter()
-                .any(|reg| reg.eq_ignore_ascii_case(name))
-        })
+        registers.get(&UniCase::ascii(name)).is_some()
     } else {
         false
     }

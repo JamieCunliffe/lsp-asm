@@ -317,6 +317,7 @@ pub(crate) const REGISTER_REPLACEMENTS: &[(&str, &RegisterSize, &RegisterKind)] 
 
 #[cfg(test)]
 mod test {
+    use itertools::Itertools;
     use pretty_assertions::assert_eq;
     fn known_register_names() -> Vec<String> {
         let mut names = super::REGISTER_REPLACEMENTS
@@ -331,14 +332,10 @@ mod test {
     #[test]
     fn ensure_known_registers_match() {
         let parser_registers = documentation::registers::DOCUMENTATION_REGISTERS
-            .iter()
-            .flat_map(|r| {
-                r.names
-                    .iter()
-                    .cloned()
-                    .map(String::from)
-                    .collect::<Vec<_>>()
-            })
+            .keys()
+            .cloned()
+            .map(|x| x.to_string())
+            .sorted()
             .collect::<Vec<_>>();
         let registers = known_register_names();
 

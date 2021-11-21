@@ -1,8 +1,8 @@
-use crate::Register;
 use base::{Architecture, FileType};
+use unicase::UniCase;
 
 /// Configuration for the parser
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Debug)]
 pub struct ParserConfig {
     /// The characters that signal the start of a comment
     pub comment_start: String,
@@ -13,7 +13,15 @@ pub struct ParserConfig {
     pub file_type: FileType,
 
     /// The registers that are allowed for this parser
-    pub registers: Option<&'static [Register]>,
+    pub registers: Option<&'static phf::Map<UniCase<&'static str>, i8>>,
+}
+
+impl PartialEq for ParserConfig {
+    fn eq(&self, other: &Self) -> bool {
+        self.comment_start == other.comment_start
+            && self.architecture == other.architecture
+            && self.file_type == other.file_type
+    }
 }
 
 impl Default for ParserConfig {

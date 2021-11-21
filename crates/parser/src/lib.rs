@@ -16,20 +16,6 @@ pub fn parse_asm(data: &str, config: &config::ParserConfig) -> ParsedData {
     combinators::parse(data, config)
 }
 
-/// A register
-#[derive(Debug, PartialEq)]
-pub struct Register {
-    /// A list of names that for this register, each name in this list is
-    /// considered to be the same hardware register.
-    pub names: &'static [&'static str],
-}
-
-impl Register {
-    pub const fn new(names: &'static [&'static str]) -> Self {
-        Self { names }
-    }
-}
-
 pub struct ParsedData {
     pub root: GreenNode,
     pub alias: Alias,

@@ -10,6 +10,8 @@ nom = "7.1.0"
 rowan = "0.15.0"
 either = "1.6.1"
 log = "0.4.14"
+phf = { version = "0.10" }
+unicase = "2.6.0"
 
 [dev-dependencies]
 pretty_assertions = "1.0.0"

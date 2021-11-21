@@ -32,6 +32,9 @@ shellwords = "1.1.0"
 uuid = { version = "0.8.2", features = ["v4"] }
 rustc-demangle = "0.1.21"
 cpp_demangle = "0.3.3"
+phf = { version = "0.10", features = ["macros"] }
+phf_macros = { version = "0.10", features = ["unicase"] }
+unicase = "2.6.0"
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 tikv-jemallocator = "0.4.0"

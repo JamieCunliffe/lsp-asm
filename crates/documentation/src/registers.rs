@@ -1,7 +1,7 @@
 #![allow(clippy::upper_case_acronyms)]
 
 use base::register::{RegisterKind, RegisterSize, Registers};
-use parser::Register;
+use unicase::UniCase;
 
 pub struct DocRegisters {}
 
@@ -50,20 +50,20 @@ pub fn to_documentation_name(kind: &RegisterKind, size: &RegisterSize) -> String
     format!("<{kind}_{size}>", kind = kind, size = size)
 }
 
-pub const DOCUMENTATION_REGISTERS: [Register; 1] = [Register::new(&[
-    "<fp_128>",
-    "<fp_16>",
-    "<fp_32>",
-    "<fp_64>",
-    "<fp_8>",
-    "<gp_32>",
-    "<gp_64>",
-    "<gp_a>",
-    "<gp|sp_64>",
-    "<pred_v>",
-    "<scale_v>",
-    "<simd_v>",
-])];
+pub static DOCUMENTATION_REGISTERS: phf::Map<UniCase<&'static str>, i8> = phf::phf_map! {
+    UniCase::ascii("<fp_128>") => 0,
+    UniCase::ascii("<fp_16>") => 0,
+    UniCase::ascii("<fp_32>") => 0,
+    UniCase::ascii("<fp_64>") => 0,
+    UniCase::ascii("<fp_8>") => 0,
+    UniCase::ascii("<gp_32>") => 0,
+    UniCase::ascii("<gp_64>") => 0,
+    UniCase::ascii("<gp_a>") => 0,
+    UniCase::ascii("<gp|sp_64>") => 0,
+    UniCase::ascii("<pred_v>") => 0,
+    UniCase::ascii("<scale_v>") => 0,
+    UniCase::ascii("<simd_v>") => 0,
+};
 
 #[cfg(test)]
 mod tests {
@@ -73,7 +73,7 @@ mod tests {
 
     #[test]
     fn test_documentation_registers_are_known() {
-        for register in DOCUMENTATION_REGISTERS.iter().flat_map(|x| x.names) {
+        for register in DOCUMENTATION_REGISTERS.keys() {
             assert!(!DOC_REGISTERS.get_kind(register).is_empty());
             assert_ne!(RegisterSize::Unknown, DOC_REGISTERS.get_size(register));
         }

@@ -1,11 +1,9 @@
 use base::register::{RegisterKind, RegisterSize, Registers};
-use base::Architecture;
 use documentation::registers::DOC_REGISTERS;
 use itertools::Itertools;
-use parser::Register;
 use syntax::alias::Alias;
 
-use crate::asm::registers::{AARCH64_REGISTERS, X86_64_REGISTERS};
+use crate::asm::registers::RegisterList;
 use crate::types::{CompletionItem, CompletionKind};
 
 use super::CompletionContext;
@@ -14,21 +12,15 @@ pub(super) fn complete_registers(
     to_complete: &str,
     context: &CompletionContext,
 ) -> Vec<CompletionItem> {
-    let architecture = context.architecture();
     let registers = context.registers;
 
-    let register_names: &[Register] = match architecture {
-        Architecture::AArch64 => &AARCH64_REGISTERS,
-        Architecture::X86_64 => &X86_64_REGISTERS,
-        Architecture::Unknown => return Default::default(),
-    };
+    let register_names = RegisterList::from_architecture(context.architecture());
 
     let register_kind = DOC_REGISTERS.get_kind(to_complete);
     let register_size = DOC_REGISTERS.get_size(to_complete);
 
     let mut completions = register_names
-        .iter()
-        .flat_map(|r| r.names)
+        .names()
         .filter(|r| {
             registers.get_size(r) == register_size && register_kind.contains(registers.get_kind(r))
         })
@@ -76,6 +68,7 @@ mod tests {
     use crate::config::LSPConfig;
 
     use super::*;
+    use base::Architecture;
     use pretty_assertions::assert_eq;
     use syntax::ast::{find_kind_index, SyntaxKind};
 
@@ -95,6 +88,7 @@ mod tests {
                 documentation: None,
                 kind: CompletionKind::Register,
             }))
+            .sorted()
             .collect_vec();
         let parser = Parser::from(
             " ",
@@ -136,6 +130,7 @@ mod tests {
                 documentation: None,
                 kind: CompletionKind::Register,
             }))
+            .sorted()
             .collect_vec();
 
         let parser = Parser::from(
