@@ -27,11 +27,12 @@ fn process_isa_ref(data: &str, file: &str) -> Vec<Instruction> {
         }
     };
 
-    let mnemonic: Vec<&str> = instruction_section
+    let mut mnemonic: Vec<String> = instruction_section
         .descendants()
         .filter(|d| d.tag_name().name() == "docvar" && d.attribute("key").unwrap() == "mnemonic")
         .filter_map(|d| d.attribute("value"))
         .unique()
+        .map(String::from)
         .collect();
 
     let variant = instruction_section
@@ -141,6 +142,14 @@ fn process_isa_ref(data: &str, file: &str) -> Vec<Instruction> {
             }
         })
         .collect::<Vec<_>>();
+
+    if let Some(asm) = asm_template
+        .iter()
+        .find_map(|temp| temp.asm.iter().find(|asm| asm.contains("{2}")))
+    {
+        let asm = asm[..asm.find(' ').unwrap()].replace("{2}", "2");
+        mnemonic.push(asm);
+    }
 
     mnemonic
         .iter()
