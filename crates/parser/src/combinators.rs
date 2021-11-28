@@ -304,7 +304,7 @@ fn start_kind(token: &str) -> SyntaxKind {
         } else {
             SyntaxKind::LABEL
         }
-    } else if token.starts_with('.') {
+    } else if token.starts_with('.') || token.starts_with('#') {
         SyntaxKind::DIRECTIVE
     } else {
         SyntaxKind::INSTRUCTION
@@ -723,7 +723,8 @@ mod test {
         let data = r#"entry:
 .cfi_startproc
     stp x20, x21, [sp, -32]!
-.L2:"#;
+.L2:
+#include "test.s""#;
 
         let mut lines = data.split('\n');
         let config = ParserConfig {
@@ -748,6 +749,10 @@ mod test {
         assert_eq!(
             pre_process_next(lines.next().unwrap(), &config),
             SyntaxKind::LOCAL_LABEL
+        );
+        assert_eq!(
+            pre_process_next(lines.next().unwrap(), &config),
+            SyntaxKind::DIRECTIVE
         );
     }
 }

@@ -76,22 +76,14 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             SyntaxKind::MNEMONIC if token.text() == ".loc" => {
                 definition::goto_definition_loc(&self.parser, &token)?
             }
-            SyntaxKind::MNEMONIC
-                if token.text().eq_ignore_ascii_case(".include")
-                    || token.text().eq_ignore_ascii_case("include")
-                    || token.text().eq_ignore_ascii_case("get") =>
-            {
+            SyntaxKind::MNEMONIC if syntax::utils::is_token_include(&token) => {
                 definition::goto_definition_label_include(&token)?
             }
             SyntaxKind::CONSTANT => {
                 definition::goto_definition_const(&token, &self.parser, &self.uri)?
             }
             _ if get_mnemonic()
-                .map(|token| {
-                    token.text().eq_ignore_ascii_case(".include")
-                        || token.text().eq_ignore_ascii_case("include")
-                        || token.text().eq_ignore_ascii_case("get")
-                })
+                .map(|token| syntax::utils::is_token_include(&token))
                 .unwrap_or(false) =>
             {
                 definition::goto_definition_label_include(&token)?
