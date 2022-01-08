@@ -3,7 +3,7 @@ mod debug;
 mod definition;
 mod demangle;
 pub mod handler;
-mod hovers;
+pub(crate) mod hovers;
 mod llvm_mca;
 pub mod parser;
 mod register_names;

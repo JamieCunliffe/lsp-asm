@@ -1,11 +1,17 @@
 use itertools::Itertools;
-use syntax::ast::{find_parent, SyntaxKind};
+use syntax::ast::{find_parent, SyntaxKind, SyntaxToken};
 
 use crate::types::{CompletionItem, CompletionKind};
 
 use super::CompletionContext;
 
 pub(super) fn complete_label(context: &CompletionContext) -> Vec<CompletionItem> {
+    let token = |t: &SyntaxToken| {
+        (
+            t.text().trim_end_matches(':').to_string(),
+            crate::asm::hovers::label_definition_comment(context.parser, t),
+        )
+    };
     let mut completions = find_parent(&context.token, SyntaxKind::LABEL)
         .map(|label| {
             label
@@ -14,11 +20,8 @@ pub(super) fn complete_label(context: &CompletionContext) -> Vec<CompletionItem>
                     matches!(t.kind(), SyntaxKind::LABEL)
                         && matches!(t.parent().map(|p| p.kind()), Some(SyntaxKind::LOCAL_LABEL))
                 })
-                .filter_map(|t| {
-                    t.as_token()
-                        .map(|t| t.text().trim_end_matches(':').to_string())
-                })
-                .map(to_completion)
+                .filter_map(|t| t.as_token().map(token))
+                .map(|(label, doc)| to_completion(label, doc))
                 .collect_vec()
         })
         .unwrap_or_default();
@@ -29,11 +32,8 @@ pub(super) fn complete_label(context: &CompletionContext) -> Vec<CompletionItem>
                 matches!(t.kind(), SyntaxKind::LABEL)
                     && matches!(t.parent().map(|p| p.kind()), Some(SyntaxKind::LABEL))
             })
-            .filter_map(|t| {
-                t.as_token()
-                    .map(|t| t.text().trim_end_matches(':').to_string())
-            })
-            .map(to_completion)
+            .filter_map(|t| t.as_token().map(token))
+            .map(|(label, doc)| to_completion(label, doc))
     }) {
         completions.extend(labels);
     };
@@ -41,11 +41,11 @@ pub(super) fn complete_label(context: &CompletionContext) -> Vec<CompletionItem>
     completions
 }
 
-fn to_completion(l: String) -> CompletionItem {
+fn to_completion(l: String, doc: Option<String>) -> CompletionItem {
     CompletionItem {
         text: l,
         details: "".into(),
-        documentation: None,
+        documentation: doc,
         kind: CompletionKind::Label,
     }
 }

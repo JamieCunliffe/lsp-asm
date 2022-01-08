@@ -1,7 +1,10 @@
 use super::ast::{LabelToken, NumericToken};
+use super::definition::get_definition_token;
+use super::parser::Parser;
 use super::registers::registers_for_architecture;
 use base::Architecture;
 use itertools::Itertools;
+use rowan::NodeOrToken;
 use std::iter;
 use syntax::alias::Alias;
 use syntax::ast::{self, SyntaxKind, SyntaxToken};
@@ -75,4 +78,44 @@ pub fn get_constant_hover(token: &SyntaxToken, alias: &Alias) -> Option<Vec<Stri
         token.text(),
         value.trim()
     )])
+}
+
+pub fn get_token_hover(parser: &Parser, token: SyntaxToken) -> Option<Vec<String>> {
+    let definitions = get_definition_token(parser, &token).ok()?;
+    let doc_strings = definitions
+        .filter_map(|definition| label_definition_comment(parser, &definition))
+        .collect_vec();
+
+    Some(doc_strings)
+}
+
+pub(crate) fn label_definition_comment(
+    parser: &Parser,
+    definition: &SyntaxToken,
+) -> Option<String> {
+    let first = match definition.parent()?.prev_sibling_or_token() {
+        Some(NodeOrToken::Node(n)) => n.last_token().map(NodeOrToken::Token),
+        x => x,
+    };
+
+    let mut comments = iter::successors(first, |t| t.prev_sibling_or_token())
+        .take_while(|t| matches!(t.kind(), SyntaxKind::WHITESPACE | SyntaxKind::COMMENT))
+        .collect_vec();
+
+    comments.reverse();
+
+    let comment = comments
+        .iter()
+        .filter_map(|s| {
+            s.as_token().map(|t| {
+                t.text()
+                    .trim_start_matches(parser.comment_start())
+                    .trim_start()
+            })
+        })
+        .join("\n")
+        .trim()
+        .to_string();
+
+    (!comment.is_empty()).then(|| comment)
 }

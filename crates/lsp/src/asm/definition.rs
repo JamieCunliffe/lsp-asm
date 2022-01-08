@@ -8,12 +8,10 @@ use crate::handler::error::{lsp_error_map, ErrorCode};
 use super::ast::LabelToken;
 use super::parser::Parser;
 
-pub(super) fn goto_definition_label(
-    parser: &Parser,
-    token: &SyntaxToken,
-    uri: &Url,
-) -> Result<Vec<Location>, lsp_server::ResponseError> {
-    let position = parser.position();
+pub(super) fn get_definition_token<'p>(
+    parser: &'p Parser,
+    token: &'p SyntaxToken,
+) -> Result<impl Iterator<Item = SyntaxToken> + 'p, lsp_server::ResponseError> {
     let text = token.text();
 
     let node = if text.starts_with('.') {
@@ -27,12 +25,21 @@ pub(super) fn goto_definition_label(
         .descendants_with_tokens()
         .filter_map(|d| d.into_token())
         .filter(|token| token.kind() == SyntaxKind::LABEL)
-        .filter(|label| {
+        .filter(move |label| {
             parser
                 .token::<LabelToken>(label)
                 .map(|name| name.name() == text)
                 .unwrap_or(false)
-        })
+        }))
+}
+
+pub(super) fn goto_definition_label(
+    parser: &Parser,
+    token: &SyntaxToken,
+    uri: &Url,
+) -> Result<Vec<Location>, lsp_server::ResponseError> {
+    let position = parser.position();
+    Ok(get_definition_token(parser, token)?
         .filter_map(|token| {
             Some(lsp_types::Location::new(
                 uri.clone(),

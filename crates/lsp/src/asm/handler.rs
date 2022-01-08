@@ -161,6 +161,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             .ok_or_else(|| lsp_error_map(ErrorCode::TokenNotFound))?;
 
         let hover = match token.kind() {
+            SyntaxKind::TOKEN => hovers::get_token_hover(&self.parser, token),
             SyntaxKind::NUMBER => hovers::get_numeric_hover(
                 &self
                     .parser
@@ -187,7 +188,6 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             | SyntaxKind::L_ANGLE
             | SyntaxKind::R_ANGLE
             | SyntaxKind::REGISTER
-            | SyntaxKind::TOKEN
             | SyntaxKind::WHITESPACE
             | SyntaxKind::COMMA
             | SyntaxKind::OPERATOR

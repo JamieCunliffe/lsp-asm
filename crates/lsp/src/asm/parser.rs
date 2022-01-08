@@ -74,6 +74,10 @@ impl Parser {
         &self.alias
     }
 
+    pub fn comment_start(&self) -> &String {
+        &self.config.comment_start
+    }
+
     pub(super) fn reconstruct_file(&self) -> String {
         let mut buffer: Vec<u8> = Vec::with_capacity(self.tree().text_range().end().into());
         for token in self.tree().descendants_with_tokens() {
