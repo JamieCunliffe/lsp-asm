@@ -149,7 +149,7 @@ mod tests {
             .unwrap();
         let context = CompletionContext::new(&parser, token, map);
 
-        assert_eq!(ident_can_complete("<pattern>", &context), true);
+        assert!(ident_can_complete("<pattern>", &context));
         assert_eq!(complete_ident("<pattern>", &context), expected);
     }
 
@@ -219,7 +219,7 @@ mod tests {
             .unwrap();
         let context = CompletionContext::new(&parser, token, map);
 
-        assert_eq!(ident_can_complete("<imm>", &context), true);
+        assert!(ident_can_complete("<imm>", &context));
         assert_eq!(complete_ident("<imm>", &context), expected);
     }
 }

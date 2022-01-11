@@ -116,7 +116,6 @@ impl TryInto<Box<dyn Assembler>> for CompileCommand {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pretty_assertions::assert_eq;
     use std::convert::TryInto;
 
     #[test]
@@ -133,12 +132,12 @@ mod tests {
             command: String::from("app"),
             arguments: vec![String::from("arg1"), String::from("arg2")],
         };
-        assert_eq!(cc.is_uri((&uri).try_into().ok()), true);
+        assert!(cc.is_uri((&uri).try_into().ok()));
 
         let cc = CompileCommand {
             file: String::from("src/diagnostics/not_a_real_file.rs"),
             ..cc
         };
-        assert_eq!(cc.is_uri((&uri).try_into().ok()), false);
+        assert!(!cc.is_uri((&uri).try_into().ok()));
     }
 }

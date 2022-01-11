@@ -37,7 +37,7 @@ pub struct CodelensConfig {
     pub loc_enabled: bool,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AnalysisConfig {
     #[serde(deserialize_with = "null_as_default")]
@@ -58,14 +58,6 @@ impl Default for CodelensConfig {
         Self {
             enabled_filesize: Byte::from_unit(1., ByteUnit::MiB).unwrap(),
             loc_enabled: true,
-        }
-    }
-}
-
-impl Default for AnalysisConfig {
-    fn default() -> Self {
-        Self {
-            default_cpus: Default::default(),
         }
     }
 }

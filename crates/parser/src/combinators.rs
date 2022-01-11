@@ -676,14 +676,14 @@ mod test {
 
     #[test]
     fn test_is_numeric() {
-        assert_eq!(true, is_numeric("-42"));
-        assert_eq!(true, is_numeric("0x123456789ABCDEF"));
-        assert_eq!(true, is_numeric("0x123456789abcdef"));
+        assert!(is_numeric("-42"));
+        assert!(is_numeric("0x123456789ABCDEF"));
+        assert!(is_numeric("0x123456789abcdef"));
     }
 
     #[test]
     fn test_is_numeric_float() {
-        assert_eq!(true, is_floating_point("1.00000"));
+        assert!(is_floating_point("1.00000"));
     }
 
     #[test]

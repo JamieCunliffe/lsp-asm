@@ -1057,58 +1057,46 @@ end:
             },
         );
 
-        assert_eq!(
-            true,
-            lsp.update(
-                5,
-                vec![DocumentChange {
-                    text: String::from("// test"),
-                    range: Some(DocumentRange {
-                        start: DocumentPosition { line: 0, column: 0 },
-                        end: DocumentPosition { line: 0, column: 0 },
-                    }),
-                }],
-            )
-        );
-        assert_eq!(
-            false,
-            lsp.update(
-                5,
-                vec![DocumentChange {
-                    text: String::from("// te"),
-                    range: Some(DocumentRange {
-                        start: DocumentPosition { line: 0, column: 0 },
-                        end: DocumentPosition { line: 0, column: 0 },
-                    }),
-                }],
-            )
-        );
-        assert_eq!(
-            false,
-            lsp.update(
-                3,
-                vec![DocumentChange {
-                    text: String::from("// te"),
-                    range: Some(DocumentRange {
-                        start: DocumentPosition { line: 0, column: 0 },
-                        end: DocumentPosition { line: 0, column: 0 },
-                    }),
-                }],
-            )
-        );
+        assert!(lsp.update(
+            5,
+            vec![DocumentChange {
+                text: String::from("// test"),
+                range: Some(DocumentRange {
+                    start: DocumentPosition { line: 0, column: 0 },
+                    end: DocumentPosition { line: 0, column: 0 },
+                }),
+            }],
+        ));
+        assert!(!lsp.update(
+            5,
+            vec![DocumentChange {
+                text: String::from("// te"),
+                range: Some(DocumentRange {
+                    start: DocumentPosition { line: 0, column: 0 },
+                    end: DocumentPosition { line: 0, column: 0 },
+                }),
+            }],
+        ));
+        assert!(!lsp.update(
+            3,
+            vec![DocumentChange {
+                text: String::from("// te"),
+                range: Some(DocumentRange {
+                    start: DocumentPosition { line: 0, column: 0 },
+                    end: DocumentPosition { line: 0, column: 0 },
+                }),
+            }],
+        ));
 
-        assert_eq!(
-            true,
-            lsp.update(
-                6,
-                vec![DocumentChange {
-                    text: String::from("// test more"),
-                    range: Some(DocumentRange {
-                        start: DocumentPosition { line: 0, column: 0 },
-                        end: DocumentPosition { line: 0, column: 0 },
-                    }),
-                }],
-            )
-        );
+        assert!(lsp.update(
+            6,
+            vec![DocumentChange {
+                text: String::from("// test more"),
+                range: Some(DocumentRange {
+                    start: DocumentPosition { line: 0, column: 0 },
+                    end: DocumentPosition { line: 0, column: 0 },
+                }),
+            }],
+        ));
     }
 }
