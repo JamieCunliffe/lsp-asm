@@ -82,6 +82,9 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             SyntaxKind::CONSTANT => {
                 definition::goto_definition_const(&token, &self.parser, &self.uri)?
             }
+            SyntaxKind::REGISTER_ALIAS => {
+                definition::goto_definition_reg_alias(&token, &self.parser, &self.uri)?
+            }
             _ if get_mnemonic()
                 .map(|token| syntax::utils::is_token_include(&token))
                 .unwrap_or(false) =>

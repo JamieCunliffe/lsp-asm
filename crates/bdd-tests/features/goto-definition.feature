@@ -82,3 +82,17 @@ Lfunc_begin0:
     Then I expect the following response
       | start | end |
       |   3:0 | 3:6 |
+
+  Scenario: Test goto definition for a register alias
+    Given an lsp initialized with the following parameters
+      | key          | value   |
+      | architecture | aarch64 |
+    When I open the temporary file "t1"
+    """
+    register .req x1
+    str register, [sp, #80]
+    """
+    When I run "goto definition" on the file "t1" at position "2:6"
+    Then I expect the following response
+      | start | end | file |
+      |   1:0 | 1:8 | t1   |

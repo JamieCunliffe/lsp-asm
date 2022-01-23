@@ -114,3 +114,29 @@ pub(crate) fn goto_definition_const(
 
     Ok(def)
 }
+
+pub(crate) fn goto_definition_reg_alias(
+    token: &SyntaxToken,
+    parser: &Parser,
+    uri: &Url,
+) -> Result<Vec<Location>, lsp_server::ResponseError> {
+    let position = parser.position();
+    let name = token.text();
+
+    let def = parser
+        .tree()
+        .descendants()
+        .filter(|d| matches!(d.kind(), SyntaxKind::ALIAS))
+        .filter_map(|d| find_kind_index(&d, 0, SyntaxKind::REGISTER_ALIAS))
+        .filter_map(|t| t.into_token())
+        .filter(|t| t.text() == name)
+        .filter_map(|token| {
+            Some(lsp_types::Location::new(
+                uri.clone(),
+                position.range_for_token(&token)?.into(),
+            ))
+        })
+        .collect();
+
+    Ok(def)
+}
