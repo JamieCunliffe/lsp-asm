@@ -54,20 +54,17 @@ Lfunc_begin0:
 
   Scenario: Goto definition on .include
     Given an lsp initialized with the following parameters
-      | key          | value  |
-      | architecture | x86-64 |
-    When I open the temporary file "t1"
-      """
-      .include "./features/test-files/lens.txt"
-      """
-    When I run "goto definition" on the file "t1" at position "1:3"
+      | key          | value   |
+      | architecture | aarch64 |
+    When I open the file "./features/test-files/file_a.s"
+    When I run "goto definition" on the file "./features/test-files/file_a.s" at position "1:3"
     Then I expect the following response
       | start | end | file                           |
-      |   1:0 | 1:0 | ./features/test-files/lens.txt |
-    When I run "goto definition" on the file "t1" at position "1:33"
+      |   1:0 | 1:0 | ./features/test-files/file_b.s |
+    When I run "goto definition" on the file "./features/test-files/file_a.s" at position "1:13"
     Then I expect the following response
-      | start | end | file                           |
-      |   1:0 | 1:0 | ./features/test-files/lens.txt |
+      | start | end | file                             |
+      |   1:0 | 1:0 | ./features/test-files/file_b.s   |
 
   Scenario: Goto definition local label
     Given an lsp initialized with the following parameters

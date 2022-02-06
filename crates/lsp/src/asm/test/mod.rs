@@ -14,7 +14,7 @@ macro_rules! assert_listing(
             architecture: $arch,
             ..Default::default()
         };
-        let parser = crate::asm::parser::Parser::from($src, &config);
+        let parser = crate::asm::parser::Parser::in_memory($src, &config);
         let nodes = parser.tree();
         pretty_assertions::assert_eq!(format!("{:#?}", nodes), $expect);
     )

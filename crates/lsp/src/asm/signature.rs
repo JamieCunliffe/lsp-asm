@@ -145,7 +145,7 @@ mod tests {
     #[test]
     fn test_comma_index() {
         let data = "MNEMONIC ";
-        let parser = crate::asm::parser::Parser::from(data, &Default::default());
+        let parser = crate::asm::parser::Parser::in_memory(data, &Default::default());
         let nodes = parser.tree();
         let token = find_kind_index(&nodes, 0, SyntaxKind::WHITESPACE)
             .unwrap()
@@ -154,7 +154,7 @@ mod tests {
         assert_eq!(get_comma_position(&nodes, &token), 0);
 
         let data = "MNEMONIC a, b";
-        let parser = crate::asm::parser::Parser::from(data, &Default::default());
+        let parser = crate::asm::parser::Parser::in_memory(data, &Default::default());
         let nodes = parser.tree();
         let token = find_kind_index(&nodes, 1, SyntaxKind::TOKEN)
             .unwrap()

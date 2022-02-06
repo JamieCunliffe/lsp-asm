@@ -13,7 +13,7 @@ use lsp_types::{
 
 use pretty_assertions::assert_eq;
 use serde_json::Value;
-use util::{get_doc_position, parse_config};
+use util::{file_to_uri, get_doc_position, parse_config};
 
 use lsp_asm::{diagnostics::Error, handler::handlers::LangServerHandler};
 
@@ -106,7 +106,7 @@ async fn open_temp_file(state: &mut LSPWorld, #[when(context)] step: &StepContex
     let step = step.step.clone();
     let data = step.docstring.as_ref().unwrap();
     let data = &data[1..data.len() - 1];
-    let url = Url::parse(&format!("file://{}", name)).unwrap();
+    let url = file_to_uri(&name);
 
     state.handler.open_file("asm", url, data, 0).await.unwrap();
 }

@@ -5,20 +5,34 @@ use rowan::{GreenNode, GreenToken, Language, NodeOrToken};
 use syntax::alias::Alias;
 use syntax::ast::{AssemblyLanguage, SyntaxKind};
 
-use crate::equ;
+use crate::config::ParserConfig;
+use crate::{equ, include, LoadFileFn, ParsedInclude};
 
-pub struct Builder {
+pub struct Builder<'c> {
     child: RefCell<Vec<NodeOrToken<GreenNode, GreenToken>>>,
     parent: RefCell<Vec<(usize, SyntaxKind)>>,
     pub(crate) alias: RefCell<Alias>,
+    config: &'c ParserConfig,
+    pub(crate) included: RefCell<Vec<ParsedInclude>>,
+    load: LoadFileFn,
+    file: Option<&'c str>,
 }
 
-impl Builder {
-    pub(super) fn new(size_hint: usize) -> Self {
+impl<'c> Builder<'c> {
+    pub(super) fn new(
+        size_hint: usize,
+        config: &'c ParserConfig,
+        file: Option<&'c str>,
+        load: LoadFileFn,
+    ) -> Self {
         Self {
             child: RefCell::new(Vec::with_capacity(size_hint)),
             parent: Default::default(),
             alias: Default::default(),
+            config,
+            included: Default::default(),
+            load,
+            file,
         }
     }
 
@@ -55,6 +69,13 @@ impl Builder {
         }
 
         let node = GreenNode::new(kind.into(), items);
+
+        if include::is_include(&node) {
+            if let Some(data) = include::handle_include(&node, self.config, self.file, self.load) {
+                self.alias.borrow_mut().merge(&data.alias);
+                self.included.borrow_mut().push(data);
+            }
+        }
 
         if kind == SyntaxKind::ALIAS {
             self.alias.borrow_mut().add_alias(&node)

@@ -8,5 +8,6 @@ mod completion;
 pub mod config;
 pub mod diagnostics;
 mod documentation;
+pub mod file_util;
 pub mod handler;
 pub mod types;

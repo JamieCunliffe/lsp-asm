@@ -1,4 +1,4 @@
-use crate::ParsedData;
+use crate::{LoadFileFn, ParsedData};
 
 use super::builder::Builder;
 use super::config::ParserConfig;
@@ -20,7 +20,7 @@ type NomResultElement<'a> = nom::IResult<Span<'a>, ()>;
 
 struct InternalSpanConfig<'a> {
     config: &'a ParserConfig,
-    builder: &'a Builder,
+    builder: &'a Builder<'a>,
 }
 
 impl<'a> PartialEq for InternalSpanConfig<'a> {
@@ -86,8 +86,13 @@ macro_rules! process_comment(
         }
     ));
 
-pub(crate) fn parse<'a>(data: &'a str, config: &'a ParserConfig) -> ParsedData {
-    let builder = Builder::new(data.len() / 4);
+pub(crate) fn parse<'a>(
+    data: &'a str,
+    config: &'a ParserConfig,
+    file: Option<&'a str>,
+    load: LoadFileFn,
+) -> ParsedData {
+    let builder = Builder::new(data.len() / 4, config, file, load);
     let internal = InternalSpanConfig::new(config, &builder);
     let data = Span::new(data, &internal);
 
@@ -108,6 +113,7 @@ pub(crate) fn parse<'a>(data: &'a str, config: &'a ParserConfig) -> ParsedData {
     ParsedData {
         root: remaining.finish(),
         alias: remaining.extra().builder.alias.take(),
+        included_files: remaining.extra().builder.included.take(),
     }
 }
 

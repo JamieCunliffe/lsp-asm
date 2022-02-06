@@ -6,10 +6,10 @@ use crate::types::{CompletionItem, CompletionKind};
 use super::CompletionContext;
 
 pub(super) fn complete_label(context: &CompletionContext) -> Vec<CompletionItem> {
-    let token = |t: &SyntaxToken| {
+    let token = |t: SyntaxToken| {
         (
             t.text().trim_end_matches(':').to_string(),
-            crate::asm::hovers::label_definition_comment(context.parser, t),
+            crate::asm::hovers::label_definition_comment((t, context.parser)),
         )
     };
     let mut completions = find_parent(&context.token, SyntaxKind::LABEL)
@@ -20,7 +20,7 @@ pub(super) fn complete_label(context: &CompletionContext) -> Vec<CompletionItem>
                     matches!(t.kind(), SyntaxKind::LABEL)
                         && matches!(t.parent().map(|p| p.kind()), Some(SyntaxKind::LOCAL_LABEL))
                 })
-                .filter_map(|t| t.as_token().map(token))
+                .filter_map(|t| t.into_token().map(token))
                 .map(|(label, doc)| to_completion(label, doc))
                 .collect_vec()
         })
@@ -32,7 +32,7 @@ pub(super) fn complete_label(context: &CompletionContext) -> Vec<CompletionItem>
                 matches!(t.kind(), SyntaxKind::LABEL)
                     && matches!(t.parent().map(|p| p.kind()), Some(SyntaxKind::LABEL))
             })
-            .filter_map(|t| t.as_token().map(token))
+            .filter_map(|t| t.into_token().map(token))
             .map(|(label, doc)| to_completion(label, doc))
     }) {
         completions.extend(labels);
@@ -65,7 +65,7 @@ mod tests {
 main:
 another_label:
 b "#;
-        let parser = Parser::from(data, &Default::default());
+        let parser = Parser::in_memory(data, &Default::default());
         let context = CompletionContext::new(
             &parser,
             find_kind_index(&parser.tree(), 1, SyntaxKind::LABEL)

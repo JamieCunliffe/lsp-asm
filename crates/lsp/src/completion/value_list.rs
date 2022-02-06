@@ -141,7 +141,7 @@ mod tests {
         ];
 
         let data = r#"COMPLETE "#;
-        let parser = Parser::from(data, &Default::default());
+        let parser = Parser::in_memory(data, &Default::default());
         let root = parser.tree();
         let token = find_kind_index(&root, 0, SyntaxKind::MNEMONIC)
             .unwrap()
@@ -211,7 +211,7 @@ mod tests {
         ];
 
         let data = r#"COMPLETE "#;
-        let parser = Parser::from(data, &Default::default());
+        let parser = Parser::in_memory(data, &Default::default());
         let root = parser.tree();
         let token = find_kind_index(&root, 0, SyntaxKind::MNEMONIC)
             .unwrap()

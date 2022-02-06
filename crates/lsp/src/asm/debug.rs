@@ -132,7 +132,7 @@ mod test {
 	.file	2 "filename"
 	.loc	2 2132 0
 	.cfi_startproc"#;
-        let tree = Parser::from(data, &Default::default());
+        let tree = Parser::in_memory(data, &Default::default());
         let map = DebugMap::new(&tree.tree());
 
         let values = map.map.iter().clone().collect::<Vec<_>>();
@@ -176,7 +176,7 @@ mod test {
 	.file	1 "./" "main.c"
 	.loc	1 2132 0
 	.cfi_startproc"#;
-        let tree = Parser::from(data, &Default::default());
+        let tree = Parser::in_memory(data, &Default::default());
         let map = DebugMap::new(&tree.tree());
 
         let values = map.map.iter().clone().collect::<Vec<_>>();

@@ -276,7 +276,24 @@ pub(crate) fn file_to_uri(file: &str) -> Url {
         let file = Path::new(file).canonicalize().ok()?;
         Url::from_file_path(file).ok()
     }()
-    .unwrap_or_else(|| Url::parse(&format!("file://{}", file)).unwrap())
+    .unwrap_or_else(|| {
+        let name = format!(
+            "{}{}",
+            std::env::current_dir()
+                .unwrap()
+                .as_os_str()
+                .to_str()
+                .unwrap(),
+            file
+        );
+        let path = Path::new(&name);
+
+        if path.exists() {
+            Url::from_file_path(path).unwrap()
+        } else {
+            Url::parse(&format!("file://{}", file)).unwrap()
+        }
+    })
 }
 
 pub(crate) fn full_path(p: &str) -> String {

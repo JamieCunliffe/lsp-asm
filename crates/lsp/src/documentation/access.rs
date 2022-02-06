@@ -51,8 +51,12 @@ mod tests {
     #[test]
     fn test_access_types_simple() {
         let src = "addvl	sp, sp, #-2";
-        let ParsedData { root, .. } =
-            parser::parse_asm(src, &Parser::config_from_arch(&Architecture::AArch64));
+        let ParsedData { root, .. } = parser::parse_asm(
+            src,
+            &Parser::config_from_arch(&Architecture::AArch64),
+            None,
+            |_, _, _| None,
+        );
         let parsed = SyntaxNode::new_root(root);
 
         let mut map = HashMap::new();
@@ -96,8 +100,12 @@ mod tests {
     fn test_access_types_with_alias() {
         let src = "test .req x1
 addvl	test, sp, #-2";
-        let ParsedData { root, alias } =
-            parser::parse_asm(src, &Parser::config_from_arch(&Architecture::AArch64));
+        let ParsedData { root, alias, .. } = parser::parse_asm(
+            src,
+            &Parser::config_from_arch(&Architecture::AArch64),
+            None,
+            |_, _, _| None,
+        );
         let parsed = SyntaxNode::new_root(root);
         let parsed = find_kind_index(&parsed, 0, SyntaxKind::INSTRUCTION)
             .unwrap()

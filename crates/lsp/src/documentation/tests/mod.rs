@@ -11,7 +11,7 @@ use crate::config::LSPConfig;
 #[test]
 fn determine_instruction_from_template() {
     let line = "stp x29, x30, [sp, #32]";
-    let parser = Parser::from(
+    let parser = Parser::in_memory(
         line,
         &LSPConfig {
             architecture: Architecture::AArch64,
@@ -37,7 +37,7 @@ fn determine_instruction_from_template() {
 fn determine_instruction_from_template_with_alias() {
     let line = r#"reg_alias .req x29
 stp reg_alias, x30, [sp, #32]"#;
-    let parser = Parser::from(
+    let parser = Parser::in_memory(
         line,
         &LSPConfig {
             architecture: Architecture::AArch64,
@@ -66,7 +66,7 @@ stp reg_alias, x30, [sp, #32]"#;
 fn determine_instruction_from_template_with_equ() {
     let line = r#"number equ 32
 stp x29, x30, [sp, #number]"#;
-    let parser = Parser::from(
+    let parser = Parser::in_memory(
         line,
         &LSPConfig {
             architecture: Architecture::AArch64,
@@ -94,7 +94,7 @@ stp x29, x30, [sp, #number]"#;
 #[test]
 fn determine_instruction_from_template_end_comment() {
     let line = "stp w29, w30, [sp, #32]    // Comment";
-    let parser = Parser::from(
+    let parser = Parser::in_memory(
         line,
         &LSPConfig {
             architecture: Architecture::AArch64,
@@ -119,7 +119,7 @@ fn determine_instruction_from_template_end_comment() {
 #[test]
 fn determine_potential_instructions_from_template() {
     let line = "stp x29, x30, [sp, #32]";
-    let parser = Parser::from(
+    let parser = Parser::in_memory(
         line,
         &LSPConfig {
             architecture: Architecture::AArch64,

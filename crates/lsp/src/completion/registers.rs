@@ -90,7 +90,7 @@ mod tests {
             }))
             .sorted()
             .collect_vec();
-        let parser = Parser::from(
+        let parser = Parser::in_memory(
             " ",
             &LSPConfig {
                 architecture: Architecture::AArch64,
@@ -133,7 +133,7 @@ mod tests {
             .sorted()
             .collect_vec();
 
-        let parser = Parser::from(
+        let parser = Parser::in_memory(
             " ",
             &LSPConfig {
                 architecture: Architecture::AArch64,

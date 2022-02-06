@@ -1,12 +1,16 @@
+use std::fs::read_to_string;
+
 use super::ast::{AstToken, LabelToken};
 use super::debug::DebugMap;
 use crate::config::LSPConfig;
+use crate::file_util::make_file_relative;
 use crate::types::{DocumentPosition, DocumentRange, LineNumber};
 use base::{Architecture, FileType};
 use byte_unit::Byte;
+use lsp_types::Url;
 use once_cell::sync::OnceCell;
 use parser::config::ParserConfig;
-use parser::ParsedData;
+use parser::{ParsedData, ParsedInclude};
 use rayon::prelude::*;
 use rowan::{GreenNode, TextRange, TextSize};
 use syntax::alias::Alias;
@@ -14,12 +18,14 @@ use syntax::ast::{SyntaxKind, SyntaxNode, SyntaxToken};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Parser {
+    pub(super) id: Url,
     root: GreenNode,
     filesize: Byte,
     config: ParserConfig,
     line_index: PositionInfo,
     debug_map: OnceCell<DebugMap>,
     alias: Alias,
+    included_files: Vec<Parser>,
 }
 
 /// Helper enum for determining if tokens should be considered equal
@@ -37,21 +43,52 @@ enum SemanticEq<'a> {
 impl Parser {
     /// Create a parser from the given data.
     /// * data: The assembly listing to parse
-    pub fn from(data: &str, config: &LSPConfig) -> Self {
+    pub fn from(uri: Url, data: &str, config: &LSPConfig) -> Self {
         let filesize = Byte::from_bytes(data.len() as _);
         let mut config = Self::config_from_arch(&Self::determine_architecture(data, config));
         config.file_type = FileType::from_contents(data);
 
-        let ParsedData { root, alias } = parser::parse_asm(data, &config);
+        let ParsedData {
+            root,
+            alias,
+            included_files,
+            ..
+        } = parser::parse_asm(data, &config, Some(uri.as_str()), Self::handle_include);
+
+        let included_files = included_files.into_iter().map(From::from).collect();
 
         Self {
+            id: uri,
             line_index: PositionInfo::new(data),
             filesize,
             root,
             config,
             debug_map: OnceCell::new(),
             alias,
+            included_files,
         }
+    }
+
+    fn handle_include(config: &ParserConfig, from: &str, file: &str) -> Option<ParsedInclude> {
+        let included_file = make_file_relative(from, file)?;
+
+        let file_uri = Url::from_file_path(&included_file).ok()?;
+        let data = read_to_string(included_file).ok()?;
+
+        let ParsedData {
+            root,
+            alias,
+            included_files,
+            ..
+        } = parser::parse_asm(&data, config, None, Self::handle_include);
+
+        Some(ParsedInclude {
+            alias,
+            root,
+            included_files,
+            id: file_uri.to_string(),
+            data,
+        })
     }
 
     pub(crate) fn tree(&self) -> SyntaxNode {
@@ -76,6 +113,14 @@ impl Parser {
 
     pub fn comment_start(&self) -> &String {
         &self.config.comment_start
+    }
+
+    pub fn uri(&self) -> &Url {
+        &self.id
+    }
+
+    pub fn included_parsers(&self) -> impl Iterator<Item = &Parser> {
+        self.included_files.iter()
     }
 
     pub(super) fn reconstruct_file(&self) -> String {
@@ -247,6 +292,28 @@ impl Parser {
                 ..ParserConfig::default()
             },
             Architecture::Unknown => ParserConfig::default(),
+        }
+    }
+
+    #[cfg(test)]
+    pub fn in_memory(data: &str, config: &LSPConfig) -> Self {
+        Self::from(Url::parse("memory://ignore").unwrap(), data, config)
+    }
+}
+
+impl From<ParsedInclude> for Parser {
+    fn from(data: ParsedInclude) -> Self {
+        let filesize = Byte::from_bytes(data.data.len() as _);
+
+        Self {
+            id: Url::parse(&data.id).unwrap(),
+            line_index: PositionInfo::new(&data.data),
+            filesize,
+            root: data.root,
+            config: Default::default(),
+            debug_map: OnceCell::new(),
+            alias: data.alias,
+            included_files: Default::default(),
         }
     }
 }

@@ -80,7 +80,8 @@ pub(crate) fn parse_template<T>(template: T) -> SyntaxNode
 where
     T: AsRef<str>,
 {
-    let ParsedData { root, .. } = parser::parse_asm(template.as_ref(), &TEMPLATE_CONFIG);
+    let ParsedData { root, .. } =
+        parser::parse_asm(template.as_ref(), &TEMPLATE_CONFIG, None, |_, _, _| None);
     SyntaxNode::new_root(root)
 }
 

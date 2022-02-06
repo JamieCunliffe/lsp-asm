@@ -23,6 +23,12 @@ impl Alias {
         }
     }
 
+    pub fn merge(&mut self, other: &Alias) {
+        for (k, v) in &other.alias_map {
+            self.alias_map.insert(k.clone(), v.clone());
+        }
+    }
+
     pub fn add_alias(&mut self, node: &GreenNode) {
         let node = SyntaxNode::new_root(node.clone());
 

@@ -83,16 +83,14 @@ pub fn get_constant_hover(token: &SyntaxToken, alias: &Alias) -> Option<Vec<Stri
 pub fn get_token_hover(parser: &Parser, token: SyntaxToken) -> Option<Vec<String>> {
     let definitions = get_definition_token(parser, &token).ok()?;
     let doc_strings = definitions
-        .filter_map(|definition| label_definition_comment(parser, &definition))
+        .filter_map(label_definition_comment)
         .collect_vec();
 
     Some(doc_strings)
 }
 
-pub(crate) fn label_definition_comment(
-    parser: &Parser,
-    definition: &SyntaxToken,
-) -> Option<String> {
+pub(crate) fn label_definition_comment(definition: (SyntaxToken, &Parser)) -> Option<String> {
+    let (definition, parser) = definition;
     let first = match definition.parent()?.prev_sibling_or_token() {
         Some(NodeOrToken::Node(n)) => n.last_token().map(NodeOrToken::Token),
         x => x,

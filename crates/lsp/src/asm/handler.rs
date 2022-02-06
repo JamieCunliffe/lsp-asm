@@ -47,7 +47,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             self.apply_change(&mut contents, change);
         }
         self.version = version;
-        self.parser = Parser::from(contents.as_str(), &self.config);
+        self.parser = Parser::from(self.uri.clone(), contents.as_str(), &self.config);
         true
     }
 
@@ -70,26 +70,22 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         };
 
         let res = match token.kind() {
-            SyntaxKind::TOKEN => {
-                definition::goto_definition_label(&self.parser, &token, &self.uri)?
-            }
+            SyntaxKind::TOKEN => definition::goto_definition_label(&self.parser, &token)?,
             SyntaxKind::MNEMONIC if token.text() == ".loc" => {
                 definition::goto_definition_loc(&self.parser, &token)?
             }
-            SyntaxKind::MNEMONIC if syntax::utils::is_token_include(&token) => {
-                definition::goto_definition_label_include(&token)?
+            SyntaxKind::MNEMONIC if syntax::utils::is_token_include(token.text()) => {
+                definition::goto_definition_label_include(&token, &self.uri)?
             }
-            SyntaxKind::CONSTANT => {
-                definition::goto_definition_const(&token, &self.parser, &self.uri)?
-            }
+            SyntaxKind::CONSTANT => definition::goto_definition_const(&token, &self.parser)?,
             SyntaxKind::REGISTER_ALIAS => {
-                definition::goto_definition_reg_alias(&token, &self.parser, &self.uri)?
+                definition::goto_definition_reg_alias(&token, &self.parser)?
             }
             _ if get_mnemonic()
-                .map(|token| syntax::utils::is_token_include(&token))
+                .map(|token| syntax::utils::is_token_include(token.text()))
                 .unwrap_or(false) =>
             {
-                definition::goto_definition_label_include(&token)?
+                definition::goto_definition_label_include(&token, &self.uri)?
             }
             _ => Vec::new(),
         };
@@ -135,7 +131,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
 
         let references = find_references(&self.parser, &token, &range);
 
-        let locations = if include_decl {
+        let mut locations = if include_decl {
             references.filter_map(make_location).collect_vec()
         } else if matches!(token.kind(), SyntaxKind::LABEL | SyntaxKind::TOKEN) {
             references
@@ -150,6 +146,20 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         } else {
             references.filter_map(make_location).collect_vec()
         };
+        locations.extend(self.parser.included_parsers().flat_map(|parser| {
+            let id = parser.uri();
+            let range = parser.tree().text_range();
+            let position = parser.position();
+
+            find_references(parser, &token, &range)
+                .filter_map(move |token| {
+                    Some(lsp_types::Location::new(
+                        id.clone(),
+                        position.range_for_token(&token)?.into(),
+                    ))
+                })
+                .collect_vec()
+        }));
 
         Ok(locations)
     }
@@ -578,7 +588,7 @@ impl<'s> LocalLabelNode<'s> {
 
 impl AssemblyLanguageServerProtocol {
     pub fn new(data: &str, uri: Url, version: u32, config: LSPConfig) -> Self {
-        let parser = Parser::from(data, &config);
+        let parser = Parser::from(uri.clone(), data, &config);
         Self {
             parser,
             uri,
