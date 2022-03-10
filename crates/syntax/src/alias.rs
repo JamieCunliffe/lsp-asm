@@ -35,14 +35,12 @@ impl Alias {
         let name = node
             .descendants_with_tokens()
             .find(|d| matches!(d.kind(), SyntaxKind::REGISTER_ALIAS))
-            .map(|t| t.as_token().map(|t| t.to_string()))
-            .flatten();
+            .and_then(|t| t.as_token().map(|t| t.to_string()));
 
         let register = node
             .descendants_with_tokens()
             .find(|d| matches!(d.kind(), SyntaxKind::REGISTER))
-            .map(|t| t.as_token().map(|t| t.to_string()))
-            .flatten();
+            .and_then(|t| t.as_token().map(|t| t.to_string()));
 
         if let (Some(name), Some(register)) = (name, register) {
             self.alias_map.insert(name, Kind::Register(register));
@@ -55,14 +53,12 @@ impl Alias {
         let name = node
             .descendants_with_tokens()
             .find(|d| matches!(d.kind(), SyntaxKind::NAME))
-            .map(|t| t.as_token().map(|t| t.to_string()))
-            .flatten();
+            .and_then(|t| t.as_token().map(|t| t.to_string()));
 
         let expr = node
             .descendants_with_tokens()
             .find(|d| matches!(d.kind(), SyntaxKind::EXPR))
-            .map(|n| n.into_node())
-            .flatten()
+            .and_then(|n| n.into_node())
             .map(|n| {
                 n.descendants_with_tokens()
                     .filter_map(|t| t.as_token().map(|t| t.to_string()))

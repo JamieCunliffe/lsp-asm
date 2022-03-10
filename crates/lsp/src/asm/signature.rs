@@ -54,8 +54,7 @@ pub(super) fn get_signature_help(location: &TextSize, parser: &Parser) -> Option
 
     let active_parameter = signatures
         .get(active_signature.unwrap_or_default())
-        .map(|s: &SignatureInformation| s.active_parameter)
-        .flatten();
+        .and_then(|s: &SignatureInformation| s.active_parameter);
     let active_signature = active_signature.map(|s| s as u32);
     Some(SignatureHelp {
         signatures,

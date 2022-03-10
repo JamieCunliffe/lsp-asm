@@ -245,8 +245,7 @@ pub(crate) fn make_signature_help(table: &[Vec<String>]) -> SignatureHelp {
     });
 
     let active_parameter = active
-        .map(|a| signatures.get(a as usize).map(|s| s.active_parameter))
-        .flatten()
+        .and_then(|a| signatures.get(a as usize).map(|s| s.active_parameter))
         .flatten();
 
     SignatureHelp {

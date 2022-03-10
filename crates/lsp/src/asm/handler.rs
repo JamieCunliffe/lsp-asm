@@ -63,10 +63,8 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         let get_mnemonic = || {
             find_parent(&token, SyntaxKind::DIRECTIVE)
                 .or_else(|| find_parent(&token, SyntaxKind::INSTRUCTION))
-                .map(|n| find_kind_index(&n, 0, SyntaxKind::MNEMONIC))
-                .flatten()
-                .map(|token| token.into_token())
-                .flatten()
+                .and_then(|n| find_kind_index(&n, 0, SyntaxKind::MNEMONIC))
+                .and_then(|token| token.into_token())
         };
 
         let res = match token.kind() {
@@ -427,9 +425,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                 .tree()
                 .descendants()
                 .filter_map(|n| {
-                    LabelNode::cast(&n)
-                        .map(|label| label.to_document_symbol(position))
-                        .flatten()
+                    LabelNode::cast(&n).and_then(|label| label.to_document_symbol(position))
                 })
                 .collect::<Vec<_>>(),
         ))
@@ -451,8 +447,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                 .filter(|d| matches!(d.kind(), SyntaxKind::DIRECTIVE))
                 .filter(|d| {
                     ast::find_kind_index(d, 0, SyntaxKind::MNEMONIC)
-                        .map(|t| t.as_token().map(|t| t.text() == ".loc"))
-                        .flatten()
+                        .and_then(|t| t.as_token().map(|t| t.text() == ".loc"))
                         .unwrap_or(false)
                 })
                 .filter_map(|n| {
@@ -515,8 +510,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
 
     fn analysis(&self, range: Option<DocumentRange>) -> Result<String, ResponseError> {
         let range = range
-            .map(|r| self.parser.position().range_to_text_range(&r))
-            .flatten()
+            .and_then(|r| self.parser.position().range_to_text_range(&r))
             .unwrap_or_else(|| self.parser.tree().text_range());
 
         let tokens = self.parser.tokens_in_range(&range).filter(|t| {
@@ -558,11 +552,7 @@ impl<'s> LabelNode<'s> {
             selection_range: position.range_for_node(node).unwrap().into(),
             children: self
                 .sub_labels()
-                .map(|s| {
-                    LocalLabelNode::cast(&s)
-                        .map(|s| s.to_document_symbol(position))
-                        .flatten()
-                })
+                .map(|s| LocalLabelNode::cast(&s).and_then(|s| s.to_document_symbol(position)))
                 .collect(),
         })
     }

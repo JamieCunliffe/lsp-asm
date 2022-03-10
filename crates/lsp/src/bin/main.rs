@@ -115,14 +115,13 @@ fn lsp_loop(
 
     let params = params
         .initialization_options
-        .map(|opts| match serde_json::from_value(opts) {
+        .and_then(|opts| match serde_json::from_value(opts) {
             Ok(c) => Some(c),
             Err(e) => {
                 error!("Failed to parse config due to error: {:#?}", e);
                 None
             }
         })
-        .flatten()
         .unwrap_or_default();
 
     info!("Config: {:#?}", params);

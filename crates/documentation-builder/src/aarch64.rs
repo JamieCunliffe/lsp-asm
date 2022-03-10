@@ -300,13 +300,10 @@ fn access_type(asm: &str, desc: &str, vars: &HashMap<&str, Vec<&str>>) -> Operan
             OperandAccessType::Read
         }
     } else if desc.contains("general-purpose base register") {
-        let addr_form = vars
-            .get("address-form")
-            .map(|form| {
-                assert_eq!(form.len(), 1);
-                form.first().copied()
-            })
-            .flatten();
+        let addr_form = vars.get("address-form").and_then(|form| {
+            assert_eq!(form.len(), 1);
+            form.first().copied()
+        });
 
         match addr_form {
             Some("pre-indexed") | Some("post-indexed") => OperandAccessType::Write,

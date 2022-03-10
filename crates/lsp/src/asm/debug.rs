@@ -27,8 +27,7 @@ impl DebugMap {
             .filter(|d| {
                 matches!(d.kind(), SyntaxKind::DIRECTIVE)
                     && ast::find_kind_index(d, 0, SyntaxKind::MNEMONIC)
-                        .map(|n| n.as_token().map(|t| t.text() == ".file"))
-                        .flatten()
+                        .and_then(|n| n.as_token().map(|t| t.text() == ".file"))
                         .unwrap_or(false)
             })
             .filter_map(|n| {
@@ -75,18 +74,15 @@ impl DebugMap {
     pub fn get_contents(&self, location: (u32, LineNumber)) -> Option<&String> {
         let (file, line) = location;
 
-        self.map
-            .get(&file)
-            .map(|f| {
-                f.contents
-                    .get_or_init(|| {
-                        Self::load_file(&f.name)
-                            .map(|c| c.split('\n').map(String::from).collect())
-                            .unwrap_or_default()
-                    })
-                    .get((line - 1) as usize)
-            })
-            .flatten()
+        self.map.get(&file).and_then(|f| {
+            f.contents
+                .get_or_init(|| {
+                    Self::load_file(&f.name)
+                        .map(|c| c.split('\n').map(String::from).collect())
+                        .unwrap_or_default()
+                })
+                .get((line - 1) as usize)
+        })
     }
 
     pub fn get_location(&self, node: &SyntaxNode) -> Option<(u32, LineNumber)> {

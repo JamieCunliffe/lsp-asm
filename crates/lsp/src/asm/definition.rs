@@ -83,8 +83,7 @@ pub(super) fn goto_definition_label_include(
         .ok_or_else(|| lsp_error_map(ErrorCode::MissingParentNode))?;
 
     let file = find_kind_index(&parent, 0, SyntaxKind::STRING)
-        .map(|t| t.into_token())
-        .flatten()
+        .and_then(|t| t.into_token())
         .map(|t| t.text().trim_matches('"').to_string())
         .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?;
 

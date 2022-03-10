@@ -13,8 +13,7 @@ pub(super) fn is_include(node: &GreenNode) -> bool {
                 .flatten()
                 .unwrap_or(false)
         })
-        .map(|t| t.as_token().map(|t| is_token_include(t.text())))
-        .flatten()
+        .and_then(|t| t.as_token().map(|t| is_token_include(t.text())))
         .unwrap_or(false)
 }
 
@@ -27,8 +26,7 @@ pub(super) fn handle_include(
     let filename = node
         .children()
         .find(|n| n.kind() == SyntaxKind::STRING.into())
-        .map(|t| t.into_token())
-        .flatten()
+        .and_then(|t| t.into_token())
         .map(|t| t.text().trim_matches('"').to_string())?;
 
     load(config, from.unwrap_or(""), filename.as_str())

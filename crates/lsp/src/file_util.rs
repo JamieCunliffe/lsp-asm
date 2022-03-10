@@ -10,8 +10,7 @@ pub fn make_file_relative(base: &str, file: &str) -> Option<PathBuf> {
 
     let from = Url::parse(base)
         .ok()
-        .map(|uri| uri.to_file_path().ok())
-        .flatten()
+        .and_then(|uri| uri.to_file_path().ok())
         .unwrap_or_else(|| Path::new(base.trim_start_matches("file://")).to_path_buf());
 
     let from = Path::new(&from);

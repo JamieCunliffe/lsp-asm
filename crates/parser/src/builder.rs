@@ -60,8 +60,7 @@ impl<'c> Builder<'c> {
         if kind == SyntaxKind::DIRECTIVE
             && items
                 .first()
-                .map(|f| f.as_token().map(|t| t.text().eq_ignore_ascii_case(".equ")))
-                .flatten()
+                .and_then(|f| f.as_token().map(|t| t.text().eq_ignore_ascii_case(".equ")))
                 .unwrap_or(false)
         {
             equ::transform_equ_node(&mut items);
@@ -111,8 +110,7 @@ impl<'c> Builder<'c> {
             .child
             .borrow()
             .get(index)
-            .map(|t| t.as_token().map(|t| t.text().to_string()))
-            .flatten()
+            .and_then(|t| t.as_token().map(|t| t.text().to_string()))
             .unwrap_or_default();
 
         let token = NodeOrToken::Token(GreenToken::new(new_kind.into(), &text));

@@ -37,8 +37,7 @@ pub(super) fn complete_ident(ident: &str, context: &CompletionContext) -> Vec<Co
                         t.items
                             .iter()
                             .find(|op| op.name == ident)
-                            .map(|t| t.completion_values.clone())
-                            .flatten()
+                            .and_then(|t| t.completion_values.clone())
                             .unwrap_or_default()
                     })
                 })

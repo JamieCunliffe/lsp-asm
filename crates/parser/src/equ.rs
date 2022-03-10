@@ -9,7 +9,7 @@ pub(crate) fn transform_equ_node(items: &mut Vec<NodeOrToken<GreenNode, GreenTok
         .skip_while(|i| i.kind() != SyntaxKind::WHITESPACE.into())
         .nth(1);
 
-    if let Some(name) = name_element.as_ref().map(|t| t.as_token()).flatten() {
+    if let Some(name) = name_element.as_ref().and_then(|t| t.as_token()) {
         let mut token = NodeOrToken::Token(GreenToken::new(SyntaxKind::NAME.into(), name.text()));
         mem::swap(&mut token, name_element.unwrap());
     }

@@ -22,7 +22,7 @@ impl TryInto<CompileCommand> for SerializeCompileCommand {
     fn try_into(self) -> Result<CompileCommand, Self::Error> {
         let args = self.arguments;
         let cmd = self.command;
-        let command = args.or_else(move || cmd.map(|cmd| shellwords::split(&cmd).ok()).flatten());
+        let command = args.or_else(move || cmd.and_then(|cmd| shellwords::split(&cmd).ok()));
 
         if let Some(command) = command {
             if let Some((cmd, args)) = command.split_first() {
