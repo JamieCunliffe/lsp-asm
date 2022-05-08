@@ -68,6 +68,15 @@ impl<'de> serde::de::Deserialize<'de> for Architecture {
     }
 }
 
+impl serde::ser::Serialize for Architecture {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

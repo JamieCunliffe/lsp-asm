@@ -13,6 +13,7 @@ Hex: 0x90
       """
 
   Scenario: Doc hover for label
+    Given an initialized lsp
     When I open the temporary file "t1"
       """
       __ZN7lsp_asm4main17hd69ad636b65fa5e4E:

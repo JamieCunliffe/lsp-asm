@@ -3,9 +3,9 @@ use std::fmt::Debug;
 
 use base::{null_as_default, Architecture};
 use byte_unit::{Byte, ByteUnit};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LSPConfig {
     #[serde(deserialize_with = "null_as_default")]
@@ -25,7 +25,7 @@ pub struct LSPConfig {
     pub diagnostics: DiagnosticsConfig,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CodelensConfig {
     #[serde(deserialize_with = "null_as_default")]
@@ -37,7 +37,7 @@ pub struct CodelensConfig {
     pub loc_enabled: bool,
 }
 
-#[derive(Clone, Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AnalysisConfig {
     #[serde(deserialize_with = "null_as_default")]
@@ -45,7 +45,7 @@ pub struct AnalysisConfig {
     pub default_cpus: HashMap<Architecture, String>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DiagnosticsConfig {
     #[serde(deserialize_with = "null_as_default")]

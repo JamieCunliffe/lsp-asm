@@ -1,57 +1,33 @@
-use std::path::Path;
-
 use std::convert::Infallible;
+use std::str::FromStr;
 
-use cucumber_rust::{async_trait, given, then, when, StepContext, World, WorldInit};
+use async_trait::async_trait;
+use cucumber::{World, WorldInit};
 
-use base::Architecture;
-use lsp_asm::handler::types::{DocumentRangeMessage, FindReferencesMessage, LocationMessage};
-use lsp_types::{
-    DidChangeTextDocumentParams, MarkupContent, SemanticTokens, SemanticTokensResult,
-    TextDocumentContentChangeEvent, Url, VersionedTextDocumentIdentifier,
-};
+use crate::command::LSPCommand;
+use crate::file::FileUrl;
+use crate::server::LSPServer;
 
-use pretty_assertions::assert_eq;
-use serde_json::Value;
-use util::{file_to_uri, get_doc_position, parse_config};
-
-use lsp_asm::{diagnostics::Error, handler::handlers::LangServerHandler};
-
-use crate::util::{full_path, sort_completions};
-
+mod command;
+mod file;
+mod position;
+mod server;
+mod steps;
 mod util;
 
 #[tokio::main]
 async fn main() {
-    let runner = LSPWorld::init(&["./features"]);
-    runner.cli().run_and_exit().await
-}
+    pretty_env_logger::init();
 
-struct LastResponse {
-    pub cmd: String,
-    pub file: Url,
-    pub resp: Value,
-}
-impl LastResponse {
-    pub fn new(cmd: String, file: Url, resp: Value) -> Self {
-        Self { cmd, file, resp }
-    }
-}
-impl Default for LastResponse {
-    fn default() -> Self {
-        LastResponse::new(
-            "".into(),
-            Url::parse("file://").unwrap(),
-            Default::default(),
-        )
-    }
+    LSPWorld::run("./features").await;
 }
 
 #[derive(WorldInit)]
 pub struct LSPWorld {
-    pub handler: LangServerHandler,
-    last_response: LastResponse,
-    errors: Option<Vec<Error>>,
+    lsp: LSPServer,
+    last_id: i32,
+    last_cmd: LSPCommand,
+    last_file: FileUrl,
 }
 
 #[async_trait(?Send)]
@@ -59,272 +35,27 @@ impl World for LSPWorld {
     type Error = Infallible;
 
     async fn new() -> Result<Self, Self::Error> {
-        Ok(LSPWorld {
-            handler: LangServerHandler::new(Default::default(), Default::default()),
-            last_response: Default::default(),
-            errors: Default::default(),
-        })
+        Ok(Default::default())
     }
 }
 
-#[given(regex = r#"I have the "(.*)" documentation"#)]
-async fn check_doc(_state: &mut LSPWorld, arch: String) {
-    let arch = Architecture::from(arch.as_str());
-    let data = std::fs::read_to_string(format!("./features/known-defs/{}.json", &arch)).unwrap();
-    let data = serde_json::from_str(data.as_str()).unwrap();
-    documentation::poison_cache(&arch, data);
-}
-
-#[given("an lsp initialized with the following parameters")]
-async fn init_lsp(state: &mut LSPWorld, #[given(context)] step: &StepContext) {
-    let step = step.step.clone();
-    let config = parse_config(&step.table.as_ref().unwrap().rows);
-    state.handler = LangServerHandler::new(config, String::from(""));
-}
-
-#[given(regex = r#"an lsp initialized in "(.*)" with the following parameters"#)]
-async fn init_lsp_with_location(
-    state: &mut LSPWorld,
-    #[given(context)] step: &StepContext,
-    root: String,
-) {
-    let root = std::path::Path::new(&root)
-        .canonicalize()
-        .unwrap()
-        .as_os_str()
-        .to_str()
-        .unwrap()
-        .to_string();
-
-    let step = step.step.clone();
-    let config = parse_config(&step.table.as_ref().unwrap().rows);
-    state.handler = LangServerHandler::new(config, root);
-}
-
-#[when(regex = r#"I open the temporary file "(.*)""#)]
-async fn open_temp_file(state: &mut LSPWorld, #[when(context)] step: &StepContext, name: String) {
-    let step = step.step.clone();
-    let data = step.docstring.as_ref().unwrap();
-    let data = &data[1..data.len() - 1];
-    let url = file_to_uri(&name);
-
-    state.handler.open_file("asm", url, data, 0).await.unwrap();
-}
-
-#[when(regex = r#"I open the file "(.*)""#)]
-async fn open_file(state: &mut LSPWorld, file: String) {
-    let path = Path::new(&file);
-    let data = std::fs::read_to_string(path).unwrap();
-    let url = util::file_to_uri(&file);
-
-    state.handler.open_file("asm", url, &data, 0).await.unwrap();
-}
-
-#[when(
-    regex = r#"I insert the following text in "(.*)" at position "(.*)" to bring it to version ([0-9]+)"#
-)]
-async fn insert_file(
-    state: &mut LSPWorld,
-    #[when(context)] step: &StepContext,
-    file: String,
-    pos: String,
-    version: i32,
-) {
-    let step = step.step.clone();
-    let pos = get_doc_position(pos.as_str());
-    let url = util::file_to_uri(&file);
-    let data = step.docstring.as_ref().unwrap();
-    let data = &data[1..data.len() - 1];
-
-    state
-        .handler
-        .update_file(DidChangeTextDocumentParams {
-            text_document: VersionedTextDocumentIdentifier::new(url, version),
-            content_changes: vec![TextDocumentContentChangeEvent {
-                range: Some(lsp_types::Range::new(pos.clone().into(), pos.into())),
-                range_length: None,
-                text: data.to_string(),
-            }],
-        })
-        .await
-        .unwrap();
-}
-
-#[when(
-    regex = r#"I update the following text in "(.*)" at position "(.*)" to bring it to version ([0-9]+)"#
-)]
-async fn update_file(
-    state: &mut LSPWorld,
-    #[when(context)] step: &StepContext,
-    file: String,
-    pos: String,
-    version: i32,
-) {
-    let step = step.step.clone();
-    let pos = util::make_range(&pos);
-    let url = util::file_to_uri(&file);
-    let data = step.docstring.as_ref().unwrap();
-    let data = &data[1..data.len() - 1];
-
-    state
-        .handler
-        .update_file(DidChangeTextDocumentParams {
-            text_document: VersionedTextDocumentIdentifier::new(url, version),
-            content_changes: vec![TextDocumentContentChangeEvent {
-                range: pos.into(),
-                range_length: None,
-                text: data.to_string(),
-            }],
-        })
-        .await
-        .unwrap();
-}
-
-#[when(regex = r#"I perform a full sync of the file "(.*)" to bring it to version ([0-9]+)"#)]
-async fn full_sync_file(
-    state: &mut LSPWorld,
-    #[when(context)] step: &StepContext,
-    file: String,
-    version: i32,
-) {
-    let step = step.step.clone();
-    let url = util::file_to_uri(&file);
-    let data = step.docstring.as_ref().unwrap();
-    let data = &data[1..data.len() - 1];
-
-    state
-        .handler
-        .update_file(DidChangeTextDocumentParams {
-            text_document: VersionedTextDocumentIdentifier::new(url, version),
-            content_changes: vec![TextDocumentContentChangeEvent {
-                range: None,
-                range_length: None,
-                text: data.to_string(),
-            }],
-        })
-        .await
-        .unwrap();
-}
-
-#[when(regex = r#"I run "(.*)" on the file "(.*)" at position "(.*)"(.*)"#)]
-async fn run_command(
-    state: &mut LSPWorld,
-    cmd: String,
-    file: String,
-    pos: String,
-    additional: String,
-) {
-    let (doc_pos, range) = if pos.contains('-') {
-        let r = util::make_range(&pos);
-        (r.start.into(), Some(r.into()))
-    } else {
-        (get_doc_position(&pos), None)
-    };
-    let url = util::file_to_uri(&file);
-    let additional = additional.trim();
-    let location = LocationMessage {
-        url: url.clone(),
-        position: doc_pos,
-    };
-    let handler = &state.handler;
-    let resp = match cmd.as_str() {
-        "goto definition" => util::make_result(&handler.goto_definition(location).await),
-        "find references" => {
-            let req = FindReferencesMessage {
-                location,
-                include_decl: additional == "including decl",
-            };
-            util::make_result(&handler.find_references(req).await)
-        }
-        "document highlight" => util::make_result(&handler.document_highlight(location).await),
-        "document hover" => util::make_result(&handler.hover(location).await),
-        "semantic tokens" => {
-            let req = DocumentRangeMessage {
-                url: location.url,
-                range,
-            };
-            util::make_result(&handler.get_semantic_tokens(req).await)
-        }
-        "document symbols" => util::make_result(&handler.document_symbols(location.url).await),
-        "codelens" => util::make_result(&handler.code_lens(location.url).await),
-        "syntax tree" => util::make_result(&handler.syntax_tree(location.url).await),
-        "completion" => {
-            util::make_result(&handler.completion(location).await.map(sort_completions))
-        }
-        "signature help" => util::make_result(&handler.signature_help(&location).await),
-        _ => "".into(),
-    };
-
-    state.last_response = LastResponse::new(cmd, url, resp);
-}
-
-#[then("I expect the following response")]
-fn expect_response(state: &mut LSPWorld, #[then(context)] step: &StepContext) {
-    let step = step.step.clone();
-    let actual = serde_json::to_value(&state.last_response.resp).unwrap();
-    let cmd = &state.last_response.cmd;
-    let file = &state.last_response.file;
-
-    let expected = if let Some(expected) = step.docstring.as_ref() {
-        match cmd.as_ref() {
-            "document hover" => serde_json::to_value(lsp_types::Hover {
-                contents: lsp_types::HoverContents::Markup(MarkupContent {
-                    kind: lsp_types::MarkupKind::Markdown,
-                    value: expected[1..expected.len() - 1].to_string(),
-                }),
-                range: None,
-            }),
-            "syntax tree" => serde_json::to_value(expected.trim_start()),
-            _ => serde_json::from_str(expected),
-        }
-    } else if let Some(expected) = step.table.as_ref() {
-        let rows = &expected.rows;
-        match cmd.as_ref() {
-            "goto definition" => serde_json::to_value(lsp_types::GotoDefinitionResponse::Array(
-                util::make_lsp_doc_location(file, rows),
-            )),
-            "find references" => serde_json::to_value(lsp_types::GotoDefinitionResponse::Array(
-                util::make_lsp_doc_location(file, rows),
-            )),
-            "document highlight" => serde_json::to_value(util::make_doc_highlight(rows)),
-            "semantic tokens" => {
-                serde_json::to_value(SemanticTokensResult::Tokens(SemanticTokens {
-                    data: util::make_semantic(rows),
-                    ..Default::default()
-                }))
-            }
-            "document symbols" => serde_json::to_value(util::make_doc_symbol(rows)),
-            "codelens" => serde_json::to_value(util::make_codelens(rows)),
-            "completion" => serde_json::to_value(sort_completions(util::make_completion(rows))),
-            "signature help" => serde_json::to_value(util::make_signature_help(rows)),
-            _ => panic!("Unknown cmd: {}", cmd),
-        }
-    } else {
-        panic!("No response found");
+impl core::fmt::Debug for LSPWorld {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LSPWorld")
+            .field("last_id", &self.last_id)
+            .field("last_cmd", &self.last_cmd)
+            .field("last_file", &self.last_file)
+            .finish()
     }
-    .unwrap();
-
-    assert_eq!(actual, expected);
 }
 
-#[when(regex = r#"I run diagnostics on the file "(.*)""#)]
-async fn run_diagnostics(state: &mut LSPWorld, file: String) {
-    let url = util::file_to_uri(&file);
-    let handler = &state.handler;
-    state.errors = handler.get_diagnostics(&url).await;
-}
-
-#[then("I expect the following errors")]
-fn expect_errors(state: &mut LSPWorld, #[then(context)] step: &StepContext) {
-    let step = step.step.clone();
-    let rows = &step.table.as_ref().unwrap().rows;
-    let expected_errors = util::get_errors(rows);
-    state
-        .errors
-        .as_mut()
-        .unwrap()
-        .iter_mut()
-        .for_each(|mut e| e.file = full_path(&e.file));
-
-    assert_eq!(state.errors.as_ref().unwrap(), &expected_errors);
+impl Default for LSPWorld {
+    fn default() -> Self {
+        Self {
+            lsp: LSPServer::new(),
+            last_id: 0,
+            last_cmd: LSPCommand::NoCommand,
+            last_file: FileUrl::from_str("bdd-tests").unwrap(),
+        }
+    }
 }

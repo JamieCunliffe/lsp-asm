@@ -1,5 +1,6 @@
 Feature: Testing objdump functions
   Scenario: Simple Goto definition
+    Given an initialized lsp
     When I open the file "./features/test-files/objdump.s"
     When I run "goto definition" on the file "./features/test-files/objdump.s" at position "45:58"
     Then I expect the following response
@@ -7,6 +8,7 @@ Feature: Testing objdump functions
       | 42:17 | 42:40 |
 
   Scenario: Find references without declaration
+    Given an initialized lsp
     When I open the file "./features/test-files/objdump.s"
     When I run "find references" on the file "./features/test-files/objdump.s" at position "45:58"
     Then I expect the following response
@@ -16,6 +18,7 @@ Feature: Testing objdump functions
       | 82:47 | 82:67 |
 
   Scenario: Find references with declaration
+    Given an initialized lsp
     When I open the file "./features/test-files/objdump.s"
     When I run "find references" on the file "./features/test-files/objdump.s" at position "45:58" including decl
     Then I expect the following response
@@ -26,6 +29,7 @@ Feature: Testing objdump functions
       | 82:47 | 82:67 |
 
   Scenario: Highlight registers
+    Given an initialized lsp
     When I open the file "./features/test-files/objdump.s"
     When I run "document highlight" on the file "./features/test-files/objdump.s" at position "115:42"
     Then I expect the following response
@@ -39,6 +43,7 @@ Feature: Testing objdump functions
       | 131:51-131:56 | text |
 
   Scenario: Request document hover for number (objdump)
+    Given an initialized lsp
     When I open the file "./features/test-files/objdump.s"
     When I run "document hover" on the file "./features/test-files/objdump.s" at position "102:41"
     Then I expect the following response
@@ -49,6 +54,7 @@ Hex: 0x0
       """
 
   Scenario: Semantic tokens for objdump
+    Given an initialized lsp
     When I open the file "./features/test-files/objdump.s"
     When I run "semantic tokens" on the file "./features/test-files/objdump.s" at position "1:0-11:0"
     Then I expect the following response

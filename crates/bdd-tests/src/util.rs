@@ -3,18 +3,17 @@ use base::Architecture;
 use lsp_asm::config::LSPConfig;
 use lsp_asm::diagnostics::Error;
 use lsp_asm::handler::semantic;
-use lsp_asm::types::{
-    CompletionItem, CompletionKind, DocumentLocation, DocumentPosition, DocumentRange,
-};
-use lsp_server::ResponseError;
+use lsp_asm::types::{CompletionItem, CompletionKind, DocumentLocation, DocumentRange};
 use lsp_types::{
     CodeLens, Command, CompletionList, DocumentHighlight, DocumentHighlightKind, DocumentSymbol,
-    Documentation, Location, ParameterInformation, ParameterLabel, Range, SemanticToken,
-    SignatureHelp, SignatureInformation, SymbolKind, Url,
+    Documentation, Location, ParameterInformation, ParameterLabel, PublishDiagnosticsParams,
+    SemanticToken, SignatureHelp, SignatureInformation, SymbolKind, Url,
 };
-use serde_json::Value;
 use std::collections::HashMap;
 use std::path::Path;
+
+use crate::file::FileUrl;
+use crate::position::PositionString;
 
 pub(crate) fn parse_config(rows: &[Vec<String>]) -> LSPConfig {
     let mut config: LSPConfig = Default::default();
@@ -30,15 +29,10 @@ pub(crate) fn parse_config(rows: &[Vec<String>]) -> LSPConfig {
     config
 }
 
-pub(crate) fn get_doc_position(pos: &str) -> DocumentPosition {
-    let mut pos = pos.split(':');
-    let line = pos.next().unwrap().parse::<u32>().unwrap() - 1;
-    let column = pos.next().unwrap().parse().unwrap();
-
-    DocumentPosition { line, column }
-}
-
-pub(crate) fn make_doc_location_vec(table: &[Vec<String>], file: &Url) -> Vec<DocumentLocation> {
+pub(crate) fn make_doc_location_vec(
+    table: &[Vec<String>],
+    file: &FileUrl,
+) -> Vec<DocumentLocation> {
     table
         .iter()
         .skip(1)
@@ -46,16 +40,16 @@ pub(crate) fn make_doc_location_vec(table: &[Vec<String>], file: &Url) -> Vec<Do
             uri: cols
                 .get(2)
                 .map(|f| file_to_uri(f.as_str()))
-                .unwrap_or_else(|| file.clone()),
+                .unwrap_or_else(|| file.clone().into()),
             range: DocumentRange {
-                start: get_doc_position(cols.get(0).unwrap()),
-                end: get_doc_position(cols.get(1).unwrap()),
+                start: PositionString::from_string(cols.get(0).unwrap().into()).into(),
+                end: PositionString::from_string(cols.get(1).unwrap().into()).into(),
             },
         })
         .collect::<Vec<_>>()
 }
 
-pub(crate) fn make_lsp_doc_location(file: &Url, table: &[Vec<String>]) -> Vec<Location> {
+pub(crate) fn make_lsp_doc_location(file: &FileUrl, table: &[Vec<String>]) -> Vec<Location> {
     make_doc_location_vec(table, file)
         .drain(..)
         .map(|range| range.into())
@@ -75,8 +69,8 @@ pub(crate) fn make_doc_symbol(table: &[Vec<String>]) -> Vec<DocumentSymbol> {
             },
             tags: None,
             deprecated: None,
-            range: make_range(row.get(3).unwrap()),
-            selection_range: make_range(row.get(4).unwrap()),
+            range: PositionString::from_string(row.get(3).unwrap().into()).into(),
+            selection_range: PositionString::from_string(row.get(4).unwrap().into()).into(),
             children: None,
         };
         let pid = row
@@ -106,7 +100,7 @@ pub(crate) fn make_doc_highlight(table: &[Vec<String>]) -> Vec<DocumentHighlight
         .iter()
         .skip(1)
         .map(|row| DocumentHighlight {
-            range: make_range(row.get(0).unwrap()),
+            range: PositionString::from_string(row.get(0).unwrap().into()).into(),
             kind: match row.get(1).unwrap().as_str() {
                 "text" => Some(DocumentHighlightKind::TEXT),
                 x => panic!("Unknown kind: {}", x),
@@ -141,31 +135,13 @@ pub(crate) fn make_semantic(table: &[Vec<String>]) -> Vec<SemanticToken> {
         .collect()
 }
 
-pub(crate) fn make_range(range: &str) -> Range {
-    let mut range = range.split('-');
-    let start = get_doc_position(range.next().unwrap());
-    let end = get_doc_position(range.next().unwrap());
-
-    Range::new(start.into(), end.into())
-}
-
-pub(crate) fn make_result<T>(result: &Result<T, ResponseError>) -> Value
-where
-    T: serde::Serialize,
-{
-    match result {
-        Ok(result) => serde_json::to_value(&result).unwrap(),
-        Err(result) => serde_json::to_value(&result).unwrap(),
-    }
-}
-
 pub(crate) fn make_codelens(table: &[Vec<String>]) -> Option<Vec<CodeLens>> {
     (table.len() > 1).then(|| {
         table
             .iter()
             .skip(1)
             .map(|row| CodeLens {
-                range: make_range(row.get(0).unwrap()),
+                range: PositionString::from_string(row.get(0).unwrap().into()).into(),
                 command: Some(Command {
                     title: row.get(1).unwrap().into(),
                     command: row.get(2).unwrap().into(),
@@ -255,19 +231,24 @@ pub(crate) fn make_signature_help(table: &[Vec<String>]) -> SignatureHelp {
     }
 }
 
-pub(crate) fn get_errors(table: &[Vec<String>]) -> Vec<Error> {
-    table
-        .iter()
-        .skip(1)
-        .map(|err| Error {
-            file: full_path(err.get(0).unwrap()),
-            line: err.get(1).unwrap().parse::<u32>().unwrap() - 1, // Subtract one as LSP is 0 based
-            column: err.get(2).unwrap().parse::<u32>().unwrap(),
-            level: err.get(3).unwrap().as_str().into(),
-            code: Default::default(),
-            description: err.get(4).unwrap().to_string(),
-        })
-        .collect()
+pub(crate) fn get_errors(table: &[Vec<String>], uri: Url) -> PublishDiagnosticsParams {
+    PublishDiagnosticsParams {
+        uri,
+        diagnostics: table
+            .iter()
+            .skip(1)
+            .map(|err| Error {
+                file: Default::default(),
+                line: err.get(0).unwrap().parse::<u32>().unwrap() - 1, // Subtract one as LSP is 0 based
+                column: err.get(1).unwrap().parse::<u32>().unwrap(),
+                level: err.get(2).unwrap().as_str().into(),
+                code: Default::default(),
+                description: err.get(3).unwrap().to_string(),
+            })
+            .map(Into::into)
+            .collect(),
+        version: None,
+    }
 }
 
 pub(crate) fn file_to_uri(file: &str) -> Url {
@@ -293,15 +274,4 @@ pub(crate) fn file_to_uri(file: &str) -> Url {
             Url::parse(&format!("file://{}", file)).unwrap()
         }
     })
-}
-
-pub(crate) fn full_path(p: &str) -> String {
-    Path::new(p)
-        .canonicalize()
-        .ok()
-        .unwrap()
-        .as_os_str()
-        .to_str()
-        .unwrap()
-        .to_string()
 }
