@@ -6,12 +6,12 @@ edition = "2021"
 [dependencies]
 base = { path = "../base" }
 syntax = { path = "../syntax" }
-nom = "7.1.0"
-rowan = "0.15.2"
+nom = "7.1.1"
+rowan = "0.15.4"
 either = "1.6.1"
-log = "0.4.14"
+log = "0.4.17"
 phf = "0.10.1"
 unicase = "2.6.0"
 
 [dev-dependencies]
-pretty_assertions = "1.0.0"
+pretty_assertions = "1.2.1"

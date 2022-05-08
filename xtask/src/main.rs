@@ -3,7 +3,9 @@ use std::env;
 use std::path::Path;
 use std::process::Command;
 
-use clap::{App, AppSettings, Arg, ArgMatches};
+use commands::BuildDocArgs;
+
+mod commands;
 
 type DynError = Box<dyn std::error::Error + Sync + Send>;
 
@@ -16,37 +18,14 @@ fn main() {
 }
 
 fn try_main() -> Result<(), DynError> {
-    let matches = App::new("lsp-asm build system")
-        .setting(AppSettings::ArgRequiredElseHelp)
-        .subcommand(
-            App::new("test").about("Run unit tests").arg(
-                Arg::with_name("coverage")
-                    .long("coverage")
-                    .help("Generate coverage report")
-                    .takes_value(false)
-                    .required(false),
-            ))
-        .subcommand(
-            App::new("build-docs")
-                .about("Download and build instruction set documentation")
-                .arg(
-                    Arg::with_name("aarch64")
-                        .long("aarch64")
-                        .help("Downloads and builds the documentation for the AArch64 instruction set from arm.com")
-                        .takes_value(false),
-                ),
-        )
-        .get_matches();
+    let args = commands::get_args();
 
     std::env::set_current_dir(project_root())?;
 
-    match matches.subcommand() {
-        ("test", Some(args)) => test(args.is_present("coverage"))?,
-        ("build-docs", Some(args)) => build_docs(args)?,
-        _ => panic!("Invalid subcommand specified - Have you added a subcommand without adding it to the match?"),
-    };
-
-    Ok(())
+    match args {
+        commands::Command::Test(args) => test(args.coverage),
+        commands::Command::BuildDocs(args) => build_docs(&args),
+    }
 }
 
 fn project_root() -> String {
@@ -128,11 +107,11 @@ fn test(generate_coverage: bool) -> Result<(), DynError> {
     Ok(())
 }
 
-fn build_docs(args: &ArgMatches) -> Result<(), DynError> {
+fn build_docs(args: &BuildDocArgs) -> Result<(), DynError> {
     let mut tasks = Vec::new();
     let rt = tokio::runtime::Runtime::new()?;
 
-    if args.is_present("aarch64") {
+    if args.aarch64 {
         tasks.push(rt.spawn(documentation_builder::build_aarch64_instructions()));
     }
     for task in tasks {

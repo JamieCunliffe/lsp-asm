@@ -8,15 +8,15 @@ edition = "2021"
 base = { path = "../base" }
 documentation = { path = "../documentation" }
 roxmltree = "0.14.1"
-flate2 = "1.0.22"
+flate2 = "1.0.23"
 tar = "0.4.38"
-reqwest = "0.11.8"
+reqwest = "0.11.10"
 itertools = "0.10.3"
-serde_json = "1.0.73"
-serde = { version = "1.0.132", features = ["derive"] }
+serde_json = "1.0.81"
+serde = { version = "1.0.137", features = ["derive"] }
 directories = "4.0.1"
-log = "0.4.14"
-textwrap = "0.14.2"
+log = "0.4.17"
+textwrap = "0.15.0"
 
 [dev-dependencies]
-pretty_assertions = "1.0.0"
+pretty_assertions = "1.2.1"

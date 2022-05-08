@@ -5,5 +5,5 @@ edition = "2021"
 
 [dependencies]
 base = { path = "../base" }
-rowan = "0.15.2"
+rowan = "0.15.4"
 itertools = "0.10.3"
