@@ -43,6 +43,31 @@
                  (const "trace"))
   :group 'lsp-asm)
 
+(defface lsp-face-semhl-register
+  '((t (:inherit font-lock-type-face)))
+  "Face used for semantic highlighting registers."
+  :group 'lsp-faces)
+
+(defface lsp-face-semhl-gp-register
+  '((t (:inherit lsp-face-semhl-register)))
+  "Face used for general purpose register"
+  :group 'lsp-faces)
+
+(defface lsp-face-semhl-fp-register
+  '((t (:inherit lsp-face-semhl-register)))
+  "Face used for floating point register"
+  :group 'lsp-faces)
+
+(defface lsp-face-semhl-metadata
+  '((t (:inherit font-lock-comment-face)))
+  "Face used for semantic highlighting metadata."
+  :group 'lsp-faces)
+
+(defface lsp-face-semhl-relocation
+  '((t (:inherit default)))
+  "Face used for semantic highlighting relocations."
+  :group 'lsp-faces)
+
 (lsp-interface (asm:SyntaxTreeParams (:textDocument))
                (asm:AnalysisParams (:textDocument) (:range)))
 (define-derived-mode lsp-asm-syntax-tree-mode special-mode "Asm-Syntax-Tree"
@@ -121,43 +146,24 @@
                                     '(("RUST_LOG" . lsp-asm-log-level)))
                   :server-id 'lsp-asm))
 
-(defface lsp-face-semhl-register
-  '((t (:inherit font-lock-type-face)))
-  "Face used for semantic highlighting registers."
-  :group 'lsp-faces)
+(defun lsp-asm--set-tokens()
+  (setq lsp-semantic-token-faces
+        '(("keyword" . lsp-face-semhl-keyword)
+          ("string" . lsp-face-semhl-string)
+          ("number" . lsp-face-semhl-number)
+          ("macro" . lsp-face-semhl-macro)
+          ("comment" . lsp-face-semhl-comment)
+          ("register" . lsp-face-semhl-register)
+          ("label" . lsp-face-semhl-label)
+          ("metadata" . lsp-face-semhl-metadata)
+          ("gp-register" . lsp-face-semhl-gp-register)
+          ("fp-register" . lsp-face-semhl-fp-register)
+          ("relocation" . lsp-face-semhl-relocation)
+          ("constant" . lsp-face-semhl-constant))))
 
-(defface lsp-face-semhl-gp-register
-  '((t (:inherit lsp-face-semhl-register)))
-  "Face used for general purpose register"
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-fp-register
-  '((t (:inherit lsp-face-semhl-register)))
-  "Face used for floating point register"
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-metadata
-  '((t (:inherit font-lock-comment-face)))
-  "Face used for semantic highlighting metadata."
-  :group 'lsp-faces)
-
-(defface lsp-face-semhl-relocation
-  '((t (:inherit default)))
-  "Face used for semantic highlighting relocations."
-  :group 'lsp-faces)
-
-(add-to-list 'lsp-semantic-token-faces
-             '("register" . lsp-face-semhl-register))
-(add-to-list 'lsp-semantic-token-faces
-             '("gp-register" . lsp-face-semhl-gp-register))
-(add-to-list 'lsp-semantic-token-faces
-             '("fp-register" . lsp-face-semhl-fp-register))
-(add-to-list 'lsp-semantic-token-faces
-             '("metadata" . lsp-face-semhl-metadata))
-(add-to-list 'lsp-semantic-token-faces
-             '("relocation" . lsp-face-semhl-relocation))
-(add-to-list 'lsp-semantic-token-faces
-             '("constant" . lsp-face-semhl-constant))
+(with-eval-after-load 'asm-mode
+  (lsp-asm--set-tokens)
+  (add-hook 'asm-mode-hook #'lsp-asm--set-tokens))
 
 (provide 'lsp-asm)
 ;;; lsp-asm.el ends here
