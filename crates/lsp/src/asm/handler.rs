@@ -1,9 +1,9 @@
 #![allow(deprecated)]
 use super::ast::{AstNode, LabelNode, LocalLabelNode, RegisterToken};
-use super::definition;
 use super::llvm_mca::run_mca;
 use super::parser::{Parser, PositionInfo};
 use super::registers::registers_for_architecture;
+use super::{definition, references};
 use crate::asm::hovers;
 use crate::asm::signature;
 use crate::completion;
@@ -15,6 +15,7 @@ use crate::handler::types::DocumentChange;
 use crate::handler::LanguageServerProtocol;
 use crate::types::{DocumentPosition, DocumentRange};
 use base::register::RegisterKind;
+use documentation::OperandAccessType;
 use itertools::*;
 use lsp_server::ResponseError;
 use lsp_types::{
@@ -23,7 +24,7 @@ use lsp_types::{
     SemanticTokens, SemanticTokensResult, SignatureHelp, SymbolKind, Url,
 };
 use rowan::TextRange;
-use syntax::ast::{self, find_kind_index, find_parent, SyntaxKind, SyntaxToken};
+use syntax::ast::{self, find_kind_index, find_parent, SyntaxKind};
 
 pub struct AssemblyLanguageServerProtocol {
     parser: Parser,
@@ -101,65 +102,32 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             .token_at_point(&position)
             .ok_or_else(|| lsp_error_map(ErrorCode::TokenNotFound))?;
 
-        if !matches!(
-            token.kind(),
-            SyntaxKind::LABEL | SyntaxKind::TOKEN | SyntaxKind::NAME | SyntaxKind::CONSTANT
-        ) {
-            return Ok(Vec::new());
-        }
-
-        let range = if matches!(token.kind(), SyntaxKind::TOKEN | SyntaxKind::LABEL) {
-            token
-                .text()
-                .starts_with('.')
-                .then(|| find_parent(&token, SyntaxKind::LABEL).map(|label| label.text_range()))
-                .flatten()
-                .unwrap_or_else(|| self.parser.tree().text_range())
-        } else {
-            self.parser.tree().text_range()
-        };
-
+        let range = references::get_search_range(&self.parser, &token, None);
         let position = self.parser.position();
-        let make_location = |token| {
-            Some(lsp_types::Location::new(
-                self.uri.clone(),
-                position.range_for_token(&token)?.into(),
-            ))
-        };
+        let references = references::find_references(&self.parser, &token, range, include_decl);
 
-        let references = find_references(&self.parser, &token, &range);
+        Ok(references
+            .filter_map(move |token| {
+                Some(lsp_types::Location::new(
+                    self.uri.clone(),
+                    position.range_for_token(&token)?.into(),
+                ))
+            })
+            .chain(self.parser.included_parsers().flat_map(|parser| {
+                let id = parser.uri();
+                let range = parser.tree().text_range();
+                let position = parser.position();
 
-        let mut locations = if include_decl {
-            references.filter_map(make_location).collect_vec()
-        } else if matches!(token.kind(), SyntaxKind::LABEL | SyntaxKind::TOKEN) {
-            references
-                .filter(|t| !(t.kind() == SyntaxKind::LABEL || t.kind() == SyntaxKind::LOCAL_LABEL))
-                .filter_map(make_location)
-                .collect_vec()
-        } else if matches!(token.kind(), SyntaxKind::CONSTANT | SyntaxKind::NAME) {
-            references
-                .filter(|t| find_parent(t, SyntaxKind::CONST_DEF).is_none())
-                .filter_map(make_location)
-                .collect_vec()
-        } else {
-            references.filter_map(make_location).collect_vec()
-        };
-        locations.extend(self.parser.included_parsers().flat_map(|parser| {
-            let id = parser.uri();
-            let range = parser.tree().text_range();
-            let position = parser.position();
-
-            find_references(parser, &token, &range)
-                .filter_map(move |token| {
-                    Some(lsp_types::Location::new(
-                        id.clone(),
-                        position.range_for_token(&token)?.into(),
-                    ))
-                })
-                .collect_vec()
-        }));
-
-        Ok(locations)
+                references::find_references(parser, &token, range, include_decl).filter_map(
+                    move |token| {
+                        Some(lsp_types::Location::new(
+                            id.clone(),
+                            position.range_for_token(&token)?.into(),
+                        ))
+                    },
+                )
+            }))
+            .collect())
     }
 
     fn hover(
@@ -239,40 +207,26 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             .token_at_point(&position)
             .ok_or_else(|| lsp_error_map(ErrorCode::TokenNotFound))?;
 
-        if matches!(token.kind(), SyntaxKind::NUMBER | SyntaxKind::MNEMONIC) {
-            return Ok(Vec::new());
-        }
         let position_cache = self.parser.position();
 
-        let range = if matches!(token.kind(), SyntaxKind::TOKEN | SyntaxKind::LABEL) {
-            token
-                .text()
-                .starts_with('.')
-                .then(|| find_parent(&token, SyntaxKind::LABEL).map(|label| label.text_range()))
-                .flatten()
-                .unwrap_or_else(|| self.parser.tree().text_range())
-        } else {
-            position_cache.make_range_for_lines(
-                position.line.saturating_sub(200),
-                position.line.saturating_add(200),
-            )
-        };
+        let range = references::get_search_range(&self.parser, &token, Some(200));
 
         let docs = documentation::load_documentation(self.parser.architecture()).ok();
         let registers = registers_for_architecture(self.parser.architecture());
 
-        let references = find_references(&self.parser, &token, &range);
+        let references = references::find_references(&self.parser, &token, range, true);
+
+        let to_proto_kind = |k: OperandAccessType| match k {
+            OperandAccessType::Unknown | OperandAccessType::Text => DocumentHighlightKind::TEXT,
+            OperandAccessType::Read => DocumentHighlightKind::READ,
+            OperandAccessType::Write => DocumentHighlightKind::WRITE,
+        };
 
         let locations = if let Some(docs) = docs {
             references
                 .filter_map(|token| {
                     let kind = access_type(&token, &docs, registers, self.parser.alias())
-                        .map(|k| match k {
-                            documentation::OperandAccessType::Unknown
-                            | documentation::OperandAccessType::Text => DocumentHighlightKind::TEXT,
-                            documentation::OperandAccessType::Read => DocumentHighlightKind::READ,
-                            documentation::OperandAccessType::Write => DocumentHighlightKind::WRITE,
-                        })
+                        .map(to_proto_kind)
                         .or(Some(DocumentHighlightKind::TEXT));
 
                     Some(lsp_types::DocumentHighlight {
@@ -316,7 +270,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         };
 
         let position = self.parser.position();
-        let tokens = self.parser.tokens_in_range(&range);
+        let tokens = self.parser.tokens_in_range(range);
 
         let tokens = tokens
             .filter_map(|token| {
@@ -513,7 +467,7 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             .and_then(|r| self.parser.position().range_to_text_range(&r))
             .unwrap_or_else(|| self.parser.tree().text_range());
 
-        let tokens = self.parser.tokens_in_range(&range).filter(|t| {
+        let tokens = self.parser.tokens_in_range(range).filter(|t| {
             !(matches!(t.kind(), SyntaxKind::METADATA)
                 || ast::find_parent(t, SyntaxKind::METADATA).is_some())
         });
@@ -525,16 +479,6 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         )
         .map_err(|e| lsp_error_map(ErrorCode::MCAFailed(e.to_string())))
     }
-}
-
-fn find_references<'a>(
-    parser: &'a Parser,
-    token: &'a SyntaxToken,
-    range: &'a TextRange,
-) -> impl Iterator<Item = SyntaxToken> + 'a {
-    parser
-        .tokens_in_range(range)
-        .filter(move |t| parser.token_text_equal(token, t))
 }
 
 impl<'s> LabelNode<'s> {

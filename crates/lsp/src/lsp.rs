@@ -2,7 +2,7 @@ use crate::handler::handlers::LangServerHandler;
 use crate::handler::types::DocumentRangeMessage;
 use lsp_server::{Connection, Message, Notification, Request, RequestId, Response, ResponseError};
 use lsp_types::notification::{
-    DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, DidSaveTextDocument,
+    Cancel, DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, DidSaveTextDocument,
 };
 use lsp_types::request::{
     CodeLensRequest, Completion, DocumentHighlightRequest, DocumentSymbolRequest, GotoDefinition,
@@ -159,7 +159,7 @@ async fn process_message(
         }
 
         Message::Notification(notification) => {
-            info!("Handling notification: {:#?}", notification);
+            info!("Handling notification: {}", notification.method);
 
             let _ = match notification.method.as_str() {
                 "textDocument/didOpen" => {
@@ -200,7 +200,8 @@ async fn process_message(
                     handler.close_file(data.text_document.uri).await
                 }
                 "$/cancelRequest" => {
-                    debug!("Received cancel request - Ignoring");
+                    let data = get_notification::<Cancel>(notification).unwrap();
+                    info!("Received cancel request for: {:#?}", data.id);
                     Ok(())
                 }
                 _ => {

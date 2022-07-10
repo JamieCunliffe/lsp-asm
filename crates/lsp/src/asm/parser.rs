@@ -173,10 +173,7 @@ impl Parser {
     }
 
     /// Gets the tokens that are contained within `range`.
-    pub(crate) fn tokens_in_range<'a>(
-        &self,
-        range: &'a TextRange,
-    ) -> impl Iterator<Item = SyntaxToken> + 'a {
+    pub(crate) fn tokens_in_range(&self, range: TextRange) -> impl Iterator<Item = SyntaxToken> {
         self.tree()
             .descendants_with_tokens()
             .filter_map(|t| t.into_token())

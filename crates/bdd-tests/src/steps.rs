@@ -290,7 +290,12 @@ fn expect_errors(state: &mut LSPWorld, step: &Step, uri: FileUrl) {
     let rows = &step.table.as_ref().unwrap().rows;
     let expected_errors = util::get_errors(rows, uri.clone().into());
 
-    let actual = state.lsp.diagnostics_for_file(&uri.into()).last().unwrap().clone();
+    let actual = state
+        .lsp
+        .diagnostics_for_file(&uri.into())
+        .last()
+        .unwrap()
+        .clone();
 
     assert_eq!(actual, expected_errors);
 }

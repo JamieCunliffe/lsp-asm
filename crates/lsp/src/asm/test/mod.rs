@@ -10,11 +10,11 @@ macro_rules! assert_listing(
         assert_listing!($src, $expect, Default::default());
     );
     ($src:expr, $expect:expr, $arch:expr) => (
-        let config = crate::config::LSPConfig {
+        let config = $crate::config::LSPConfig {
             architecture: $arch,
             ..Default::default()
         };
-        let parser = crate::asm::parser::Parser::in_memory($src, &config);
+        let parser = $crate::asm::parser::Parser::in_memory($src, &config);
         let nodes = parser.tree();
         pretty_assertions::assert_eq!(format!("{:#?}", nodes), $expect);
     )
