@@ -38,3 +38,10 @@ Feature: Multiple files
     Then I expect the following response
       | start |  end | file                           |
       |   4:0 | 4:12 | ./features/test-files/file_b.s |
+
+    # Local label
+    When I run "find references" on the file "./features/test-files/file_a.s" at position "6:8" including decl
+    Then I expect the following response
+      | start |  end | file                           |
+      |   6:6 | 6:17 | ./features/test-files/file_a.s |
+      |   7:0 | 7:12 | ./features/test-files/file_a.s |

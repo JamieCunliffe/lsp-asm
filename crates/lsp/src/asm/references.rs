@@ -2,11 +2,12 @@ use std::iter;
 
 use rowan::TextRange;
 use syntax::ast::{find_parent, SyntaxKind, SyntaxToken};
+use syntax::utils::token_is_local_label;
 
 use super::parser::Parser;
 
 pub fn get_search_range(parser: &Parser, token: &SyntaxToken, limit: Option<u32>) -> TextRange {
-    if matches!(token.kind(), SyntaxKind::TOKEN | SyntaxKind::LABEL) {
+    if token_is_local_label(token) {
         token
             .text()
             .starts_with('.')

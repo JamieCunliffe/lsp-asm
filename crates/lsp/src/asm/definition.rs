@@ -1,5 +1,6 @@
 use lsp_types::{Location, Url};
 use syntax::ast::{find_kind_index, find_parent, SyntaxKind, SyntaxNode, SyntaxToken};
+use syntax::utils::token_is_local_label;
 
 use crate::file_util;
 use crate::handler::error::{lsp_error_map, ErrorCode};
@@ -13,7 +14,7 @@ pub(super) fn get_definition_token<'p>(
 ) -> Result<impl Iterator<Item = (SyntaxToken, &'p Parser)> + 'p, lsp_server::ResponseError> {
     let text = token.text();
 
-    let node: Box<dyn Iterator<Item = (SyntaxNode, &Parser)>> = if text.starts_with('.') {
+    let node: Box<dyn Iterator<Item = (SyntaxNode, &Parser)>> = if token_is_local_label(token) {
         Box::new(std::iter::once((
             find_parent(token, SyntaxKind::LABEL)
                 .ok_or_else(|| lsp_error_map(ErrorCode::MissingParentNode))?,

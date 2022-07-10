@@ -25,6 +25,7 @@ use lsp_types::{
 };
 use rowan::TextRange;
 use syntax::ast::{self, find_kind_index, find_parent, SyntaxKind};
+use syntax::utils::token_is_local_label;
 
 pub struct AssemblyLanguageServerProtocol {
     parser: Parser,
@@ -106,14 +107,10 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         let position = self.parser.position();
         let references = references::find_references(&self.parser, &token, range, include_decl);
 
-        Ok(references
-            .filter_map(move |token| {
-                Some(lsp_types::Location::new(
-                    self.uri.clone(),
-                    position.range_for_token(&token)?.into(),
-                ))
-            })
-            .chain(self.parser.included_parsers().flat_map(|parser| {
+        let included_files = if token_is_local_label(&token) {
+            None
+        } else {
+            Some(self.parser.included_parsers().flat_map(|parser| {
                 let id = parser.uri();
                 let range = parser.tree().text_range();
                 let position = parser.position();
@@ -127,6 +124,16 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                     },
                 )
             }))
+        };
+
+        Ok(references
+            .filter_map(move |token| {
+                Some(lsp_types::Location::new(
+                    self.uri.clone(),
+                    position.range_for_token(&token)?.into(),
+                ))
+            })
+            .chain(included_files.into_iter().flatten())
             .collect())
     }
 
