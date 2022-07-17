@@ -29,7 +29,11 @@ fn process_isa_ref(data: &str, file: &str) -> Vec<Instruction> {
 
     let mut mnemonic: Vec<String> = instruction_section
         .descendants()
-        .filter(|d| d.tag_name().name() == "docvar" && d.attribute("key").unwrap() == "mnemonic")
+        .filter(|d| {
+            let tag_name = d.tag_name().name();
+            let key = d.attribute("key").unwrap_or_default();
+            tag_name == "docvar" && (key == "mnemonic" || key == "alias_mnemonic")
+        })
         .filter_map(|d| d.attribute("value"))
         .unique()
         .map(String::from)
@@ -123,7 +127,7 @@ fn process_isa_ref(data: &str, file: &str) -> Vec<Instruction> {
 
     let asm_template = asm
         .zip(operands)
-        .map(|((asm, vars), items)| {
+        .filter_map(|((asm, vars), items)| {
             let templates = parse_template(&asm, &items)
                 .drain(..)
                 .map(|mut t| {
@@ -134,12 +138,13 @@ fn process_isa_ref(data: &str, file: &str) -> Vec<Instruction> {
                 })
                 .collect_vec();
             let access_map = build_access_map(&asm, &items, &vars);
-            InstructionTemplate {
+
+            (!asm.is_empty()).then_some(InstructionTemplate {
                 asm: templates,
                 display_asm: asm,
                 items,
                 access_map,
-            }
+            })
         })
         .collect::<Vec<_>>();
 
