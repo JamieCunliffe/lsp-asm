@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 use super::{CompileCommand, Diagnostics};
 
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, Eq)]
 pub struct AssemblerFlags {
     root: String,
     command: String,

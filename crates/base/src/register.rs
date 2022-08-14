@@ -16,7 +16,7 @@ bitflags! {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum RegisterSize {
     Bits8,
     Bits16,

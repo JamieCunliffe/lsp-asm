@@ -11,7 +11,7 @@ pub mod compile_commands;
 mod gcc;
 mod util;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ErrorLevel {
     Error,
     Warning,
@@ -38,7 +38,7 @@ impl From<ErrorLevel> for DiagnosticSeverity {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Error {
     pub file: String,
     pub line: LineNumber,
@@ -75,7 +75,7 @@ pub trait Diagnostics {
     fn assembler_for_file(&self, uri: &Url) -> Option<Box<dyn Assembler>>;
 }
 
-#[derive(Default, Debug, PartialEq, Clone)]
+#[derive(Default, Debug, PartialEq, Eq, Clone)]
 pub struct CompileCommand {
     file: String,
     directory: String,

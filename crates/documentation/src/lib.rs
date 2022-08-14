@@ -17,7 +17,7 @@ pub use map::*;
 
 pub type CompletionValue = Either<String, Range<i64>>;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct OperandInfo {
     pub name: String,
     pub description: String,
@@ -27,7 +27,7 @@ pub struct OperandInfo {
     pub completion_values: Option<Vec<CompletionValue>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum OperandAccessType {
     Write,
     Read,
@@ -35,7 +35,7 @@ pub enum OperandAccessType {
     Unknown,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct InstructionTemplate {
     pub asm: Vec<String>,
     pub display_asm: String,
