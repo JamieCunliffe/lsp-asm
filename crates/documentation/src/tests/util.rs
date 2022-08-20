@@ -1,4 +1,26 @@
-use crate::documentation::Instruction;
+use arch::register_names::AARCH64_REGISTERS;
+use parser::config::ParserConfig;
+use parser::{ParsedData, ParsedInclude};
+use syntax::alias::Alias;
+use syntax::ast::SyntaxNode;
+
+use crate::Instruction;
+
+pub(super) fn parse_asm(data: &str) -> (SyntaxNode, Alias) {
+    let config = ParserConfig {
+        comment_start: String::from("//"),
+        architecture: base::Architecture::AArch64,
+        file_type: base::FileType::Assembly,
+        registers: Some(&AARCH64_REGISTERS),
+    };
+    let load_file = |_current_config: &ParserConfig,
+                     _current_file: &str,
+                     _filename: &str|
+     -> Option<ParsedInclude> { None };
+
+    let ParsedData { root, alias, .. } = parser::parse_asm(data, &config, None, load_file);
+    (SyntaxNode::new_root(root), alias)
+}
 
 pub(super) fn make_instruction() -> Instruction {
     let data = r#"

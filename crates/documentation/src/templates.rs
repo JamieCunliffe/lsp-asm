@@ -1,22 +1,21 @@
 use base::register::{RegisterSize, Registers};
 use base::Architecture;
-use documentation::registers::DOC_REGISTERS;
-use documentation::{Instruction, InstructionTemplate};
 use itertools::Itertools;
 use parser::config::ParserConfig;
 use parser::ParsedData;
 use syntax::alias::Alias;
 use syntax::ast::{SyntaxElement, SyntaxKind, SyntaxNode};
 
-pub(crate) mod access;
+use crate::registers::DOC_REGISTERS;
+use crate::{Instruction, InstructionTemplate};
 
-lazy_static! {
-    static ref TEMPLATE_CONFIG: ParserConfig = ParserConfig {
-        comment_start: String::from("//"),
-        architecture: Architecture::AArch64,
+fn get_config(architecture: Architecture) -> ParserConfig {
+    ParserConfig {
+        comment_start: String::from("\u{00A0}"),
+        architecture,
         file_type: Default::default(),
-        registers: Some(&documentation::registers::DOCUMENTATION_REGISTERS),
-    };
+        registers: Some(&crate::registers::DOCUMENTATION_REGISTERS),
+    }
 }
 
 /// Finds the instruction template that matches the given node, this will
@@ -26,6 +25,7 @@ pub fn find_correct_instruction_template<'a>(
     instructions: &'a [Instruction],
     lookup: &dyn Registers,
     alias: &Alias,
+    arch: Architecture,
 ) -> Option<&'a InstructionTemplate> {
     instructions
         .iter()
@@ -34,7 +34,7 @@ pub fn find_correct_instruction_template<'a>(
             template
                 .asm
                 .iter()
-                .any(|template| check_template(template, node, true, lookup, alias))
+                .any(|template| check_template(template, node, true, lookup, alias, arch))
         })
 }
 
@@ -46,11 +46,12 @@ pub fn find_potential_instruction_templates<'a>(
     instructions: &'a [Instruction],
     lookup: &dyn Registers,
     alias: &Alias,
+    arch: Architecture,
 ) -> Vec<&'a InstructionTemplate> {
     instructions
         .iter()
         .flat_map(|x| &x.asm_template)
-        .filter(|template| is_potential_instruction_template(node, template, lookup, alias))
+        .filter(|template| is_potential_instruction_template(node, template, lookup, alias, arch))
         .collect_vec()
 }
 
@@ -59,11 +60,12 @@ pub fn is_potential_instruction_template(
     template: &InstructionTemplate,
     lookup: &dyn Registers,
     alias: &Alias,
+    arch: Architecture,
 ) -> bool {
     template
         .asm
         .iter()
-        .any(|template| check_template(template, node, false, lookup, alias))
+        .any(|template| check_template(template, node, false, lookup, alias, arch))
 }
 
 /// Given an an instruction template, find the instruction that it belongs to.
@@ -76,12 +78,12 @@ pub fn instruction_from_template<'a>(
         .find(|x| x.asm_template.iter().any(|x| x == template))
 }
 
-pub(crate) fn parse_template<T>(template: T) -> SyntaxNode
+pub fn parse_template<T>(template: T, arch: Architecture) -> SyntaxNode
 where
     T: AsRef<str>,
 {
     let ParsedData { root, .. } =
-        parser::parse_asm(template.as_ref(), &TEMPLATE_CONFIG, None, |_, _, _| None);
+        parser::parse_asm(template.as_ref(), &get_config(arch), None, |_, _, _| None);
     SyntaxNode::new_root(root)
 }
 
@@ -91,8 +93,9 @@ fn check_template(
     exact: bool,
     lookup: &dyn Registers,
     alias: &Alias,
+    arch: Architecture,
 ) -> bool {
-    let parsed_template = parse_template(template);
+    let parsed_template = parse_template(template, arch);
 
     let parsed_template = parsed_template.first_child().unwrap();
     let filtered = node
@@ -160,6 +163,3 @@ fn register_match(actual: &str, template: &str, lookup: &dyn Registers) -> bool 
         .get_kind(template)
         .contains(lookup.get_kind(actual))
 }
-
-#[cfg(test)]
-mod tests;

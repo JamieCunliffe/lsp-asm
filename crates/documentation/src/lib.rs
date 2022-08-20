@@ -1,5 +1,7 @@
+pub mod access;
 mod map;
 pub mod registers;
+pub mod templates;
 
 use base::{null_as_default, Architecture};
 use itertools::{Either, Itertools};
@@ -169,3 +171,6 @@ pub fn poison_cache(arch: &Architecture, data: DocumentationMap) {
     let mut cache = DOCUMENTATION_CACHE.write().unwrap();
     cache.insert(*arch, Arc::new(data));
 }
+
+#[cfg(test)]
+mod tests;

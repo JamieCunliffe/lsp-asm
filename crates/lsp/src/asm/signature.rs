@@ -1,3 +1,4 @@
+use arch::registers::registers_for_architecture;
 use documentation::{Instruction, InstructionTemplate, OperandInfo};
 use itertools::Itertools;
 use lsp_types::{
@@ -6,8 +7,7 @@ use lsp_types::{
 use rowan::TextSize;
 use syntax::ast::{find_kind_index, find_parent, SyntaxKind, SyntaxNode, SyntaxToken};
 
-use crate::asm::registers::registers_for_architecture;
-use crate::documentation::is_potential_instruction_template;
+use documentation::templates::is_potential_instruction_template;
 
 use super::parser::Parser;
 
@@ -44,6 +44,7 @@ pub(super) fn get_signature_help(location: &TextSize, parser: &Parser) -> Option
                     template,
                     registers,
                     parser.alias(),
+                    *parser.architecture(),
                 )
                 .then(|| idx)
             });

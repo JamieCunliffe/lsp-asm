@@ -27,6 +27,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "arch"
+version = "0.1.0"
+dependencies = [
+ "base",
+ "itertools",
+ "parser",
+ "phf",
+ "phf_macros",
+ "unicase",
+]
+
+[[package]]
 name = "async-trait"
 version = "0.1.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -371,6 +383,7 @@ dependencies = [
 name = "documentation"
 version = "0.1.0"
 dependencies = [
+ "arch",
  "base",
  "directories",
  "either",
@@ -933,6 +946,7 @@ dependencies = [
 name = "lsp-asm"
 version = "0.1.0"
 dependencies = [
+ "arch",
  "base",
  "byte-unit",
  "cpp_demangle",

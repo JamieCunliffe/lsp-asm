@@ -80,7 +80,8 @@ mod tests {
     use syntax::ast::{find_kind_index, SyntaxKind};
 
     use super::*;
-    use crate::{asm::parser::Parser, types::CompletionItem};
+    use crate::asm::parser::Parser;
+    use crate::types::CompletionItem;
     use pretty_assertions::assert_eq;
 
     #[test]

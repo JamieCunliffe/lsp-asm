@@ -2,19 +2,18 @@
 use super::ast::{AstNode, LabelNode, LocalLabelNode, RegisterToken};
 use super::llvm_mca::run_mca;
 use super::parser::{Parser, PositionInfo};
-use super::registers::registers_for_architecture;
 use super::{definition, references};
-use crate::asm::hovers;
-use crate::asm::signature;
+use crate::asm::{hovers, signature};
 use crate::completion;
 use crate::config::LSPConfig;
-use crate::documentation::access::access_type;
 use crate::handler::error::{lsp_error_map, ErrorCode};
 use crate::handler::semantic::semantic_delta_transform;
 use crate::handler::types::DocumentChange;
 use crate::handler::LanguageServerProtocol;
 use crate::types::{DocumentPosition, DocumentRange};
+use arch::registers::registers_for_architecture;
 use base::register::RegisterKind;
+use documentation::access::access_type;
 use documentation::OperandAccessType;
 use itertools::*;
 use lsp_server::ResponseError;
@@ -232,9 +231,15 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         let locations = if let Some(docs) = docs {
             references
                 .filter_map(|token| {
-                    let kind = access_type(&token, &docs, registers, self.parser.alias())
-                        .map(to_proto_kind)
-                        .or(Some(DocumentHighlightKind::TEXT));
+                    let kind = access_type(
+                        &token,
+                        &docs,
+                        registers,
+                        self.parser.alias(),
+                        *self.parser.architecture(),
+                    )
+                    .map(to_proto_kind)
+                    .or(Some(DocumentHighlightKind::TEXT));
 
                     Some(lsp_types::DocumentHighlight {
                         range: position_cache.range_for_token(&token)?.into(),

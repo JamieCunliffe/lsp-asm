@@ -1,7 +1,7 @@
 use super::ast::{LabelToken, NumericToken};
 use super::definition::get_definition_token;
 use super::parser::Parser;
-use super::registers::registers_for_architecture;
+use arch::registers::registers_for_architecture;
 use base::Architecture;
 use itertools::Itertools;
 use rowan::NodeOrToken;
@@ -39,15 +39,17 @@ pub fn get_hover_mnemonic(
     let docs = documentation::load_documentation(arch).ok()?;
     let instructions = docs.get(token.text())?;
 
-    let template = crate::documentation::find_correct_instruction_template(
+    let template = documentation::templates::find_correct_instruction_template(
         &instruction,
         instructions,
         registers_for_architecture(arch),
         alias,
+        *arch,
     );
 
     if let Some(template) = template {
-        let instruction = crate::documentation::instruction_from_template(instructions, template)?;
+        let instruction =
+            documentation::templates::instruction_from_template(instructions, template)?;
 
         Some(vec![format!("{}", instruction)])
     } else {

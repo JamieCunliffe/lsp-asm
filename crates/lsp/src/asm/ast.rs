@@ -1,4 +1,4 @@
-use super::registers::registers_for_architecture;
+use arch::registers::registers_for_architecture;
 use base::register::RegisterKind;
 use base::FileType;
 use parser::config::ParserConfig;

@@ -199,13 +199,13 @@ impl Parser {
     /// `label1:` and `label1` are equal.
     fn token_value<'a>(&self, token: &'a SyntaxToken) -> Option<SemanticEq<'a>> {
         match token.kind() {
-            SyntaxKind::REGISTER => Some(SemanticEq::Register(super::registers::register_id(
+            SyntaxKind::REGISTER => Some(SemanticEq::Register(arch::registers::register_id(
                 token.text(),
                 &self.config,
             )?)),
             SyntaxKind::REGISTER_ALIAS => {
                 let register = self.alias.get_register_for_alias(token.text())?;
-                Some(SemanticEq::Register(super::registers::register_id(
+                Some(SemanticEq::Register(arch::registers::register_id(
                     register,
                     &self.config,
                 )?))
@@ -279,12 +279,12 @@ impl Parser {
         match arch {
             Architecture::AArch64 => ParserConfig {
                 comment_start: String::from("//"),
-                registers: Some(&super::registers::AARCH64_REGISTERS),
+                registers: Some(&arch::register_names::AARCH64_REGISTERS),
                 architecture: *arch,
                 ..ParserConfig::default()
             },
             Architecture::X86_64 => ParserConfig {
-                registers: Some(&super::registers::X86_64_REGISTERS),
+                registers: Some(&arch::register_names::X86_64_REGISTERS),
                 architecture: *arch,
                 ..ParserConfig::default()
             },

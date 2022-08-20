@@ -13,6 +13,7 @@ base = { path = "../base" }
 syntax = { path = "../syntax" }
 parser = { path = "../parser" }
 documentation = { path = "../documentation" }
+arch = { path = "../arch" }
 log = "0.4.17"
 pretty_env_logger = "0.4.0"
 lazy_static = "1.4.0"

@@ -4,8 +4,6 @@ use itertools::Itertools;
 use parser::config::ParserConfig;
 use unicase::UniCase;
 
-pub(crate) use super::register_names::*;
-
 pub struct AArch64 {}
 impl Registers for AArch64 {
     fn get_kind(&self, name: &str) -> RegisterKind {
@@ -84,7 +82,7 @@ impl Registers for UnknownRegisters {
     }
 }
 
-pub(crate) fn registers_for_architecture(arch: &Architecture) -> &dyn Registers {
+pub fn registers_for_architecture(arch: &Architecture) -> &dyn Registers {
     static REGISTER_AARCH64: &AArch64 = &AArch64 {};
     static REGISTER_NONE: &UnknownRegisters = &UnknownRegisters {};
     match arch {
@@ -103,9 +101,9 @@ impl RegisterList {
     pub fn from_architecture(arch: &Architecture) -> Self {
         Self {
             map: match arch {
-                Architecture::AArch64 => &AARCH64_REGISTERS,
-                Architecture::X86_64 => &X86_64_REGISTERS,
-                Architecture::Unknown => &UNKNOWN_REGISTERS,
+                Architecture::AArch64 => &crate::register_names::AARCH64_REGISTERS,
+                Architecture::X86_64 => &crate::register_names::X86_64_REGISTERS,
+                Architecture::Unknown => &crate::register_names::UNKNOWN_REGISTERS,
             },
         }
     }
@@ -118,7 +116,7 @@ impl RegisterList {
 /// Gets an index for this register that can be used for comparisons, the id
 /// that is returned should only be considered valid for the given parser config
 /// when comparing.
-pub(crate) fn register_id(name: &str, config: &ParserConfig) -> Option<i8> {
+pub fn register_id(name: &str, config: &ParserConfig) -> Option<i8> {
     if let Some(registers) = config.registers {
         let name = parser::register_name(name);
         registers.get(&UniCase::ascii(name)).cloned()

@@ -1,8 +1,8 @@
 use unicase::UniCase;
 
-pub(crate) static UNKNOWN_REGISTERS: phf::Map<UniCase<&'static str>, i8> = phf::phf_map! {};
+pub static UNKNOWN_REGISTERS: phf::Map<UniCase<&'static str>, i8> = phf::phf_map! {};
 
-pub(crate) static X86_64_REGISTERS: phf::Map<UniCase<&'static str>, i8> = phf::phf_map! {
+pub static X86_64_REGISTERS: phf::Map<UniCase<&'static str>, i8> = phf::phf_map! {
     UniCase::ascii("rax") => 0, UniCase::ascii("eax") => 0, UniCase::ascii("ax") => 0, UniCase::ascii("ah") => 0, UniCase::ascii("al") => 0,
     UniCase::ascii("rbx") => 1, UniCase::ascii("ebx") => 1, UniCase::ascii("bx") => 1, UniCase::ascii("bh") => 1, UniCase::ascii("bl") => 1,
     UniCase::ascii("rcx") => 2, UniCase::ascii("ecx") => 2, UniCase::ascii("cx") => 2, UniCase::ascii("ch") => 2, UniCase::ascii("cl") => 2,
@@ -14,7 +14,7 @@ pub(crate) static X86_64_REGISTERS: phf::Map<UniCase<&'static str>, i8> = phf::p
     UniCase::ascii("rip") => 8,
 };
 
-pub(crate) static AARCH64_REGISTERS: phf::Map<UniCase<&'static str>, i8> = phf::phf_map! {
+pub static AARCH64_REGISTERS: phf::Map<UniCase<&'static str>, i8> = phf::phf_map! {
     UniCase::ascii("x0") => 0, UniCase::ascii("w0") => 0,
     UniCase::ascii("x1") => 1, UniCase::ascii("w1") => 1,
     UniCase::ascii("x2") => 2, UniCase::ascii("w2") => 2,

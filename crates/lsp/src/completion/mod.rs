@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
+use arch::registers::registers_for_architecture;
 use base::register::Registers;
 use base::Architecture;
+use documentation::templates::{find_potential_instruction_templates, parse_template};
 use documentation::DocumentationMap;
 use itertools::Itertools;
 use rowan::NodeOrToken;
@@ -9,8 +11,6 @@ use syntax::alias::Alias;
 use syntax::ast::{find_parent, SyntaxElement, SyntaxKind, SyntaxToken};
 
 use crate::asm::parser::Parser;
-use crate::asm::registers::registers_for_architecture;
-use crate::documentation::{find_potential_instruction_templates, parse_template};
 use crate::types::{CompletionItem, DocumentPosition};
 
 mod label;
@@ -43,6 +43,7 @@ pub fn handle_completion(
                 &token,
                 registers,
                 parser.alias(),
+                *parser.architecture(),
             )?;
             let context = CompletionContext::new(parser, token, docs);
 
@@ -76,6 +77,7 @@ fn find_documentation_token_for_instruction(
     token: &SyntaxToken,
     registers: &dyn Registers,
     alias: &Alias,
+    arch: Architecture,
 ) -> Option<Vec<SyntaxToken>> {
     let instruction = find_parent(token, SyntaxKind::INSTRUCTION)?.clone_for_update();
 
@@ -116,11 +118,16 @@ fn find_documentation_token_for_instruction(
     }
 
     let templates =
-        find_potential_instruction_templates(&instruction, instructions, registers, alias);
+        find_potential_instruction_templates(&instruction, instructions, registers, alias, arch);
 
     let mut tokens = templates
         .iter()
-        .flat_map(|template| template.asm.iter().map(parse_template))
+        .flat_map(|template| {
+            template
+                .asm
+                .iter()
+                .map(|template| parse_template(template, arch))
+        })
         .filter_map(|asm| {
             asm.descendants_with_tokens()
                 .filter(is_real_token)

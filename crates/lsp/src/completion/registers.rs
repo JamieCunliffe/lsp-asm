@@ -1,12 +1,11 @@
+use arch::registers::RegisterList;
 use base::register::{RegisterKind, RegisterSize, Registers};
 use documentation::registers::DOC_REGISTERS;
 use itertools::Itertools;
 use syntax::alias::Alias;
 
-use crate::asm::registers::RegisterList;
+use crate::completion::CompletionContext;
 use crate::types::{CompletionItem, CompletionKind};
-
-use super::CompletionContext;
 
 pub(super) fn complete_registers(
     to_complete: &str,

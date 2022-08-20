@@ -1,6 +1,5 @@
 use lsp_types::request::Request;
-use lsp_types::Range;
-use lsp_types::TextDocumentIdentifier;
+use lsp_types::{Range, TextDocumentIdentifier};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
