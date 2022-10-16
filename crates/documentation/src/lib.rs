@@ -5,7 +5,7 @@ pub mod templates;
 
 use base::{null_as_default, Architecture};
 use itertools::{Either, Itertools};
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
@@ -122,10 +122,8 @@ impl Error for CacheError {
     }
 }
 
-lazy_static! {
-    static ref DOCUMENTATION_CACHE: Arc<RwLock<HashMap<Architecture, Arc<DocumentationMap>>>> =
-        Arc::new(RwLock::new(HashMap::new()));
-}
+static DOCUMENTATION_CACHE: Lazy<RwLock<HashMap<Architecture, Arc<DocumentationMap>>>> =
+    Lazy::new(|| RwLock::new(HashMap::new()));
 
 pub fn load_documentation(arch: &Architecture) -> Result<Arc<DocumentationMap>, Box<dyn Error>> {
     {

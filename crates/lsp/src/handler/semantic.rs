@@ -2,22 +2,20 @@ use std::iter;
 
 use lsp_types::{SemanticToken, SemanticTokenType};
 
-lazy_static! {
-    pub static ref TOKEN_TYPES: Vec<SemanticTokenType> = vec![
-        SemanticTokenType::KEYWORD,
-        SemanticTokenType::STRING,
-        SemanticTokenType::NUMBER,
-        SemanticTokenType::MACRO,
-        SemanticTokenType::COMMENT,
-        SemanticTokenType::new("register"),
-        SemanticTokenType::new("label"),
-        SemanticTokenType::new("metadata"),
-        SemanticTokenType::new("gp-register"),
-        SemanticTokenType::new("fp-register"),
-        SemanticTokenType::new("relocation"),
-        SemanticTokenType::new("constant"),
-    ];
-}
+pub static TOKEN_TYPES: &[SemanticTokenType] = &[
+    SemanticTokenType::KEYWORD,
+    SemanticTokenType::STRING,
+    SemanticTokenType::NUMBER,
+    SemanticTokenType::MACRO,
+    SemanticTokenType::COMMENT,
+    SemanticTokenType::new("register"),
+    SemanticTokenType::new("label"),
+    SemanticTokenType::new("metadata"),
+    SemanticTokenType::new("gp-register"),
+    SemanticTokenType::new("fp-register"),
+    SemanticTokenType::new("relocation"),
+    SemanticTokenType::new("constant"),
+];
 
 pub const OPCODE_INDEX: u32 = 0;
 pub const STRING_INDEX: u32 = 1;

@@ -8,7 +8,7 @@ use crate::types::{DocumentPosition, DocumentRange, LineNumber};
 use base::{Architecture, FileType};
 use byte_unit::Byte;
 use lsp_types::Url;
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 use parser::config::ParserConfig;
 use parser::{ParsedData, ParsedInclude};
 use rayon::prelude::*;
@@ -249,14 +249,16 @@ impl Parser {
     /// Attempt to determine the architecture that the assembly data is for.
     fn determine_architecture(filedata: &str, config: &LSPConfig) -> Architecture {
         use regex::Regex;
-        lazy_static! {
-            static ref ARCH_DETECTION: [Regex; 4] = [
+
+        static ARCH_DETECTION: Lazy<[Regex; 4]> = Lazy::new(|| {
+            [
                 Regex::new(r#"lsp-asm-architecture: (.*) ?"#).unwrap(),
                 Regex::new(r#"^\s*\.arch (.*)"#).unwrap(),
                 Regex::new(r#".*:[\t ]+file format elf64-(.*)"#).unwrap(),
                 Regex::new(r#".*:[\t ]+file format Mach-O (.*)"#).unwrap(),
-            ];
-        }
+            ]
+        });
+
         let arch = ARCH_DETECTION
             .par_iter()
             .filter_map(|regex| regex.captures(filedata))

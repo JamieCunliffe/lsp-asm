@@ -71,8 +71,8 @@ name = "base"
 version = "0.1.0"
 dependencies = [
  "bitflags",
- "lazy_static",
  "log",
+ "once_cell",
  "regex",
  "serde",
 ]
@@ -394,8 +394,8 @@ dependencies = [
  "directories",
  "either",
  "itertools",
- "lazy_static",
  "log",
+ "once_cell",
  "parser",
  "phf",
  "phf_macros",
@@ -974,7 +974,6 @@ dependencies = [
  "either",
  "fmt",
  "itertools",
- "lazy_static",
  "log",
  "lsp-server",
  "lsp-types",
