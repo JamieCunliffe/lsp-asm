@@ -15,12 +15,13 @@ use super::types::{DocumentChange, DocumentRangeMessage, FindReferencesMessage, 
 use super::LanguageServerProtocol;
 
 use lsp_server::ResponseError;
-use lsp_types::{CompletionList, DidChangeTextDocumentParams, SignatureHelp, Url};
+use lsp_types::{CompletionList, DidChangeTextDocumentParams, SignatureHelp, TextEdit, Url};
 
 pub struct LangServerHandler {
     actors: RwLock<HashMap<Url, RwLock<Box<dyn LanguageServerProtocol + Send + Sync>>>>,
     config: LSPConfig,
     commands: Option<Box<dyn Diagnostics + Send + Sync>>,
+    root: String,
 }
 
 impl LangServerHandler {
@@ -40,6 +41,7 @@ impl LangServerHandler {
             actors: RwLock::new(HashMap::new()),
             config,
             commands,
+            root,
         }
     }
 
@@ -249,6 +251,17 @@ impl LangServerHandler {
                 })
                 .collect_vec(),
         )
+    }
+
+    pub async fn format(&self, url: Url) -> Result<Option<Vec<TextEdit>>, ResponseError> {
+        self.actors
+            .read()
+            .await
+            .get(&url)
+            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+            .read()
+            .await
+            .format(&self.root)
     }
 
     pub async fn syntax_tree(&self, url: Url) -> Result<String, ResponseError> {

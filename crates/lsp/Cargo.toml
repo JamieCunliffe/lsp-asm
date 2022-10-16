@@ -14,6 +14,7 @@ syntax = { path = "../syntax" }
 parser = { path = "../parser" }
 documentation = { path = "../documentation" }
 arch = { path = "../arch" }
+fmt = { path = "../fmt" }
 log = "0.4.17"
 pretty_env_logger = "0.4.0"
 lazy_static = "1.4.0"
@@ -24,6 +25,7 @@ lsp-server = "0.6.0"
 lsp-types = { version = "0.93.0", features = ["proposed"] }
 serde_json = "1.0.81"
 serde = { version = "1.0.137", features = ["derive"] }
+toml = { version = "0.5.9", default-features = false }
 rowan = "0.15.5"
 itertools = "0.10.3"
 rayon = "1.5.3"
@@ -36,6 +38,7 @@ cpp_demangle = "0.3.5"
 phf = { version = "0.10.1", features = ["macros"] }
 phf_macros = { version = "0.10.0", features = ["unicase"] }
 unicase = "2.6.0"
+dissimilar = "1.0.4"
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 tikv-jemallocator = "0.5.0"

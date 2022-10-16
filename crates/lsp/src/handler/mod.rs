@@ -51,6 +51,11 @@ pub trait LanguageServerProtocol {
         position: &DocumentPosition,
     ) -> Result<Option<SignatureHelp>, ResponseError>;
 
+    fn format(
+        &self,
+        workspace_root: &str,
+    ) -> Result<Option<Vec<lsp_types::TextEdit>>, ResponseError>;
+
     fn syntax_tree(&self) -> Result<String, ResponseError>;
 
     fn analysis(&self, range: Option<DocumentRange>) -> Result<String, ResponseError>;

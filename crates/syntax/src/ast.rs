@@ -74,9 +74,7 @@ impl rowan::Language for AssemblyLanguage {
 }
 
 pub type SyntaxNode = rowan::SyntaxNode<AssemblyLanguage>;
-#[allow(unused)]
 pub type SyntaxToken = rowan::SyntaxToken<AssemblyLanguage>;
-#[allow(unused)]
 pub type SyntaxElement = rowan::NodeOrToken<SyntaxNode, SyntaxToken>;
 
 pub fn find_parent(token: &SyntaxToken, syntax_kind: SyntaxKind) -> Option<SyntaxNode> {

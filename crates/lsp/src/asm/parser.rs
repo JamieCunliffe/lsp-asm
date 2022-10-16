@@ -378,6 +378,7 @@ impl PositionInfo {
             .get(line as usize)
             .map(|s: &TextSize| u32::from(*s))
     }
+
     pub fn range_to_text_range(&self, range: &DocumentRange) -> Option<TextRange> {
         let start = self.point_for_position(&range.start)?;
         let end = self.point_for_position(&range.end)?;
@@ -386,7 +387,7 @@ impl PositionInfo {
     }
 
     /// Helper function to get the line and column for a text size
-    fn get_position_for_size(&self, ts: &TextSize) -> Option<DocumentPosition> {
+    pub fn get_position_for_size(&self, ts: &TextSize) -> Option<DocumentPosition> {
         let line = self.lines.partition_point(|l| l <= ts) - 1;
         let pos = self.lines.get(line)?;
 

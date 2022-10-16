@@ -5,9 +5,9 @@ use lsp_types::notification::{
     Cancel, DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, DidSaveTextDocument,
 };
 use lsp_types::request::{
-    CodeLensRequest, Completion, DocumentHighlightRequest, DocumentSymbolRequest, GotoDefinition,
-    HoverRequest, References, SemanticTokensFullRequest, SemanticTokensRangeRequest,
-    SignatureHelpRequest,
+    CodeLensRequest, Completion, DocumentHighlightRequest, DocumentSymbolRequest, Formatting,
+    GotoDefinition, HoverRequest, References, SemanticTokensFullRequest,
+    SemanticTokensRangeRequest, SignatureHelpRequest,
 };
 use lsp_types::{PublishDiagnosticsParams, Url};
 use serde_json::Value;
@@ -136,6 +136,10 @@ async fn process_message(
                             .signature_help(&data.text_document_position_params.into())
                             .await,
                     )
+                }
+                "textDocument/formatting" => {
+                    let (_, data) = get_message::<Formatting>(request).unwrap();
+                    make_result(handler.format(data.text_document.uri).await)
                 }
                 "asm/syntaxTree" => {
                     let (_, data) =

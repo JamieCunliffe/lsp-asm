@@ -1,4 +1,6 @@
 #![allow(deprecated)]
+use std::path::PathBuf;
+
 use super::ast::{AstNode, LabelNode, LocalLabelNode, RegisterToken};
 use super::llvm_mca::run_mca;
 use super::parser::{Parser, PositionInfo};
@@ -15,12 +17,13 @@ use arch::registers::registers_for_architecture;
 use base::register::RegisterKind;
 use documentation::access::access_type;
 use documentation::OperandAccessType;
+use fmt::FormatOptions;
 use itertools::*;
 use lsp_server::ResponseError;
 use lsp_types::{
     CodeLens, Command, CompletionList, DocumentHighlightKind, DocumentSymbol,
     DocumentSymbolResponse, HoverContents, Location, MarkupContent, Range, SemanticToken,
-    SemanticTokens, SemanticTokensResult, SignatureHelp, SymbolKind, Url,
+    SemanticTokens, SemanticTokensResult, SignatureHelp, SymbolKind, TextEdit, Url,
 };
 use rowan::TextRange;
 use syntax::ast::{self, find_kind_index, find_parent, SyntaxKind};
@@ -474,6 +477,44 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         Ok(format!("{:#?}", self.parser.tree()))
     }
 
+    fn format(&self, workspace_root: &str) -> Result<Option<Vec<TextEdit>>, ResponseError> {
+        let options = get_format_options(workspace_root);
+        let formatted = fmt::run(self.parser.tree(), &options);
+        let position = self.parser.position();
+
+        let diff = super::diff::diff(
+            &format!("{}", self.parser.tree()),
+            &format!("{}", formatted),
+        );
+
+        let ret = diff
+            .into_iter()
+            .map(|diff| {
+                let start = position
+                    .get_position_for_size(&(diff.start as u32).into())
+                    .ok_or_else(|| lsp_error_map(ErrorCode::InvalidPosition))?
+                    .into();
+
+                let end = if let Some(end) = diff.end {
+                    position
+                        .get_position_for_size(&(end as u32).into())
+                        .ok_or_else(|| lsp_error_map(ErrorCode::InvalidPosition))?
+                        .into()
+                } else {
+                    start
+                };
+
+                let range = Range::new(start, end);
+                Ok(TextEdit {
+                    range,
+                    new_text: diff.text,
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(Some(ret))
+    }
+
     fn analysis(&self, range: Option<DocumentRange>) -> Result<String, ResponseError> {
         let range = range
             .and_then(|r| self.parser.position().range_to_text_range(&r))
@@ -490,6 +531,16 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             &self.config.analysis,
         )
         .map_err(|e| lsp_error_map(ErrorCode::MCAFailed(e.to_string())))
+    }
+}
+
+fn get_format_options(workspace_root: &str) -> FormatOptions {
+    let mut path = PathBuf::from(workspace_root);
+    path.push(".asmfmt.toml");
+    if let Ok(data) = std::fs::read(path) {
+        toml::from_slice(&data).unwrap_or_default()
+    } else {
+        Default::default()
     }
 }
 

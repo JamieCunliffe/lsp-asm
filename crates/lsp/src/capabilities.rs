@@ -48,6 +48,7 @@ pub fn get_server_capabilities() -> ServerCapabilities {
                 label_details_support: Some(true),
             }),
         }),
+        document_formatting_provider: Some(OneOf::Left(true)),
         ..Default::default()
     }
 }
