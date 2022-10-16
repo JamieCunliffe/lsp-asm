@@ -325,7 +325,7 @@ fn access_type(asm: &str, desc: &str, vars: &HashMap<&str, Vec<&str>>) -> Operan
     } else {
         access
             .iter()
-            .find_map(|(x, a)| desc.as_str().contains(*x).then(|| a))
+            .find_map(|(x, a)| desc.as_str().contains(*x).then_some(a))
             .cloned()
             .unwrap_or(OperandAccessType::Unknown)
     }

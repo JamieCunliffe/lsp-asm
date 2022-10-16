@@ -100,7 +100,7 @@ impl Alias {
     ) -> impl Iterator<Item = &String> + 'a {
         self.alias_map.iter().filter_map(move |(k, v)| match v {
             Kind::Register(v) => {
-                (kind.contains(registers.get_kind(v)) && registers.get_size(v) == size).then(|| k)
+                (kind.contains(registers.get_kind(v)) && registers.get_size(v) == size).then_some(k)
             }
             _ => None,
         })

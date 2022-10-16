@@ -217,7 +217,7 @@ pub(crate) fn make_signature_help(table: &[Vec<String>]) -> SignatureHelp {
         sig.get(0)
             .map(|x| x == "*")
             .unwrap_or(false)
-            .then(|| idx as u32)
+            .then_some(idx as u32)
     });
 
     let active_parameter = active

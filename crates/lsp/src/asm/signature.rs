@@ -46,7 +46,7 @@ pub(super) fn get_signature_help(location: &TextSize, parser: &Parser) -> Option
                     parser.alias(),
                     *parser.architecture(),
                 )
-                .then(|| idx)
+                .then_some(idx)
             });
 
     let signatures = instructions

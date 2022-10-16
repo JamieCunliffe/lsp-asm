@@ -117,5 +117,5 @@ pub(crate) fn label_definition_comment(definition: (SyntaxToken, &Parser)) -> Op
         .trim()
         .to_string();
 
-    (!comment.is_empty()).then(|| comment)
+    (!comment.is_empty()).then_some(comment)
 }

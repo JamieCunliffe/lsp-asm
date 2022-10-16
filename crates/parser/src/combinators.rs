@@ -612,9 +612,11 @@ fn handle_arm_relocation(expr: Span) -> NomResultElement {
 fn handle_at_relocation(expr: Span) -> NomResultElement {
     let config = expr.extra().config;
     let (remaining, token) = take_while_skip_first(|a: char| !is_special_char(a, config))(expr)?;
-    let kind = (remaining.last_kind() == SyntaxKind::TOKEN)
-        .then(|| SyntaxKind::RELOCATION)
-        .unwrap_or(SyntaxKind::TOKEN);
+    let kind = if remaining.last_kind() == SyntaxKind::TOKEN {
+        SyntaxKind::RELOCATION
+    } else {
+        SyntaxKind::TOKEN
+    };
 
     remaining.token(kind, token.as_str());
     Ok((remaining, ()))
