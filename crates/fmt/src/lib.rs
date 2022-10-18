@@ -1,4 +1,5 @@
 mod bracket_space;
+mod comma_space;
 mod indent;
 #[cfg(test)]
 mod test_util;
@@ -34,6 +35,7 @@ pub struct FormatOptions {
     #[serde(deserialize_with = "null_as_default")]
     #[serde(default)]
     pub tab_kind: TabKind,
+
     #[serde(deserialize_with = "null_as_default")]
     #[serde(default)]
     pub space_after_bracket: bool,
@@ -43,6 +45,15 @@ pub struct FormatOptions {
     #[serde(deserialize_with = "null_as_default")]
     #[serde(default)]
     pub space_after_square_bracket: bool,
+
+    #[serde(deserialize_with = "null_as_default")]
+    #[serde(default)]
+    pub space_after_comma: bool,
+
+    #[serde(deserialize_with = "null_as_default")]
+    #[serde(default)]
+    pub space_before_comma: bool,
+
     #[serde(deserialize_with = "null_as_default")]
     #[serde(default)]
     pub disabled_passes: DisabledPasses,
@@ -55,6 +66,8 @@ impl Default for FormatOptions {
             space_after_curly_bracket: false,
             space_after_bracket: false,
             space_after_square_bracket: false,
+            space_before_comma: false,
+            space_after_comma: true,
             tab_kind: Default::default(),
             disabled_passes: Default::default(),
         }
@@ -66,6 +79,11 @@ pub struct DisabledPasses {
     #[serde(deserialize_with = "null_as_default")]
     #[serde(default)]
     bracket_space: bool,
+
+    #[serde(deserialize_with = "null_as_default")]
+    #[serde(default)]
+    comma_space: bool,
+
     #[serde(deserialize_with = "null_as_default")]
     #[serde(default)]
     indent: bool,
@@ -83,7 +101,11 @@ type Formatter = fn(root: SyntaxNode, options: &FormatOptions) -> SyntaxNode;
 type EnabledFn = fn(&DisabledPasses) -> bool;
 
 /// All the passes. Sorted in the order they should be performed.
-const ALL_PASSES: &[(EnabledFn, Formatter)] = &[add_pass!(bracket_space), add_pass!(indent)];
+const ALL_PASSES: &[(EnabledFn, Formatter)] = &[
+    add_pass!(bracket_space),
+    add_pass!(comma_space),
+    add_pass!(indent),
+];
 
 #[cfg(test)]
 mod tests {
