@@ -11,8 +11,8 @@ use documentation::{
     CompletionValue, Instruction, InstructionTemplate, OperandAccessType, OperandInfo,
 };
 
-const A64_ISA: &str = "https://developer.arm.com/-/media/developer/products/architecture/armv8-a-architecture/2021-06/A64_ISA_xml_v87A-2021-06.tar.gz";
-const A64_ISA_DIR: &str = "ISA_A64_xml_v87A-2021-06";
+const A64_ISA: &str = "https://developer.arm.com/-/media/developer/products/architecture/armv9-a-architecture/2022-09/ISA_A64_xml_A_profile-2022-09.tar.gz";
+const A64_ISA_DIR: &str = "ISA_A64_xml_A_profile-2022-09";
 
 fn process_isa_ref(data: &str, file: &str) -> Vec<Instruction> {
     let doc = roxmltree::Document::parse(data).unwrap();
