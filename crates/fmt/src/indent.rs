@@ -1,13 +1,10 @@
 use syntax::ast::{SyntaxKind, SyntaxNode};
 use syntax::edit::{create_token, perform_replacements, Position};
 
-use crate::{FormatOptions, TabKind};
+use crate::FormatOptions;
 
 pub(crate) fn perform_pass(root: SyntaxNode, options: &FormatOptions) -> SyntaxNode {
-    let indentation = match options.tab_kind {
-        TabKind::Space => " ".repeat(options.indentation_spaces as usize),
-        TabKind::Tab => String::from("\t"),
-    };
+    let indentation = options.make_indentation();
 
     let replacements = root
         .descendants_with_tokens()
@@ -49,6 +46,8 @@ pub(crate) fn perform_pass(root: SyntaxNode, options: &FormatOptions) -> SyntaxN
 
 #[cfg(test)]
 mod tests {
+    use crate::TabKind;
+
     use super::*;
 
     #[test]

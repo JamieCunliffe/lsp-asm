@@ -1,6 +1,7 @@
 mod bracket_space;
 mod comma_space;
 mod indent;
+mod label_newline;
 #[cfg(test)]
 mod test_util;
 
@@ -56,6 +57,10 @@ pub struct FormatOptions {
 
     #[serde(deserialize_with = "null_as_default")]
     #[serde(default)]
+    pub newline_after_label: bool,
+
+    #[serde(deserialize_with = "null_as_default")]
+    #[serde(default)]
     pub disabled_passes: DisabledPasses,
 }
 
@@ -68,8 +73,18 @@ impl Default for FormatOptions {
             space_after_square_bracket: false,
             space_before_comma: false,
             space_after_comma: true,
+            newline_after_label: true,
             tab_kind: Default::default(),
             disabled_passes: Default::default(),
+        }
+    }
+}
+
+impl FormatOptions {
+    pub fn make_indentation(&self) -> String {
+        match self.tab_kind {
+            TabKind::Space => " ".repeat(self.indentation_spaces as usize),
+            TabKind::Tab => String::from("\t"),
         }
     }
 }
@@ -83,6 +98,10 @@ pub struct DisabledPasses {
     #[serde(deserialize_with = "null_as_default")]
     #[serde(default)]
     comma_space: bool,
+
+    #[serde(deserialize_with = "null_as_default")]
+    #[serde(default)]
+    label_newline: bool,
 
     #[serde(deserialize_with = "null_as_default")]
     #[serde(default)]
@@ -104,6 +123,7 @@ type EnabledFn = fn(&DisabledPasses) -> bool;
 const ALL_PASSES: &[(EnabledFn, Formatter)] = &[
     add_pass!(bracket_space),
     add_pass!(comma_space),
+    add_pass!(label_newline),
     add_pass!(indent),
 ];
 
