@@ -5,7 +5,6 @@ mod label_newline;
 #[cfg(test)]
 mod test_util;
 
-use base::null_as_default;
 use serde::Deserialize;
 use syntax::ast::SyntaxNode;
 
@@ -29,38 +28,18 @@ pub enum TabKind {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(default)]
 pub struct FormatOptions {
-    #[serde(deserialize_with = "null_as_default")]
-    #[serde(default)]
     pub indentation_spaces: u32,
-    #[serde(deserialize_with = "null_as_default")]
-    #[serde(default)]
     pub tab_kind: TabKind,
 
-    #[serde(deserialize_with = "null_as_default")]
-    #[serde(default)]
     pub space_after_bracket: bool,
-    #[serde(deserialize_with = "null_as_default")]
-    #[serde(default)]
     pub space_after_curly_bracket: bool,
-    #[serde(deserialize_with = "null_as_default")]
-    #[serde(default)]
     pub space_after_square_bracket: bool,
-
-    #[serde(deserialize_with = "null_as_default")]
-    #[serde(default)]
     pub space_after_comma: bool,
-
-    #[serde(deserialize_with = "null_as_default")]
-    #[serde(default)]
     pub space_before_comma: bool,
-
-    #[serde(deserialize_with = "null_as_default")]
-    #[serde(default)]
     pub newline_after_label: bool,
 
-    #[serde(deserialize_with = "null_as_default")]
-    #[serde(default)]
     pub disabled_passes: DisabledPasses,
 }
 
@@ -90,21 +69,11 @@ impl FormatOptions {
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default)]
 pub struct DisabledPasses {
-    #[serde(deserialize_with = "null_as_default")]
-    #[serde(default)]
     bracket_space: bool,
-
-    #[serde(deserialize_with = "null_as_default")]
-    #[serde(default)]
     comma_space: bool,
-
-    #[serde(deserialize_with = "null_as_default")]
-    #[serde(default)]
     label_newline: bool,
-
-    #[serde(deserialize_with = "null_as_default")]
-    #[serde(default)]
     indent: bool,
 }
 
