@@ -1,4 +1,5 @@
 use arch::register_names::AARCH64_REGISTERS;
+use base::FileType;
 use parser::config::ParserConfig;
 use parser::{ParsedData, ParsedInclude};
 use syntax::alias::Alias;
@@ -6,11 +7,11 @@ use syntax::ast::SyntaxNode;
 
 use crate::Instruction;
 
-pub(super) fn parse_asm(data: &str) -> (SyntaxNode, Alias) {
+pub(super) fn parse_asm(data: &str, file_type: FileType) -> (SyntaxNode, Alias) {
     let config = ParserConfig {
         comment_start: String::from("//"),
         architecture: base::Architecture::AArch64,
-        file_type: base::FileType::Assembly,
+        file_type,
         registers: Some(&AARCH64_REGISTERS),
     };
     let load_file = |_current_config: &ParserConfig,
@@ -179,5 +180,29 @@ pub(super) fn make_instruction() -> Instruction {
   ]
 }
 "#;
+    serde_json::from_str(data).unwrap()
+}
+
+pub(super) fn make_label_instruction() -> Instruction {
+    let data = r#"{
+      "opcode": "BL",
+      "header": "BL",
+      "architecture": null,
+      "description": "bl",
+      "asm_template": [
+        {
+          "asm": [
+            "BL  <label>"
+          ],
+          "display_asm": "BL <label>",
+          "items": [
+            {
+              "name": "<label>",
+              "description": "label"
+            }
+          ]
+        }
+      ]
+    }"#;
     serde_json::from_str(data).unwrap()
 }

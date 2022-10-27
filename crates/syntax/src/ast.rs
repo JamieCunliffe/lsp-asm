@@ -81,6 +81,10 @@ pub fn find_parent(token: &SyntaxToken, syntax_kind: SyntaxKind) -> Option<Synta
     iter::successors(token.parent(), |parent| parent.parent()).find(|e| e.kind() == syntax_kind)
 }
 
+pub fn find_parent_elem(token: &SyntaxElement, syntax_kind: SyntaxKind) -> Option<SyntaxNode> {
+    iter::successors(token.parent(), |parent| parent.parent()).find(|e| e.kind() == syntax_kind)
+}
+
 pub fn find_kind_index(
     node: &SyntaxNode,
     index: i32,

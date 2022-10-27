@@ -10,7 +10,7 @@ use syntax::ast::{find_kind_index, SyntaxKind};
 #[test]
 fn test_access_types_simple() {
     let src = "addvl	sp, sp, #-2";
-    let (parsed, alias) = util::parse_asm(src);
+    let (parsed, alias) = util::parse_asm(src, base::FileType::Assembly);
 
     let mut map = HashMap::new();
     map.insert(
@@ -53,7 +53,7 @@ fn test_access_types_simple() {
 fn test_access_types_with_alias() {
     let src = "test .req x1
 addvl	test, sp, #-2";
-    let (parsed, alias) = util::parse_asm(src);
+    let (parsed, alias) = util::parse_asm(src, base::FileType::Assembly);
     let parsed = find_kind_index(&parsed, 0, SyntaxKind::INSTRUCTION)
         .unwrap()
         .into_node()

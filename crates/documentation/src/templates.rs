@@ -4,7 +4,7 @@ use itertools::Itertools;
 use parser::config::ParserConfig;
 use parser::ParsedData;
 use syntax::alias::Alias;
-use syntax::ast::{SyntaxElement, SyntaxKind, SyntaxNode};
+use syntax::ast::{find_parent_elem, SyntaxElement, SyntaxKind, SyntaxNode};
 
 use crate::registers::DOC_REGISTERS;
 use crate::{Instruction, InstructionTemplate};
@@ -107,7 +107,7 @@ fn check_template(
                     | SyntaxKind::METADATA
                     | SyntaxKind::COMMENT
                     | SyntaxKind::RELOCATION
-            )
+            ) && find_parent_elem(c, SyntaxKind::METADATA).is_none()
         })
         .collect_vec();
 
