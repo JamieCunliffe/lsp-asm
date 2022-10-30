@@ -7,11 +7,13 @@ use std::time::{Duration, Instant};
 use lsp_asm::config::LSPConfig;
 use lsp_asm::handler::ext::{FileStatsParams, FileStatsResult};
 use lsp_server::{Connection, Message, Notification, Request};
-use lsp_types::notification::{DidOpenTextDocument, Exit, Initialized, PublishDiagnostics};
+use lsp_types::notification::{
+    DidCloseTextDocument, DidOpenTextDocument, Exit, Initialized, PublishDiagnostics,
+};
 use lsp_types::request::{Initialize, Shutdown};
 use lsp_types::{
-    DidOpenTextDocumentParams, InitializeParams, InitializedParams, PublishDiagnosticsParams,
-    TextDocumentItem, Url,
+    DidCloseTextDocumentParams, DidOpenTextDocumentParams, InitializeParams, InitializedParams,
+    PublishDiagnosticsParams, TextDocumentIdentifier, TextDocumentItem, Url,
 };
 use parking_lot::RwLock;
 use serde_json::Value;
@@ -122,6 +124,16 @@ impl LSPServer {
                 return;
             }
         }
+    }
+
+    pub fn close_file(&self, uri: Url) {
+        assert!(self.init);
+
+        let close_params = DidCloseTextDocumentParams {
+            text_document: TextDocumentIdentifier { uri },
+        };
+
+        self.send_notification::<DidCloseTextDocument>(close_params);
     }
 
     pub fn send_shutdown(&self) {

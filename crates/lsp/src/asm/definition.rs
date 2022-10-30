@@ -1,36 +1,28 @@
+use std::sync::Arc;
+
+use itertools::Itertools;
 use lsp_types::{Location, Url};
 use syntax::ast::{find_kind_index, find_parent, SyntaxKind, SyntaxNode, SyntaxToken};
 use syntax::utils::token_is_local_label;
 
 use crate::file_util;
+use crate::handler::context::Context;
 use crate::handler::error::{lsp_error_map, ErrorCode};
 
 use super::ast::LabelToken;
 use super::parser::Parser;
 
-pub(super) fn get_definition_token<'p>(
+pub(super) fn get_definition_token<'p, F, I>(
+    context: Arc<Context>,
     parser: &'p Parser,
     token: &'p SyntaxToken,
-) -> Result<impl Iterator<Item = (SyntaxToken, &'p Parser)> + 'p, lsp_server::ResponseError> {
+    map: F,
+) -> Result<Vec<I>, lsp_server::ResponseError>
+where
+    F: Fn(&Parser, &SyntaxToken) -> Option<I>,
+{
     let text = token.text();
-
-    let node: Box<dyn Iterator<Item = (SyntaxNode, &Parser)>> = if token_is_local_label(token) {
-        Box::new(std::iter::once((
-            find_parent(token, SyntaxKind::LABEL)
-                .ok_or_else(|| lsp_error_map(ErrorCode::MissingParentNode))?,
-            parser,
-        )))
-    } else {
-        Box::new(
-            std::iter::once((parser.tree(), parser)).chain(
-                parser
-                    .included_parsers()
-                    .map(|parser| (parser.tree(), parser)),
-            ),
-        )
-    };
-
-    Ok(node.flat_map(move |(node, parser)| {
+    let handle_node = |node: SyntaxNode, parser: &Parser| {
         node.descendants_with_tokens()
             .filter_map(|d| d.into_token())
             .filter(|token| token.kind() == SyntaxKind::LABEL)
@@ -40,22 +32,32 @@ pub(super) fn get_definition_token<'p>(
                     .map(|name| name.name() == text)
                     .unwrap_or(false)
             })
-            .map(move |t| (t, parser))
-    }))
+            .filter_map(|t| map(parser, &t))
+            .collect_vec()
+    };
+
+    Ok(if token_is_local_label(token) {
+        let node = find_parent(token, SyntaxKind::LABEL)
+            .ok_or_else(|| lsp_error_map(ErrorCode::MissingParentNode))?;
+        handle_node(node, parser)
+    } else {
+        context.related_parsers(true, parser.uri().clone(), |parser| {
+            handle_node(parser.tree(), parser).into_iter()
+        })
+    })
 }
 
 pub(super) fn goto_definition_label(
+    context: Arc<Context>,
     parser: &Parser,
     token: &SyntaxToken,
 ) -> Result<Vec<Location>, lsp_server::ResponseError> {
-    Ok(get_definition_token(parser, token)?
-        .filter_map(|(token, parser)| {
-            Some(lsp_types::Location::new(
-                parser.uri().clone(),
-                parser.position().range_for_token(&token)?.into(),
-            ))
-        })
-        .collect())
+    get_definition_token(context, parser, token, |parser, token| {
+        Some(lsp_types::Location::new(
+            parser.uri().clone(),
+            parser.position().range_for_token(token)?.into(),
+        ))
+    })
 }
 
 pub(super) fn goto_definition_loc(
@@ -101,57 +103,58 @@ pub(super) fn goto_definition_label_include(
 }
 
 pub(crate) fn goto_definition_const(
+    context: Arc<Context>,
     token: &SyntaxToken,
     parser: &Parser,
 ) -> Result<Vec<Location>, lsp_server::ResponseError> {
     let name = token.text().trim_start_matches('#');
+    let handle_node = |parser: &Parser| {
+        parser
+            .tree()
+            .descendants()
+            .filter(|d| matches!(d.kind(), SyntaxKind::CONST_DEF))
+            .filter_map(|d| find_kind_index(&d, 0, SyntaxKind::NAME))
+            .filter_map(|t| t.into_token())
+            .filter(|t| t.text() == name)
+            .filter_map(|token| {
+                Some(lsp_types::Location::new(
+                    parser.uri().clone(),
+                    parser.position().range_for_token(&token)?.into(),
+                ))
+            })
+            .collect_vec()
+            .into_iter()
+    };
 
-    let def = std::iter::once(parser)
-        .chain(parser.included_parsers())
-        .flat_map(|parser| {
-            parser
-                .tree()
-                .descendants()
-                .filter(|d| matches!(d.kind(), SyntaxKind::CONST_DEF))
-                .filter_map(|d| find_kind_index(&d, 0, SyntaxKind::NAME))
-                .filter_map(|t| t.into_token())
-                .filter(|t| t.text() == name)
-                .filter_map(|token| {
-                    Some(lsp_types::Location::new(
-                        parser.uri().clone(),
-                        parser.position().range_for_token(&token)?.into(),
-                    ))
-                })
-        })
-        .collect();
+    let def = context.related_parsers(true, parser.uri().clone(), handle_node);
 
     Ok(def)
 }
 
 pub(crate) fn goto_definition_reg_alias(
+    context: Arc<Context>,
     token: &SyntaxToken,
     parser: &Parser,
 ) -> Result<Vec<Location>, lsp_server::ResponseError> {
     let name = token.text();
-
-    let def = std::iter::once(parser)
-        .chain(parser.included_parsers())
-        .flat_map(|parser| {
-            parser
-                .tree()
-                .descendants()
-                .filter(|d| matches!(d.kind(), SyntaxKind::ALIAS))
-                .filter_map(|d| find_kind_index(&d, 0, SyntaxKind::REGISTER_ALIAS))
-                .filter_map(|t| t.into_token())
-                .filter(|t| t.text() == name)
-                .filter_map(|token| {
-                    Some(lsp_types::Location::new(
-                        parser.uri().clone(),
-                        parser.position().range_for_token(&token)?.into(),
-                    ))
-                })
-        })
-        .collect();
+    let handle_node = |parser: &Parser| {
+        parser
+            .tree()
+            .descendants()
+            .filter(|d| matches!(d.kind(), SyntaxKind::ALIAS))
+            .filter_map(|d| find_kind_index(&d, 0, SyntaxKind::REGISTER_ALIAS))
+            .filter_map(|t| t.into_token())
+            .filter(|t| t.text() == name)
+            .filter_map(|token| {
+                Some(lsp_types::Location::new(
+                    parser.uri().clone(),
+                    parser.position().range_for_token(&token)?.into(),
+                ))
+            })
+            .collect_vec()
+            .into_iter()
+    };
+    let def = context.related_parsers(true, parser.uri().clone(), handle_node);
 
     Ok(def)
 }

@@ -49,6 +49,7 @@ pub fn lsp_loop(
     let context = Arc::new(Context::new(params, root));
     let thread_pool = ThreadPoolBuilder::new()
         .thread_name(|id| format!("lsp-asm-worker-{id}"))
+        .panic_handler(|e| error!("Panic: {:#?}", e))
         .build()?;
 
     for msg in &connection.receiver {

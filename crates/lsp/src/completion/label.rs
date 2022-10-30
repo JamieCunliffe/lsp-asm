@@ -9,7 +9,7 @@ pub(super) fn complete_label(context: &CompletionContext) -> Vec<CompletionItem>
     let token = |t: SyntaxToken| {
         (
             t.text().trim_end_matches(':').to_string(),
-            crate::asm::hovers::label_definition_comment((t, context.parser)),
+            crate::asm::hovers::label_definition_comment(context.parser, &t),
         )
     };
     let mut completions = find_parent(&context.token, SyntaxKind::LABEL)

@@ -1,3 +1,5 @@
+use crate::handler::context::Context;
+
 use super::ast::{LabelToken, NumericToken};
 use super::definition::get_definition_token;
 use super::parser::Parser;
@@ -6,6 +8,7 @@ use base::Architecture;
 use itertools::Itertools;
 use rowan::NodeOrToken;
 use std::iter;
+use std::sync::Arc;
 use syntax::alias::Alias;
 use syntax::ast::{self, SyntaxKind, SyntaxToken};
 
@@ -82,17 +85,21 @@ pub fn get_constant_hover(token: &SyntaxToken, alias: &Alias) -> Option<Vec<Stri
     )])
 }
 
-pub fn get_token_hover(parser: &Parser, token: SyntaxToken) -> Option<Vec<String>> {
-    let definitions = get_definition_token(parser, &token).ok()?;
-    let doc_strings = definitions
-        .filter_map(label_definition_comment)
-        .collect_vec();
+pub fn get_token_hover(
+    context: Arc<Context>,
+    parser: &Parser,
+    token: SyntaxToken,
+) -> Option<Vec<String>> {
+    let doc_strings =
+        get_definition_token(context, parser, &token, label_definition_comment).ok()?;
 
     Some(doc_strings)
 }
 
-pub(crate) fn label_definition_comment(definition: (SyntaxToken, &Parser)) -> Option<String> {
-    let (definition, parser) = definition;
+pub(crate) fn label_definition_comment(
+    parser: &Parser,
+    definition: &SyntaxToken,
+) -> Option<String> {
     let first = match definition.parent()?.prev_sibling_or_token() {
         Some(NodeOrToken::Node(n)) => n.last_token().map(NodeOrToken::Token),
         x => x,

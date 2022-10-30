@@ -31,7 +31,6 @@ pub fn open_file(
     };
 
     context.actors.write().insert(url, RwLock::new(actor));
-
     Ok(())
 }
 
@@ -66,10 +65,12 @@ pub fn update_file(
 }
 
 pub fn close_file(context: Arc<Context>, url: Url) -> Result<(), ResponseError> {
-    if let Entry::Occupied(entry) = context.actors.write().entry(url) {
-        entry.remove_entry();
+    // Only close the file if nothing else has a reference to it.
+    if !context.file_graph.read().has_references(url.as_ref()) {
+        if let Entry::Occupied(entry) = context.actors.write().entry(url) {
+            entry.remove_entry();
+        }
     }
-
     Ok(())
 }
 

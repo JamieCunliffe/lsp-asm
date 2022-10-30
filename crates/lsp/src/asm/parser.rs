@@ -25,7 +25,6 @@ pub struct Parser {
     line_index: PositionInfo,
     debug_map: OnceCell<DebugMap>,
     alias: Alias,
-    included_files: Vec<Parser>,
 }
 
 /// Helper enum for determining if tokens should be considered equal
@@ -43,7 +42,7 @@ enum SemanticEq<'a> {
 impl Parser {
     /// Create a parser from the given data.
     /// * data: The assembly listing to parse
-    pub fn from(uri: Url, data: &str, config: &LSPConfig) -> Self {
+    pub fn from(uri: Url, data: &str, config: &LSPConfig) -> (Self, Vec<ParsedInclude>) {
         let filesize = Byte::from_bytes(data.len() as _);
         let mut config = Self::config_from_arch(&Self::determine_architecture(data, config));
         config.file_type = FileType::from_contents(data);
@@ -55,23 +54,22 @@ impl Parser {
             ..
         } = parser::parse_asm(data, &config, Some(uri.as_str()), Self::handle_include);
 
-        let included_files = included_files.into_iter().map(From::from).collect();
-
-        Self {
-            id: uri,
-            line_index: PositionInfo::new(data),
-            filesize,
-            root,
-            config,
-            debug_map: OnceCell::new(),
-            alias,
+        (
+            Self {
+                id: uri,
+                line_index: PositionInfo::new(data),
+                filesize,
+                root,
+                config,
+                debug_map: OnceCell::new(),
+                alias,
+            },
             included_files,
-        }
+        )
     }
 
     fn handle_include(config: &ParserConfig, from: &str, file: &str) -> Option<ParsedInclude> {
         let included_file = make_file_relative(from, file)?;
-
         let file_uri = Url::from_file_path(&included_file).ok()?;
         let data = read_to_string(included_file).ok()?;
 
@@ -80,7 +78,7 @@ impl Parser {
             alias,
             included_files,
             ..
-        } = parser::parse_asm(&data, config, None, Self::handle_include);
+        } = parser::parse_asm(&data, config, Some(from), Self::handle_include);
 
         Some(ParsedInclude {
             alias,
@@ -117,10 +115,6 @@ impl Parser {
 
     pub fn uri(&self) -> &Url {
         &self.id
-    }
-
-    pub fn included_parsers(&self) -> impl Iterator<Item = &Parser> {
-        self.included_files.iter()
     }
 
     pub(super) fn reconstruct_file(&self) -> String {
@@ -296,25 +290,26 @@ impl Parser {
 
     #[cfg(test)]
     pub fn in_memory(data: &str, config: &LSPConfig) -> Self {
-        Self::from(Url::parse("memory://ignore").unwrap(), data, config)
+        let (parser, _) = Self::from(Url::parse("memory://ignore").unwrap(), data, config);
+        parser
     }
 }
 
-impl From<ParsedInclude> for Parser {
-    fn from(data: ParsedInclude) -> Self {
-        let filesize = Byte::from_bytes(data.data.len() as _);
+pub fn split_parsed_include(include: ParsedInclude) -> (Parser, Vec<ParsedInclude>) {
+    let filesize = Byte::from_bytes(include.data.len() as _);
 
-        Self {
-            id: Url::parse(&data.id).unwrap(),
-            line_index: PositionInfo::new(&data.data),
+    (
+        Parser {
+            id: Url::parse(&include.id).unwrap(),
+            line_index: PositionInfo::new(&include.data),
             filesize,
-            root: data.root,
+            root: include.root,
             config: Default::default(),
             debug_map: OnceCell::new(),
-            alias: data.alias,
-            included_files: Default::default(),
-        }
-    }
+            alias: include.alias,
+        },
+        include.included_files,
+    )
 }
 
 /// Provides a method for converting `TextSize` data into document line and

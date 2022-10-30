@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use super::ast::{AstNode, LabelNode, LocalLabelNode, RegisterToken};
 use super::llvm_mca::run_mca;
-use super::parser::{Parser, PositionInfo};
+use super::parser::{split_parsed_include, Parser, PositionInfo};
 use super::{definition, references};
 use crate::asm::{hovers, signature};
 use crate::completion;
@@ -25,6 +25,8 @@ use lsp_types::{
     DocumentSymbolResponse, HoverContents, Location, MarkupContent, Range, SemanticToken,
     SemanticTokens, SemanticTokensResult, SignatureHelp, SymbolKind, TextEdit, Url,
 };
+use parking_lot::RwLock;
+use parser::ParsedInclude;
 use rowan::TextRange;
 use syntax::ast::{self, find_kind_index, find_parent, SyntaxKind};
 use syntax::utils::token_is_local_label;
@@ -37,7 +39,10 @@ pub struct AssemblyLanguageServerProtocol {
 
 impl AssemblyLanguageServerProtocol {
     pub fn new(context: Arc<Context>, data: &str, uri: Url, version: u32) -> Self {
-        let parser = Parser::from(uri.clone(), data, context.config());
+        let (parser, includes) = Parser::from(uri.clone(), data, context.config());
+
+        handle_includes(includes, context, &uri);
+
         Self {
             parser,
             uri,
@@ -64,7 +69,12 @@ impl AssemblyLanguageServerProtocol {
             self.apply_change(&mut contents, change);
         }
         self.version = version;
-        self.parser = Parser::from(self.uri.clone(), contents.as_str(), context.config());
+        let (parser, includes) =
+            Parser::from(self.uri.clone(), contents.as_str(), context.config());
+
+        handle_includes(includes, context, &self.uri);
+
+        self.parser = parser;
         true
     }
 
@@ -78,7 +88,7 @@ impl AssemblyLanguageServerProtocol {
 
     pub fn goto_definition(
         &self,
-        _context: Arc<Context>,
+        context: Arc<Context>,
         position: DocumentPosition,
     ) -> Result<lsp_types::GotoDefinitionResponse, lsp_server::ResponseError> {
         let token = self
@@ -94,16 +104,18 @@ impl AssemblyLanguageServerProtocol {
         };
 
         let res = match token.kind() {
-            SyntaxKind::TOKEN => definition::goto_definition_label(&self.parser, &token)?,
+            SyntaxKind::TOKEN => definition::goto_definition_label(context, &self.parser, &token)?,
             SyntaxKind::MNEMONIC if token.text() == ".loc" => {
                 definition::goto_definition_loc(&self.parser, &token)?
             }
             SyntaxKind::MNEMONIC if syntax::utils::is_token_include(token.text()) => {
                 definition::goto_definition_label_include(&token, &self.uri)?
             }
-            SyntaxKind::CONSTANT => definition::goto_definition_const(&token, &self.parser)?,
+            SyntaxKind::CONSTANT => {
+                definition::goto_definition_const(context, &token, &self.parser)?
+            }
             SyntaxKind::REGISTER_ALIAS => {
-                definition::goto_definition_reg_alias(&token, &self.parser)?
+                definition::goto_definition_reg_alias(context, &token, &self.parser)?
             }
             _ if get_mnemonic()
                 .map(|token| syntax::utils::is_token_include(token.text()))
@@ -119,7 +131,7 @@ impl AssemblyLanguageServerProtocol {
 
     pub fn find_references(
         &self,
-        _context: Arc<Context>,
+        context: Arc<Context>,
         position: DocumentPosition,
         include_decl: bool,
     ) -> Result<Vec<Location>, lsp_server::ResponseError> {
@@ -133,20 +145,28 @@ impl AssemblyLanguageServerProtocol {
         let included_files = if token_is_local_label(&token) {
             None
         } else {
-            Some(self.parser.included_parsers().flat_map(|parser| {
+            let handle_related = |parser: &Parser| {
                 let id = parser.uri();
                 let range = parser.tree().text_range();
                 let position = parser.position();
-                references::find_references(parser, &token, range, include_decl).filter_map(
-                    move |token| {
+
+                references::find_references(parser, &token, range, include_decl)
+                    .filter_map(move |token| {
                         Some(lsp_types::Location::new(
                             id.clone(),
                             position.range_for_token(&token)?.into(),
                         ))
-                    },
-                )
-            }))
+                    })
+                    .collect_vec()
+            };
+
+            let related = context.related_parsers(false, self.uri.clone(), |parser| {
+                handle_related(parser).into_iter()
+            });
+
+            Some(related)
         };
+
         Ok(references
             .filter_map(move |token| {
                 Some(lsp_types::Location::new(
@@ -160,7 +180,7 @@ impl AssemblyLanguageServerProtocol {
 
     pub fn hover(
         &self,
-        _context: Arc<Context>,
+        context: Arc<Context>,
         position: DocumentPosition,
     ) -> Result<Option<lsp_types::Hover>, lsp_server::ResponseError> {
         let token = self
@@ -169,7 +189,7 @@ impl AssemblyLanguageServerProtocol {
             .ok_or_else(|| lsp_error_map(ErrorCode::TokenNotFound))?;
 
         let hover = match token.kind() {
-            SyntaxKind::TOKEN => hovers::get_token_hover(&self.parser, token),
+            SyntaxKind::TOKEN => hovers::get_token_hover(context, &self.parser, token),
             SyntaxKind::NUMBER => hovers::get_numeric_hover(
                 &self
                     .parser
@@ -598,6 +618,28 @@ impl AssemblyLanguageServerProtocol {
     }
 }
 
+fn handle_includes(includes: Vec<ParsedInclude>, context: Arc<Context>, uri: &Url) {
+    for include in includes {
+        let (parser, sub_includes) = split_parsed_include(include);
+
+        let include_uri = parser.uri().clone();
+        handle_includes(sub_includes, context.clone(), &include_uri);
+
+        context.add_include(uri.clone().to_string(), include_uri.to_string());
+        context
+            .actors
+            .write()
+            .entry(include_uri.clone())
+            .or_insert_with(|| {
+                RwLock::new(AssemblyLanguageServerProtocol {
+                    parser,
+                    uri: include_uri,
+                    version: 0,
+                })
+            });
+    }
+}
+
 fn get_format_options(workspace_root: &str) -> FormatOptions {
     let mut path = PathBuf::from(workspace_root);
     path.push(".asmfmt.toml");
@@ -660,6 +702,23 @@ mod tests {
 
     use super::*;
 
+    fn setup_actor(ctx: Arc<Context>, actor: AssemblyLanguageServerProtocol) {
+        let uri = actor.uri.clone();
+        ctx.actors.write().insert(uri, RwLock::new(actor));
+    }
+
+    macro_rules! get_response {
+        ($ctx:ident, $method:ident, $($args:expr),*) => {
+            $ctx.actors
+                .read()
+                .get(&Url::parse("file://temp").unwrap())
+                .unwrap()
+                .read()
+                .$method($ctx.clone(), $($args,)*)
+                .unwrap()
+        };
+    }
+
     #[test]
     fn test_goto_definition_with_label() {
         let ctx: Arc<Context> = Default::default();
@@ -672,8 +731,9 @@ mod tests {
             Url::parse("file://temp").unwrap(),
             0,
         );
+        setup_actor(ctx.clone(), actor);
 
-        let actual = GotoDefinitionResponse::Array(vec![Location {
+        let expected = GotoDefinitionResponse::Array(vec![Location {
             uri: Url::parse("file://temp").unwrap(),
             range: Range {
                 start: Position::new(0, 0),
@@ -681,11 +741,13 @@ mod tests {
             },
         }]);
 
-        let response = actor
-            .goto_definition(ctx, DocumentPosition { line: 1, column: 8 })
-            .unwrap();
+        let response = get_response!(
+            ctx,
+            goto_definition,
+            DocumentPosition { line: 1, column: 8 }
+        );
 
-        assert_eq!(actual, response);
+        assert_eq!(expected, response);
     }
 
     #[test]
@@ -701,8 +763,9 @@ entry:
             Url::parse("file://temp").unwrap(),
             0,
         );
+        setup_actor(ctx.clone(), actor);
 
-        let actual = GotoDefinitionResponse::Array(vec![Location {
+        let expected = GotoDefinitionResponse::Array(vec![Location {
             uri: Url::parse("file://temp").unwrap(),
             range: Range {
                 start: Position::new(1, 0),
@@ -710,11 +773,13 @@ entry:
             },
         }]);
 
-        let response = actor
-            .goto_definition(ctx, DocumentPosition { line: 2, column: 8 })
-            .unwrap();
+        let response = get_response!(
+            ctx,
+            goto_definition,
+            DocumentPosition { line: 2, column: 8 }
+        );
 
-        assert_eq!(actual, response);
+        assert_eq!(expected, response);
     }
 
     #[test]
@@ -729,14 +794,17 @@ entry:
             Url::parse("file://temp").unwrap(),
             0,
         );
+        setup_actor(ctx.clone(), actor);
 
-        let actual = GotoDefinitionResponse::Array(vec![]);
+        let expected = GotoDefinitionResponse::Array(vec![]);
 
-        let response = actor
-            .goto_definition(ctx, DocumentPosition { line: 1, column: 8 })
-            .unwrap();
+        let response = get_response!(
+            ctx,
+            goto_definition,
+            DocumentPosition { line: 1, column: 8 }
+        );
 
-        assert_eq!(actual, response);
+        assert_eq!(expected, response);
     }
 
     #[test]
@@ -751,14 +819,17 @@ entry:
             Url::parse("file://temp").unwrap(),
             0,
         );
+        setup_actor(ctx.clone(), actor);
 
-        let actual = GotoDefinitionResponse::Array(vec![]);
+        let expected = GotoDefinitionResponse::Array(vec![]);
 
-        let response = actor
-            .goto_definition(ctx, DocumentPosition { line: 1, column: 6 })
-            .unwrap();
+        let response = get_response!(
+            ctx,
+            goto_definition,
+            DocumentPosition { line: 1, column: 6 }
+        );
 
-        assert_eq!(actual, response);
+        assert_eq!(expected, response);
     }
 
     #[test]
@@ -773,14 +844,17 @@ entry:
             Url::parse("file://temp").unwrap(),
             0,
         );
+        setup_actor(ctx.clone(), actor);
 
-        let actual = GotoDefinitionResponse::Array(vec![]);
+        let expected = GotoDefinitionResponse::Array(vec![]);
 
-        let response = actor
-            .goto_definition(ctx, DocumentPosition { line: 1, column: 7 })
-            .unwrap();
+        let response = get_response!(
+            ctx,
+            goto_definition,
+            DocumentPosition { line: 1, column: 7 }
+        );
 
-        assert_eq!(actual, response);
+        assert_eq!(expected, response);
     }
 
     #[test]
@@ -795,8 +869,9 @@ entry:
             Url::parse("file://temp").unwrap(),
             0,
         );
+        setup_actor(ctx.clone(), actor);
 
-        let actual = vec![Location {
+        let expected = vec![Location {
             uri: Url::parse("file://temp").unwrap(),
             range: Range {
                 start: Position::new(1, 6),
@@ -804,11 +879,14 @@ entry:
             },
         }];
 
-        let response = actor
-            .find_references(ctx, DocumentPosition { line: 1, column: 8 }, false)
-            .unwrap();
+        let response = get_response!(
+            ctx,
+            find_references,
+            DocumentPosition { line: 1, column: 8 },
+            false
+        );
 
-        assert_eq!(actual, response);
+        assert_eq!(expected, response);
     }
 
     #[test]
@@ -829,20 +907,21 @@ end:
             Url::parse("file://temp").unwrap(),
             0,
         );
+        setup_actor(ctx.clone(), actor);
 
-        let actual = actor
-            .find_references(
-                ctx,
-                DocumentPosition {
-                    line: 2,
-                    column: 25,
-                },
-                false,
-            )
-            .unwrap();
-        let response: Vec<Location> = vec![];
+        let response = get_response!(
+            ctx,
+            find_references,
+            DocumentPosition {
+                line: 2,
+                column: 25,
+            },
+            false
+        );
 
-        assert_eq!(response, actual);
+        let expected: Vec<Location> = vec![];
+
+        assert_eq!(response, expected);
     }
 
     #[test]
@@ -863,13 +942,18 @@ end:
             Url::parse("file://temp").unwrap(),
             0,
         );
+        setup_actor(ctx.clone(), actor);
 
-        let actual = actor
-            .find_references(ctx, DocumentPosition { line: 3, column: 5 }, false)
-            .unwrap();
-        let response: Vec<Location> = vec![];
+        let response = get_response!(
+            ctx,
+            find_references,
+            DocumentPosition { line: 3, column: 5 },
+            false
+        );
 
-        assert_eq!(response, actual);
+        let expected: Vec<Location> = vec![];
+
+        assert_eq!(expected, response);
     }
 
     #[test]
@@ -890,8 +974,9 @@ end:
             Url::parse("file://temp").unwrap(),
             0,
         );
+        setup_actor(ctx.clone(), actor);
 
-        let actual = DocumentSymbolResponse::Nested(
+        let expected = DocumentSymbolResponse::Nested(
             [
                 DocumentSymbol {
                     name: "entry:".to_string(),
@@ -980,9 +1065,9 @@ end:
             .to_vec(),
         );
 
-        let response = actor.document_symbols(ctx).unwrap();
+        let response = get_response!(ctx, document_symbols,);
 
-        assert_eq!(actual, response);
+        assert_eq!(expected, response);
     }
 
     #[test]
@@ -997,8 +1082,9 @@ end:
             Url::parse("file://temp").unwrap(),
             0,
         );
+        setup_actor(ctx.clone(), actor);
 
-        let actual = vec![
+        let expected = vec![
             DocumentHighlight {
                 range: Range {
                     start: Position::new(0, 0),
@@ -1015,11 +1101,13 @@ end:
             },
         ];
 
-        let response = actor
-            .document_highlight(ctx, DocumentPosition { line: 1, column: 8 })
-            .unwrap();
+        let response = get_response!(
+            ctx,
+            document_highlight,
+            DocumentPosition { line: 1, column: 8 }
+        );
 
-        assert_eq!(actual, response);
+        assert_eq!(expected, response);
     }
 
     #[test]
@@ -1035,8 +1123,9 @@ end:
             Url::parse("file://temp").unwrap(),
             0,
         );
+        setup_actor(ctx.clone(), actor);
 
-        let actual = SemanticTokensResult::Tokens(SemanticTokens {
+        let expected = SemanticTokensResult::Tokens(SemanticTokens {
             result_id: None,
             data: vec![
                 SemanticToken {
@@ -1098,9 +1187,9 @@ end:
             ],
         });
 
-        let response = actor.get_semantic_tokens(ctx, None).unwrap();
+        let response = get_response!(ctx, get_semantic_tokens, None);
 
-        assert_eq!(actual, response);
+        assert_eq!(expected, response);
     }
 
     #[test]

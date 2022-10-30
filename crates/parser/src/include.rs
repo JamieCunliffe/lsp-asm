@@ -29,5 +29,5 @@ pub(super) fn handle_include(
         .and_then(|t| t.into_token())
         .map(|t| t.text().trim_matches('"').to_string())?;
 
-    load(config, from.unwrap_or(""), filename.as_str())
+    load(config, from.unwrap_or_default(), filename.as_str())
 }

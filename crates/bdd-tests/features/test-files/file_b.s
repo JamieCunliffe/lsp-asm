@@ -4,3 +4,4 @@ imm_equ .equ 32
 fileb_label:
     b .local_test
 .local_test:
+.include "file_c.s"

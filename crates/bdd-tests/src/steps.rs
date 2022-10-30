@@ -73,6 +73,13 @@ async fn open_file(state: &mut LSPWorld, file: String) {
     state.lsp.open_file(url, &data);
 }
 
+#[when(regex = r#"I close the file "(.*)""#)]
+async fn close_file(state: &mut LSPWorld, file: String) {
+    let url = util::file_to_uri(&file);
+
+    state.lsp.close_file(url);
+}
+
 #[when(
     regex = r#"I insert the following text in "(.*)" at position "(.*)" to bring it to version ([0-9]+)"#
 )]

@@ -17,6 +17,12 @@ Feature: Multiple files
       |  4:31 | 4:38 | ./features/test-files/file_a.s |
       |   2:0 |  2:7 | ./features/test-files/file_b.s |
 
+    When I run "find references" on the file "./features/test-files/file_b.s" at position "2:2" including decl
+    Then I expect the following response
+      | start |  end | file                           |
+      |   2:0 |  2:7 | ./features/test-files/file_b.s |
+      |  4:31 | 4:38 | ./features/test-files/file_a.s |
+
     When I run "find references" on the file "./features/test-files/file_a.s" at position "4:34"
     Then I expect the following response
       | start |  end | file                           |
@@ -39,9 +45,34 @@ Feature: Multiple files
       | start |  end | file                           |
       |   4:0 | 4:12 | ./features/test-files/file_b.s |
 
+    When I run "find references" on the file "./features/test-files/file_a.s" at position "5:8" including decl
+    Then I expect the following response
+      | start |  end | file                           |
+      |   5:6 | 5:17 | ./features/test-files/file_a.s |
+      |   4:0 | 4:12 | ./features/test-files/file_b.s |
+      |   1:6 | 1:17 | ./features/test-files/file_c.s |
+
     # Local label
     When I run "find references" on the file "./features/test-files/file_a.s" at position "6:8" including decl
     Then I expect the following response
       | start |  end | file                           |
       |   6:6 | 6:17 | ./features/test-files/file_a.s |
       |   7:0 | 7:12 | ./features/test-files/file_a.s |
+
+  Scenario: Closing a file doesn't break included files
+    Given an lsp initialized with the following parameters
+      | key          | value   |
+      | architecture | aarch64 |
+    When I open the file "./features/test-files/file_a.s"
+    When I open the file "./features/test-files/file_b.s"
+    When I run "find references" on the file "./features/test-files/file_a.s" at position "4:34" including decl
+    Then I expect the following response
+      | start |  end | file                           |
+      |  4:31 | 4:38 | ./features/test-files/file_a.s |
+      |   2:0 |  2:7 | ./features/test-files/file_b.s |
+    When I close the file "./features/test-files/file_b.s"
+    When I run "find references" on the file "./features/test-files/file_a.s" at position "4:34" including decl
+    Then I expect the following response
+      | start |  end | file                           |
+      |  4:31 | 4:38 | ./features/test-files/file_a.s |
+      |   2:0 |  2:7 | ./features/test-files/file_b.s |
