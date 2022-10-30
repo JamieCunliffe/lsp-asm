@@ -16,6 +16,6 @@ pub fn make_file_relative(base: &str, file: &str) -> Option<PathBuf> {
     let from = Path::new(&from);
     let from_dir = from.parent()?;
     let mut from_dir = from_dir.to_path_buf();
-    from_dir.push(&file);
+    from_dir.push(file);
     Some(from_dir)
 }

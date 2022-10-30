@@ -1,5 +1,6 @@
 #![allow(deprecated)]
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use super::ast::{AstNode, LabelNode, LocalLabelNode, RegisterToken};
 use super::llvm_mca::run_mca;
@@ -7,11 +8,10 @@ use super::parser::{Parser, PositionInfo};
 use super::{definition, references};
 use crate::asm::{hovers, signature};
 use crate::completion;
-use crate::config::LSPConfig;
+use crate::handler::context::Context;
 use crate::handler::error::{lsp_error_map, ErrorCode};
 use crate::handler::semantic::semantic_delta_transform;
 use crate::handler::types::DocumentChange;
-use crate::handler::LanguageServerProtocol;
 use crate::types::{DocumentPosition, DocumentRange};
 use arch::registers::registers_for_architecture;
 use base::register::RegisterKind;
@@ -32,12 +32,25 @@ use syntax::utils::token_is_local_label;
 pub struct AssemblyLanguageServerProtocol {
     parser: Parser,
     uri: Url,
-    config: LSPConfig,
     version: u32,
 }
 
-impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
-    fn update(&mut self, version: u32, changes: Vec<DocumentChange>) -> bool {
+impl AssemblyLanguageServerProtocol {
+    pub fn new(context: Arc<Context>, data: &str, uri: Url, version: u32) -> Self {
+        let parser = Parser::from(uri.clone(), data, context.config());
+        Self {
+            parser,
+            uri,
+            version,
+        }
+    }
+
+    pub fn update(
+        &mut self,
+        context: Arc<Context>,
+        version: u32,
+        changes: Vec<DocumentChange>,
+    ) -> bool {
         if self.version >= version {
             error!(
                 "Invalid update requested version {} to {}",
@@ -51,12 +64,21 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             self.apply_change(&mut contents, change);
         }
         self.version = version;
-        self.parser = Parser::from(self.uri.clone(), contents.as_str(), &self.config);
+        self.parser = Parser::from(self.uri.clone(), contents.as_str(), context.config());
         true
     }
 
-    fn goto_definition(
+    pub fn parser(&self) -> &Parser {
+        &self.parser
+    }
+
+    pub(crate) fn version(&self) -> u32 {
+        self.version
+    }
+
+    pub fn goto_definition(
         &self,
+        _context: Arc<Context>,
         position: DocumentPosition,
     ) -> Result<lsp_types::GotoDefinitionResponse, lsp_server::ResponseError> {
         let token = self
@@ -95,8 +117,9 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         Ok(lsp_types::GotoDefinitionResponse::Array(res))
     }
 
-    fn find_references(
+    pub fn find_references(
         &self,
+        _context: Arc<Context>,
         position: DocumentPosition,
         include_decl: bool,
     ) -> Result<Vec<Location>, lsp_server::ResponseError> {
@@ -104,11 +127,9 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             .parser
             .token_at_point(&position)
             .ok_or_else(|| lsp_error_map(ErrorCode::TokenNotFound))?;
-
         let range = references::get_search_range(&self.parser, &token, None);
         let position = self.parser.position();
         let references = references::find_references(&self.parser, &token, range, include_decl);
-
         let included_files = if token_is_local_label(&token) {
             None
         } else {
@@ -116,7 +137,6 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                 let id = parser.uri();
                 let range = parser.tree().text_range();
                 let position = parser.position();
-
                 references::find_references(parser, &token, range, include_decl).filter_map(
                     move |token| {
                         Some(lsp_types::Location::new(
@@ -127,7 +147,6 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
                 )
             }))
         };
-
         Ok(references
             .filter_map(move |token| {
                 Some(lsp_types::Location::new(
@@ -139,8 +158,9 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
             .collect())
     }
 
-    fn hover(
+    pub fn hover(
         &self,
+        _context: Arc<Context>,
         position: DocumentPosition,
     ) -> Result<Option<lsp_types::Hover>, lsp_server::ResponseError> {
         let token = self
@@ -207,8 +227,9 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         }))
     }
 
-    fn document_highlight(
+    pub fn document_highlight(
         &self,
+        _context: Arc<Context>,
         position: DocumentPosition,
     ) -> Result<Vec<lsp_types::DocumentHighlight>, lsp_server::ResponseError> {
         let token = self
@@ -264,8 +285,9 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         Ok(locations)
     }
 
-    fn get_semantic_tokens(
+    pub fn get_semantic_tokens(
         &self,
+        _context: Arc<Context>,
         range: Option<Range>,
     ) -> Result<lsp_types::SemanticTokensResult, lsp_server::ResponseError> {
         let range = if let Some(range) = range {
@@ -385,8 +407,9 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         }))
     }
 
-    fn document_symbols(
+    pub fn document_symbols(
         &self,
+        _context: Arc<Context>,
     ) -> Result<lsp_types::DocumentSymbolResponse, lsp_server::ResponseError> {
         let position = self.parser.position();
         Ok(DocumentSymbolResponse::Nested(
@@ -400,16 +423,19 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         ))
     }
 
-    fn code_lens(&self) -> Result<Option<Vec<lsp_types::CodeLens>>, ResponseError> {
-        if self.parser.filesize() > self.config.codelens.enabled_filesize {
+    pub fn code_lens(
+        &self,
+        context: Arc<Context>,
+    ) -> Result<Option<Vec<lsp_types::CodeLens>>, ResponseError> {
+        if self.parser.filesize() > context.config().codelens.enabled_filesize {
             info!(
-                "Skipping codelens due to filesize threshold see codelens::enabled_filesize ({}) config", self.config.codelens.enabled_filesize
+                "Skipping codelens due to filesize threshold see codelens::enabled_filesize ({}) config", context.config().codelens.enabled_filesize
             );
             return Ok(None);
         }
 
         let map = self.parser.debug_map();
-        let lens = (self.config.codelens.loc_enabled && map.has_debug_map()).then(|| {
+        let lens = (context.config().codelens.loc_enabled && map.has_debug_map()).then(|| {
             self.parser
                 .tree()
                 .descendants()
@@ -440,7 +466,11 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         Ok(lens)
     }
 
-    fn completion(&self, location: DocumentPosition) -> Result<CompletionList, ResponseError> {
+    pub fn completion(
+        &self,
+        _context: Arc<Context>,
+        location: DocumentPosition,
+    ) -> Result<CompletionList, ResponseError> {
         let docs = match documentation::load_documentation(self.parser.architecture()) {
             Err(_) => return Ok(Default::default()),
             Ok(docs) => docs,
@@ -458,8 +488,9 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         })
     }
 
-    fn signature_help(
+    pub fn signature_help(
         &self,
+        _context: Arc<Context>,
         position: &DocumentPosition,
     ) -> Result<Option<SignatureHelp>, ResponseError> {
         let location = self
@@ -473,15 +504,18 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         Ok(signatures)
     }
 
-    fn syntax_tree(&self) -> Result<String, ResponseError> {
+    pub fn syntax_tree(&self) -> Result<String, ResponseError> {
         Ok(format!("{:#?}", self.parser.tree()))
     }
 
-    fn format(&self, workspace_root: &str) -> Result<Option<Vec<TextEdit>>, ResponseError> {
+    pub fn format(
+        &self,
+        _context: Arc<Context>,
+        workspace_root: &str,
+    ) -> Result<Option<Vec<TextEdit>>, ResponseError> {
         let options = get_format_options(workspace_root);
         let formatted = fmt::run(self.parser.tree(), &options);
         let position = self.parser.position();
-
         let diff = super::diff::diff(
             &format!("{}", self.parser.tree()),
             &format!("{}", formatted),
@@ -515,7 +549,11 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         Ok(Some(ret))
     }
 
-    fn analysis(&self, range: Option<DocumentRange>) -> Result<String, ResponseError> {
+    pub fn analysis(
+        &self,
+        context: Arc<Context>,
+        range: Option<DocumentRange>,
+    ) -> Result<String, ResponseError> {
         let range = range
             .and_then(|r| self.parser.position().range_to_text_range(&r))
             .unwrap_or_else(|| self.parser.tree().text_range());
@@ -528,9 +566,35 @@ impl LanguageServerProtocol for AssemblyLanguageServerProtocol {
         run_mca(
             asm.as_str(),
             self.parser.architecture(),
-            &self.config.analysis,
+            &context.config().analysis,
         )
         .map_err(|e| lsp_error_map(ErrorCode::MCAFailed(e.to_string())))
+    }
+
+    fn apply_change(&self, contents: &mut String, change: DocumentChange) {
+        if let Some(range) = &change.range {
+            let range = {
+                let start_position = self
+                    .parser
+                    .position()
+                    .offset_for_line(range.start.line)
+                    .unwrap();
+                let start_offset = (start_position + range.start.column) as usize;
+
+                let end_position = self
+                    .parser
+                    .position()
+                    .offset_for_line(range.end.line)
+                    .unwrap();
+                let end_offset = (end_position + range.end.column) as usize;
+
+                start_offset..end_offset
+            };
+
+            contents.replace_range(range, &change.text);
+        } else {
+            *contents = change.text;
+        }
     }
 }
 
@@ -583,44 +647,6 @@ impl<'s> LocalLabelNode<'s> {
     }
 }
 
-impl AssemblyLanguageServerProtocol {
-    pub fn new(data: &str, uri: Url, version: u32, config: LSPConfig) -> Self {
-        let parser = Parser::from(uri.clone(), data, &config);
-        Self {
-            parser,
-            uri,
-            config,
-            version,
-        }
-    }
-
-    fn apply_change(&self, contents: &mut String, change: DocumentChange) {
-        if let Some(range) = &change.range {
-            let range = {
-                let start_position = self
-                    .parser
-                    .position()
-                    .offset_for_line(range.start.line)
-                    .unwrap();
-                let start_offset = (start_position + range.start.column) as usize;
-
-                let end_position = self
-                    .parser
-                    .position()
-                    .offset_for_line(range.end.line)
-                    .unwrap();
-                let end_offset = (end_position + range.end.column) as usize;
-
-                start_offset..end_offset
-            };
-
-            contents.replace_range(range, &change.text);
-        } else {
-            *contents = change.text;
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use base::Architecture;
@@ -629,19 +655,22 @@ mod tests {
     };
     use pretty_assertions::assert_eq;
 
+    use crate::config::LSPConfig;
     use crate::types::DocumentRange;
 
     use super::*;
 
     #[test]
     fn test_goto_definition_with_label() {
+        let ctx: Arc<Context> = Default::default();
+
         let actor = AssemblyLanguageServerProtocol::new(
+            ctx.clone(),
             r#"entry:
     b entry
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
             0,
-            Default::default(),
         );
 
         let actual = GotoDefinitionResponse::Array(vec![Location {
@@ -653,7 +682,7 @@ mod tests {
         }]);
 
         let response = actor
-            .goto_definition(DocumentPosition { line: 1, column: 8 })
+            .goto_definition(ctx, DocumentPosition { line: 1, column: 8 })
             .unwrap();
 
         assert_eq!(actual, response);
@@ -661,14 +690,16 @@ mod tests {
 
     #[test]
     fn test_goto_definition_with_label_not_first() {
+        let ctx: Arc<Context> = Default::default();
+
         let actor = AssemblyLanguageServerProtocol::new(
+            ctx.clone(),
             r#"b entry
 entry:
     b entry
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
             0,
-            Default::default(),
         );
 
         let actual = GotoDefinitionResponse::Array(vec![Location {
@@ -680,7 +711,7 @@ entry:
         }]);
 
         let response = actor
-            .goto_definition(DocumentPosition { line: 2, column: 8 })
+            .goto_definition(ctx, DocumentPosition { line: 2, column: 8 })
             .unwrap();
 
         assert_eq!(actual, response);
@@ -688,19 +719,21 @@ entry:
 
     #[test]
     fn test_goto_definition_with_label_not_defined() {
+        let ctx: Arc<Context> = Default::default();
+
         let actor = AssemblyLanguageServerProtocol::new(
+            ctx.clone(),
             r#"entry:
     b somewhere
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
             0,
-            Default::default(),
         );
 
         let actual = GotoDefinitionResponse::Array(vec![]);
 
         let response = actor
-            .goto_definition(DocumentPosition { line: 1, column: 8 })
+            .goto_definition(ctx, DocumentPosition { line: 1, column: 8 })
             .unwrap();
 
         assert_eq!(actual, response);
@@ -708,19 +741,21 @@ entry:
 
     #[test]
     fn test_goto_definition_on_opcode() {
+        let ctx: Arc<Context> = Default::default();
+
         let actor = AssemblyLanguageServerProtocol::new(
+            ctx.clone(),
             r#"entry:
     stp x20, x21, [sp, -32]!
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
             0,
-            Default::default(),
         );
 
         let actual = GotoDefinitionResponse::Array(vec![]);
 
         let response = actor
-            .goto_definition(DocumentPosition { line: 1, column: 6 })
+            .goto_definition(ctx, DocumentPosition { line: 1, column: 6 })
             .unwrap();
 
         assert_eq!(actual, response);
@@ -728,19 +763,21 @@ entry:
 
     #[test]
     fn test_goto_definition_with_not_on_token() {
+        let ctx: Arc<Context> = Default::default();
+
         let actor = AssemblyLanguageServerProtocol::new(
+            ctx.clone(),
             r#"entry:
     stp x20, x21, [sp, -32]!
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
             0,
-            Default::default(),
         );
 
         let actual = GotoDefinitionResponse::Array(vec![]);
 
         let response = actor
-            .goto_definition(DocumentPosition { line: 1, column: 7 })
+            .goto_definition(ctx, DocumentPosition { line: 1, column: 7 })
             .unwrap();
 
         assert_eq!(actual, response);
@@ -748,13 +785,15 @@ entry:
 
     #[test]
     fn test_find_references() {
+        let ctx: Arc<Context> = Default::default();
+
         let actor = AssemblyLanguageServerProtocol::new(
+            ctx.clone(),
             r#"entry:
     b entry
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
             0,
-            Default::default(),
         );
 
         let actual = vec![Location {
@@ -766,7 +805,7 @@ entry:
         }];
 
         let response = actor
-            .find_references(DocumentPosition { line: 1, column: 8 }, false)
+            .find_references(ctx, DocumentPosition { line: 1, column: 8 }, false)
             .unwrap();
 
         assert_eq!(actual, response);
@@ -774,7 +813,10 @@ entry:
 
     #[test]
     fn test_find_references_numeric() {
+        let ctx: Arc<Context> = Default::default();
+
         let actor = AssemblyLanguageServerProtocol::new(
+            ctx.clone(),
             r#"entry:
 .cfi_startproc
     stp x20, x21, [sp, -32]!
@@ -786,11 +828,11 @@ end:
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
             0,
-            Default::default(),
         );
 
         let actual = actor
             .find_references(
+                ctx,
                 DocumentPosition {
                     line: 2,
                     column: 25,
@@ -805,7 +847,10 @@ end:
 
     #[test]
     fn test_find_references_instruction() {
+        let ctx: Arc<Context> = Default::default();
+
         let actor = AssemblyLanguageServerProtocol::new(
+            ctx.clone(),
             r#"entry:
 .cfi_startproc
     stp x20, x21, [sp, -32]!
@@ -817,11 +862,10 @@ end:
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
             0,
-            Default::default(),
         );
 
         let actual = actor
-            .find_references(DocumentPosition { line: 3, column: 5 }, false)
+            .find_references(ctx, DocumentPosition { line: 3, column: 5 }, false)
             .unwrap();
         let response: Vec<Location> = vec![];
 
@@ -830,7 +874,10 @@ end:
 
     #[test]
     fn test_document_symbols() {
+        let ctx: Arc<Context> = Default::default();
+
         let actor = AssemblyLanguageServerProtocol::new(
+            ctx.clone(),
             r#"entry:
 .cfi_startproc
     stp x20, x21, [sp, -32]!
@@ -842,7 +889,6 @@ end:
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
             0,
-            Default::default(),
         );
 
         let actual = DocumentSymbolResponse::Nested(
@@ -934,20 +980,22 @@ end:
             .to_vec(),
         );
 
-        let response = actor.document_symbols().unwrap();
+        let response = actor.document_symbols(ctx).unwrap();
 
         assert_eq!(actual, response);
     }
 
     #[test]
     fn test_document_highlight_label() {
+        let ctx: Arc<Context> = Default::default();
+
         let actor = AssemblyLanguageServerProtocol::new(
+            ctx.clone(),
             r#"entry:
     b entry
 // lsp-asm-architecture: AArch64"#,
             Url::parse("file://temp").unwrap(),
             0,
-            Default::default(),
         );
 
         let actual = vec![
@@ -968,7 +1016,7 @@ end:
         ];
 
         let response = actor
-            .document_highlight(DocumentPosition { line: 1, column: 8 })
+            .document_highlight(ctx, DocumentPosition { line: 1, column: 8 })
             .unwrap();
 
         assert_eq!(actual, response);
@@ -976,98 +1024,104 @@ end:
 
     #[test]
     fn test_document_semantic() {
-        {
-            let actor = AssemblyLanguageServerProtocol::new(
-                r#"entry:
+        let ctx: Arc<Context> = Default::default();
+
+        let actor = AssemblyLanguageServerProtocol::new(
+            ctx.clone(),
+            r#"entry:
     stp	x29, x30, [sp, -32]!
     b entry
 // lsp-asm-architecture: AArch64"#,
-                Url::parse("file://temp").unwrap(),
-                0,
-                Default::default(),
-            );
+            Url::parse("file://temp").unwrap(),
+            0,
+        );
 
-            let actual = SemanticTokensResult::Tokens(SemanticTokens {
-                result_id: None,
-                data: vec![
-                    SemanticToken {
-                        delta_line: 0,
-                        delta_start: 0,
-                        length: 6,
-                        token_type: 6,
-                        token_modifiers_bitset: 0,
-                    },
-                    SemanticToken {
-                        delta_line: 1,
-                        delta_start: 4,
-                        length: 3,
-                        token_type: 0,
-                        token_modifiers_bitset: 0,
-                    },
-                    SemanticToken {
-                        delta_line: 0,
-                        delta_start: 4,
-                        length: 3,
-                        token_type: 8,
-                        token_modifiers_bitset: 0,
-                    },
-                    SemanticToken {
-                        delta_line: 0,
-                        delta_start: 5,
-                        length: 3,
-                        token_type: 8,
-                        token_modifiers_bitset: 0,
-                    },
-                    SemanticToken {
-                        delta_line: 0,
-                        delta_start: 6,
-                        length: 2,
-                        token_type: 5,
-                        token_modifiers_bitset: 0,
-                    },
-                    SemanticToken {
-                        delta_line: 0,
-                        delta_start: 4,
-                        length: 3,
-                        token_type: 2,
-                        token_modifiers_bitset: 0,
-                    },
-                    SemanticToken {
-                        delta_line: 1,
-                        delta_start: 4,
-                        length: 1,
-                        token_type: 0,
-                        token_modifiers_bitset: 0,
-                    },
-                    SemanticToken {
-                        delta_line: 1,
-                        delta_start: 0,
-                        length: 32,
-                        token_type: 4,
-                        token_modifiers_bitset: 0,
-                    },
-                ],
-            });
+        let actual = SemanticTokensResult::Tokens(SemanticTokens {
+            result_id: None,
+            data: vec![
+                SemanticToken {
+                    delta_line: 0,
+                    delta_start: 0,
+                    length: 6,
+                    token_type: 6,
+                    token_modifiers_bitset: 0,
+                },
+                SemanticToken {
+                    delta_line: 1,
+                    delta_start: 4,
+                    length: 3,
+                    token_type: 0,
+                    token_modifiers_bitset: 0,
+                },
+                SemanticToken {
+                    delta_line: 0,
+                    delta_start: 4,
+                    length: 3,
+                    token_type: 8,
+                    token_modifiers_bitset: 0,
+                },
+                SemanticToken {
+                    delta_line: 0,
+                    delta_start: 5,
+                    length: 3,
+                    token_type: 8,
+                    token_modifiers_bitset: 0,
+                },
+                SemanticToken {
+                    delta_line: 0,
+                    delta_start: 6,
+                    length: 2,
+                    token_type: 5,
+                    token_modifiers_bitset: 0,
+                },
+                SemanticToken {
+                    delta_line: 0,
+                    delta_start: 4,
+                    length: 3,
+                    token_type: 2,
+                    token_modifiers_bitset: 0,
+                },
+                SemanticToken {
+                    delta_line: 1,
+                    delta_start: 4,
+                    length: 1,
+                    token_type: 0,
+                    token_modifiers_bitset: 0,
+                },
+                SemanticToken {
+                    delta_line: 1,
+                    delta_start: 0,
+                    length: 32,
+                    token_type: 4,
+                    token_modifiers_bitset: 0,
+                },
+            ],
+        });
 
-            let response = actor.get_semantic_tokens(None).unwrap();
+        let response = actor.get_semantic_tokens(ctx, None).unwrap();
 
-            assert_eq!(actual, response);
-        }
+        assert_eq!(actual, response);
     }
 
     #[test]
     fn test_invalid_versions() {
-        let mut lsp = AssemblyLanguageServerProtocol::new(
-            "str x1, [sp, #80]",
-            Url::parse("file://test").unwrap(),
-            0,
+        let ctx: Arc<Context> = Arc::new(Context::new(
             LSPConfig {
                 architecture: Architecture::AArch64,
                 ..Default::default()
             },
+            String::from(""),
+        ));
+
+        let mut lsp = AssemblyLanguageServerProtocol::new(
+            ctx.clone(),
+            "str x1, [sp, #80]",
+            Url::parse("file://test").unwrap(),
+            0,
         );
 
         assert!(lsp.update(
+            ctx.clone(),
             5,
             vec![DocumentChange {
                 text: String::from("// test"),
@@ -1078,6 +1132,7 @@ end:
             }],
         ));
         assert!(!lsp.update(
+            ctx.clone(),
             5,
             vec![DocumentChange {
                 text: String::from("// te"),
@@ -1088,6 +1143,7 @@ end:
             }],
         ));
         assert!(!lsp.update(
+            ctx.clone(),
             3,
             vec![DocumentChange {
                 text: String::from("// te"),
@@ -1099,6 +1155,7 @@ end:
         ));
 
         assert!(lsp.update(
+            ctx,
             6,
             vec![DocumentChange {
                 text: String::from("// test more"),

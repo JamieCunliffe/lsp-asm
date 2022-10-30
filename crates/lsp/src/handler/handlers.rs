@@ -1,288 +1,260 @@
 use std::collections::hash_map::Entry;
-use std::collections::HashMap;
+use std::sync::Arc;
 
 use itertools::Itertools;
-use tokio::sync::RwLock;
+use parking_lot::RwLock;
 
 use crate::asm::handler::AssemblyLanguageServerProtocol;
-use crate::config::LSPConfig;
-use crate::diagnostics::assembler_flags::AssemblerFlags;
-use crate::diagnostics::compile_commands::CompileCommands;
-use crate::diagnostics::{Diagnostics, Error, UrlPath};
+use crate::diagnostics::{Error, UrlPath};
 
+use super::context::Context;
 use super::error::{lsp_error_map, ErrorCode};
+use super::ext::{FileStatsParams, FileStatsResult};
 use super::types::{DocumentChange, DocumentRangeMessage, FindReferencesMessage, LocationMessage};
-use super::LanguageServerProtocol;
 
 use lsp_server::ResponseError;
 use lsp_types::{CompletionList, DidChangeTextDocumentParams, SignatureHelp, TextEdit, Url};
 
-pub struct LangServerHandler {
-    actors: RwLock<HashMap<Url, RwLock<Box<dyn LanguageServerProtocol + Send + Sync>>>>,
-    config: LSPConfig,
-    commands: Option<Box<dyn Diagnostics + Send + Sync>>,
-    root: String,
+pub fn open_file(
+    context: Arc<Context>,
+    lang_id: &str,
+    url: Url,
+    text: &str,
+    version: u32,
+) -> Result<(), ResponseError> {
+    let actor = match lang_id.to_lowercase().as_str() {
+        "asm" => AssemblyLanguageServerProtocol::new(context.clone(), text, url.clone(), version),
+        "assembly" => {
+            AssemblyLanguageServerProtocol::new(context.clone(), text, url.clone(), version)
+        }
+        _ => panic!("Unknown language: {}", lang_id),
+    };
+
+    context.actors.write().insert(url, RwLock::new(actor));
+
+    Ok(())
 }
 
-impl LangServerHandler {
-    pub fn new(config: LSPConfig, root: String) -> Self {
-        info!("Initializing workspace: {}", root);
+pub fn update_file(
+    context: Arc<Context>,
+    msg: DidChangeTextDocumentParams,
+) -> Result<(), ResponseError> {
+    let uri = msg.text_document.uri;
+    let mut change_params = msg.content_changes;
 
-        let commands: Option<Box<dyn Diagnostics + Send + Sync>> =
-            if let Some(compile_commands) = CompileCommands::new(&root) {
-                Some(Box::new(compile_commands))
-            } else if let Some(flags) = AssemblerFlags::new(&root) {
-                Some(Box::new(flags))
-            } else {
-                None
-            };
+    let changes = change_params
+        .drain(..)
+        .map(|c| DocumentChange {
+            text: c.text,
+            range: c.range.map(|r| r.into()),
+        })
+        .collect();
 
-        Self {
-            actors: RwLock::new(HashMap::new()),
-            config,
-            commands,
-            root,
-        }
-    }
-
-    pub fn config(&self) -> &LSPConfig {
-        &self.config
-    }
-
-    pub async fn open_file(
-        &self,
-        lang_id: &str,
-        url: Url,
-        text: &str,
-        version: u32,
-    ) -> Result<(), ResponseError> {
-        let actor = match lang_id.to_lowercase().as_str() {
-            "asm" => {
-                AssemblyLanguageServerProtocol::new(text, url.clone(), version, self.config.clone())
-            }
-            "assembly" => {
-                AssemblyLanguageServerProtocol::new(text, url.clone(), version, self.config.clone())
-            }
-            _ => panic!("Unknown language: {}", lang_id),
-        };
-
-        self.actors
-            .write()
-            .await
-            .insert(url, RwLock::new(Box::new(actor)));
-
+    if context
+        .actors
+        .read()
+        .get(&uri)
+        .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+        .write()
+        .update(context.clone(), msg.text_document.version as _, changes)
+    {
         Ok(())
+    } else {
+        warn!("Out of order document updates, request full sync");
+        Err(lsp_error_map(ErrorCode::InvalidVersion(uri)))
+    }
+}
+
+pub fn close_file(context: Arc<Context>, url: Url) -> Result<(), ResponseError> {
+    if let Entry::Occupied(entry) = context.actors.write().entry(url) {
+        entry.remove_entry();
     }
 
-    pub async fn update_file(&self, msg: DidChangeTextDocumentParams) -> Result<(), ResponseError> {
-        let uri = msg.text_document.uri;
-        let mut change_params = msg.content_changes;
+    Ok(())
+}
 
-        let changes = change_params
-            .drain(..)
-            .map(|c| DocumentChange {
-                text: c.text,
-                range: c.range.map(|r| r.into()),
-            })
-            .collect();
+pub fn goto_definition(
+    context: Arc<Context>,
+    request: LocationMessage,
+) -> Result<lsp_types::GotoDefinitionResponse, ResponseError> {
+    context
+        .actors
+        .read()
+        .get(&request.url)
+        .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+        .read()
+        .goto_definition(context.clone(), request.position)
+}
 
-        if self
-            .actors
-            .read()
-            .await
-            .get(&uri)
-            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
-            .write()
-            .await
-            .update(msg.text_document.version as _, changes)
-        {
-            Ok(())
-        } else {
-            warn!("Out of order document updates, request full sync");
-            Err(lsp_error_map(ErrorCode::InvalidVersion(uri)))
-        }
-    }
-
-    pub async fn close_file(&self, url: Url) -> Result<(), ResponseError> {
-        if let Entry::Occupied(entry) = self.actors.write().await.entry(url) {
-            entry.remove_entry();
-        }
-
-        Ok(())
-    }
-
-    pub async fn goto_definition(
-        &self,
-        request: LocationMessage,
-    ) -> Result<lsp_types::GotoDefinitionResponse, ResponseError> {
-        self.actors
-            .read()
-            .await
-            .get(&request.url)
-            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
-            .read()
-            .await
-            .goto_definition(request.position)
-    }
-
-    pub async fn find_references(
-        &self,
-        request: FindReferencesMessage,
-    ) -> Result<Vec<lsp_types::Location>, ResponseError> {
-        self.actors
-            .read()
-            .await
-            .get(&request.location.url)
-            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
-            .read()
-            .await
-            .find_references(request.location.position, request.include_decl)
-    }
-
-    pub async fn hover(
-        &self,
-        request: LocationMessage,
-    ) -> Result<Option<lsp_types::Hover>, ResponseError> {
-        self.actors
-            .read()
-            .await
-            .get(&request.url)
-            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
-            .read()
-            .await
-            .hover(request.position)
-    }
-
-    pub async fn document_highlight(
-        &self,
-        request: LocationMessage,
-    ) -> Result<Vec<lsp_types::DocumentHighlight>, ResponseError> {
-        self.actors
-            .read()
-            .await
-            .get(&request.url)
-            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
-            .read()
-            .await
-            .document_highlight(request.position)
-    }
-
-    pub async fn get_semantic_tokens(
-        &self,
-        request: DocumentRangeMessage,
-    ) -> Result<lsp_types::SemanticTokensResult, ResponseError> {
-        self.actors
-            .read()
-            .await
-            .get(&request.url)
-            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
-            .read()
-            .await
-            .get_semantic_tokens(request.range.map(|r| r.into()))
-    }
-
-    pub async fn document_symbols(
-        &self,
-        url: Url,
-    ) -> Result<lsp_types::DocumentSymbolResponse, ResponseError> {
-        self.actors
-            .read()
-            .await
-            .get(&url)
-            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
-            .read()
-            .await
-            .document_symbols()
-    }
-
-    pub async fn code_lens(
-        &self,
-        url: Url,
-    ) -> Result<Option<Vec<lsp_types::CodeLens>>, ResponseError> {
-        self.actors
-            .read()
-            .await
-            .get(&url)
-            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
-            .read()
-            .await
-            .code_lens()
-    }
-
-    pub async fn completion(
-        &self,
-        location: LocationMessage,
-    ) -> Result<CompletionList, ResponseError> {
-        self.actors
-            .read()
-            .await
-            .get(&location.url)
-            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
-            .read()
-            .await
-            .completion(location.position)
-    }
-
-    pub async fn signature_help(
-        &self,
-        request: &LocationMessage,
-    ) -> Result<Option<SignatureHelp>, ResponseError> {
-        self.actors
-            .read()
-            .await
-            .get(&request.url)
-            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
-            .read()
-            .await
-            .signature_help(&request.position)
-    }
-
-    pub async fn get_diagnostics(&self, uri: &Url) -> Option<Vec<Error>> {
-        Some(
-            self.commands
-                .as_ref()?
-                .assembler_for_file(uri)?
-                .get_errors()
-                .into_iter()
-                .filter(|err| {
-                    uri.try_into()
-                        .map(|uri: UrlPath| uri.is_file(&err.file))
-                        .unwrap_or(false)
-                })
-                .collect_vec(),
+pub fn find_references(
+    context: Arc<Context>,
+    request: FindReferencesMessage,
+) -> Result<Vec<lsp_types::Location>, ResponseError> {
+    context
+        .actors
+        .read()
+        .get(&request.location.url)
+        .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+        .read()
+        .find_references(
+            context.clone(),
+            request.location.position,
+            request.include_decl,
         )
-    }
+}
 
-    pub async fn format(&self, url: Url) -> Result<Option<Vec<TextEdit>>, ResponseError> {
-        self.actors
-            .read()
-            .await
-            .get(&url)
-            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
-            .read()
-            .await
-            .format(&self.root)
-    }
+pub fn hover(
+    context: Arc<Context>,
+    request: LocationMessage,
+) -> Result<Option<lsp_types::Hover>, ResponseError> {
+    context
+        .actors
+        .read()
+        .get(&request.url)
+        .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+        .read()
+        .hover(context.clone(), request.position)
+}
 
-    pub async fn syntax_tree(&self, url: Url) -> Result<String, ResponseError> {
-        self.actors
-            .read()
-            .await
-            .get(&url)
-            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
-            .read()
-            .await
-            .syntax_tree()
-    }
+pub fn document_highlight(
+    context: Arc<Context>,
+    request: LocationMessage,
+) -> Result<Vec<lsp_types::DocumentHighlight>, ResponseError> {
+    context
+        .actors
+        .read()
+        .get(&request.url)
+        .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+        .read()
+        .document_highlight(context.clone(), request.position)
+}
 
-    pub async fn analysis(&self, request: DocumentRangeMessage) -> Result<String, ResponseError> {
-        self.actors
-            .read()
-            .await
-            .get(&request.url)
-            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
-            .read()
-            .await
-            .analysis(request.range)
-    }
+pub fn get_semantic_tokens(
+    context: Arc<Context>,
+    request: DocumentRangeMessage,
+) -> Result<lsp_types::SemanticTokensResult, ResponseError> {
+    context
+        .actors
+        .read()
+        .get(&request.url)
+        .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+        .read()
+        .get_semantic_tokens(context.clone(), request.range.map(|r| r.into()))
+}
+
+pub fn document_symbols(
+    context: Arc<Context>,
+    url: Url,
+) -> Result<lsp_types::DocumentSymbolResponse, ResponseError> {
+    context
+        .actors
+        .read()
+        .get(&url)
+        .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+        .read()
+        .document_symbols(context.clone())
+}
+
+pub fn code_lens(
+    context: Arc<Context>,
+    url: Url,
+) -> Result<Option<Vec<lsp_types::CodeLens>>, ResponseError> {
+    context
+        .actors
+        .read()
+        .get(&url)
+        .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+        .read()
+        .code_lens(context.clone())
+}
+
+pub fn completion(
+    context: Arc<Context>,
+    location: LocationMessage,
+) -> Result<CompletionList, ResponseError> {
+    context
+        .actors
+        .read()
+        .get(&location.url)
+        .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+        .read()
+        .completion(context.clone(), location.position)
+}
+
+pub fn signature_help(
+    context: Arc<Context>,
+    request: &LocationMessage,
+) -> Result<Option<SignatureHelp>, ResponseError> {
+    context
+        .actors
+        .read()
+        .get(&request.url)
+        .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+        .read()
+        .signature_help(context.clone(), &request.position)
+}
+
+pub fn get_diagnostics(context: Arc<Context>, uri: &Url) -> Option<Vec<Error>> {
+    Some(
+        context
+            .commands
+            .as_ref()?
+            .assembler_for_file(uri)?
+            .get_errors()
+            .into_iter()
+            .filter(|err| {
+                uri.try_into()
+                    .map(|uri: UrlPath| uri.is_file(&err.file))
+                    .unwrap_or(false)
+            })
+            .collect_vec(),
+    )
+}
+
+pub fn format(context: Arc<Context>, url: Url) -> Result<Option<Vec<TextEdit>>, ResponseError> {
+    context
+        .actors
+        .read()
+        .get(&url)
+        .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+        .read()
+        .format(context.clone(), &context.root)
+}
+
+pub fn syntax_tree(context: Arc<Context>, url: Url) -> Result<String, ResponseError> {
+    context
+        .actors
+        .read()
+        .get(&url)
+        .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+        .read()
+        .syntax_tree()
+}
+
+pub fn analysis(
+    context: Arc<Context>,
+    request: DocumentRangeMessage,
+) -> Result<String, ResponseError> {
+    context
+        .actors
+        .read()
+        .get(&request.url)
+        .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+        .read()
+        .analysis(context.clone(), request.range)
+}
+
+pub fn file_stats(
+    context: Arc<Context>,
+    request: FileStatsParams,
+) -> Result<FileStatsResult, ResponseError> {
+    let actors = context.actors.read();
+    let actor = actors
+        .get(&request.url)
+        .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+        .read();
+
+    Ok(FileStatsResult {
+        version: actor.version(),
+    })
 }

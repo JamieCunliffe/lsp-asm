@@ -89,13 +89,15 @@ async fn insert_file(
     state
         .lsp
         .send_notification::<DidChangeTextDocument>(DidChangeTextDocumentParams {
-            text_document: VersionedTextDocumentIdentifier::new(url.into(), version),
+            text_document: VersionedTextDocumentIdentifier::new(url.clone().into(), version),
             content_changes: vec![TextDocumentContentChangeEvent {
                 range: Some(pos.into()),
                 range_length: None,
                 text: data.to_string(),
             }],
         });
+
+    state.lsp.wait_for_file_version(url.into(), version);
 }
 
 #[when(
@@ -114,13 +116,15 @@ async fn update_file(
     state
         .lsp
         .send_notification::<DidChangeTextDocument>(DidChangeTextDocumentParams {
-            text_document: VersionedTextDocumentIdentifier::new(url.into(), version),
+            text_document: VersionedTextDocumentIdentifier::new(url.clone().into(), version),
             content_changes: vec![TextDocumentContentChangeEvent {
                 range: Some(pos.into()),
                 range_length: None,
                 text: data.to_string(),
             }],
         });
+
+    state.lsp.wait_for_file_version(url.into(), version);
 }
 
 #[when(regex = r#"I perform a full sync of the file "(.*)" to bring it to version ([0-9]+)"#)]
@@ -131,13 +135,15 @@ async fn full_sync_file(state: &mut LSPWorld, step: &Step, url: FileUrl, version
     state
         .lsp
         .send_notification::<DidChangeTextDocument>(DidChangeTextDocumentParams {
-            text_document: VersionedTextDocumentIdentifier::new(url.into(), version),
+            text_document: VersionedTextDocumentIdentifier::new(url.clone().into(), version),
             content_changes: vec![TextDocumentContentChangeEvent {
                 range: None,
                 range_length: None,
                 text: data.to_string(),
             }],
         });
+
+    state.lsp.wait_for_file_version(url.into(), version);
 }
 
 #[when(regex = r#"I run "(.*)" on the file "(.*)" at position "(.*)"(.*)"#)]

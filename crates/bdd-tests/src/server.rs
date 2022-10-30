@@ -1,8 +1,11 @@
+use std::panic::Location;
 use std::sync::atomic::AtomicI32;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::thread::JoinHandle;
+use std::time::{Duration, Instant};
 
 use lsp_asm::config::LSPConfig;
+use lsp_asm::handler::ext::{FileStatsParams, FileStatsResult};
 use lsp_server::{Connection, Message, Notification, Request};
 use lsp_types::notification::{DidOpenTextDocument, Exit, Initialized, PublishDiagnostics};
 use lsp_types::request::{Initialize, Shutdown};
@@ -10,6 +13,7 @@ use lsp_types::{
     DidOpenTextDocumentParams, InitializeParams, InitializedParams, PublishDiagnosticsParams,
     TextDocumentItem, Url,
 };
+use parking_lot::RwLock;
 use serde_json::Value;
 
 pub struct LSPServer {
@@ -18,7 +22,7 @@ pub struct LSPServer {
     client: Arc<Connection>,
     req_id: AtomicI32,
     lsp_thread: Option<JoinHandle<()>>,
-    receved_messages: Arc<Mutex<Vec<Message>>>,
+    receved_messages: Arc<RwLock<Vec<Message>>>,
 }
 
 impl LSPServer {
@@ -32,7 +36,7 @@ impl LSPServer {
             client,
             req_id: AtomicI32::new(0),
             lsp_thread: None,
-            receved_messages: Arc::new(Mutex::new(Vec::new())),
+            receved_messages: Default::default(),
         }
     }
 
@@ -64,7 +68,7 @@ impl LSPServer {
         self.send_notification::<Initialized>(InitializedParams {});
 
         let server_capabilities =
-            serde_json::to_value(&lsp_asm::capabilities::get_server_capabilities())
+            serde_json::to_value(lsp_asm::capabilities::get_server_capabilities())
                 .expect("Failed to encode server capabilities");
         let initialization_params = self
             .connection
@@ -74,25 +78,30 @@ impl LSPServer {
 
         // Start the lsp loop on a thread so it lives.
         let server_connection = self.connection.clone();
-        self.lsp_thread = Some(std::thread::spawn(move || {
-            lsp_asm::lsp::lsp_loop(server_connection, initialization_params)
-                .expect("lsp loop failed");
-        }));
+        self.lsp_thread = Some(
+            std::thread::Builder::new()
+                .name(String::from("lsp_loop"))
+                .spawn(move || {
+                    lsp_asm::lsp::lsp_loop(server_connection, initialization_params)
+                        .expect("lsp loop failed");
+                })
+                .unwrap(),
+        );
 
         let client = self.client.clone();
         let messages = self.receved_messages.clone();
-        std::thread::spawn(move || {
-            let client = client.clone();
-            let messages = messages;
+        std::thread::Builder::new()
+            .name(String::from("Receiver"))
+            .spawn(move || {
+                let client = client.clone();
+                let messages = messages;
 
-            while let Ok(msg) = client.receiver.recv() {
-                if let Ok(mut messages) = messages.lock() {
+                while let Ok(msg) = client.receiver.recv() {
+                    let mut messages = messages.write();
                     messages.push(msg);
-                } else {
-                    panic!("Lock failed when adding: {:#?}", msg);
                 }
-            }
-        });
+            })
+            .unwrap();
     }
 
     pub fn open_file(&self, uri: Url, text: &str) {
@@ -144,10 +153,13 @@ impl LSPServer {
         id
     }
 
+    #[track_caller]
     pub fn wait_for_response_for_id(&self, id: i32) -> Value {
         assert!(self.init);
+        let start = Instant::now();
         loop {
-            if let Ok(messages) = self.receved_messages.lock() {
+            {
+                let messages = self.receved_messages.read();
                 if let Some(resp) = messages
                     .iter()
                     .find(|m| matches!(m, Message::Response(resp) if resp.id == id.into()))
@@ -158,28 +170,33 @@ impl LSPServer {
                     }
                 }
             }
+            if Instant::now() - start > Duration::from_secs(5) {
+                panic!(
+                    r#"Time out waiting for message id: {id} from {}
+Messages held: {:#?}"#,
+                    Location::caller(),
+                    self.receved_messages.read()
+                );
+            }
         }
     }
 
     pub fn diagnostics_for_file(&self, file: &Url) -> Vec<PublishDiagnosticsParams> {
         assert!(self.init);
 
-        if let Ok(messages) = self.receved_messages.lock() {
-            messages
-                .iter()
-                .filter_map(|m| match m {
-                    Message::Notification(not) if not.method == <PublishDiagnostics as lsp_types::notification::Notification>::METHOD => {
-                        let x: Option<PublishDiagnosticsParams> = serde_json::from_value(not.params.clone()).ok();
-                        match x {
-                            Some(p) if p.uri == *file => Some(p),
-                            _ => None,
-                        }
-                    },
-                    _ => None,
-                }).collect::<Vec<_>>()
-        } else {
-            Vec::new()
-        }
+        let messages = self.receved_messages.read();
+        messages
+            .iter()
+            .filter_map(|m| match m {
+                Message::Notification(not) if not.method == <PublishDiagnostics as lsp_types::notification::Notification>::METHOD => {
+                    let x: Option<PublishDiagnosticsParams> = serde_json::from_value(not.params.clone()).ok();
+                    match x {
+                        Some(p) if p.uri == *file => Some(p),
+                        _ => None,
+                    }
+                },
+                _ => None,
+            }).collect::<Vec<_>>()
     }
 
     pub fn send_notification<N>(&self, params: N::Params)
@@ -195,6 +212,21 @@ impl LSPServer {
                 params,
             )))
             .unwrap_or_else(|_| panic!("Failed to send {} notification", N::METHOD));
+    }
+
+    pub fn wait_for_file_version(&self, url: Url, version: i32) {
+        loop {
+            let id = self.send_request::<lsp_asm::handler::ext::FileStats>(FileStatsParams {
+                url: url.clone(),
+            });
+
+            let resp = self.wait_for_response_for_id(id);
+            if let Ok(resp) = serde_json::from_value::<FileStatsResult>(resp) {
+                if resp.version == version as u32 {
+                    break;
+                }
+            }
+        }
     }
 }
 

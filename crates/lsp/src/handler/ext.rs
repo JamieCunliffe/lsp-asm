@@ -30,3 +30,23 @@ impl Request for RunAnalysis {
     type Result = String;
     const METHOD: &'static str = "asm/runAnalysis";
 }
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct FileStatsParams {
+    pub url: lsp_types::Url,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct FileStatsResult {
+    pub version: u32,
+}
+
+pub enum FileStats {}
+
+impl Request for FileStats {
+    type Params = FileStatsParams;
+    type Result = FileStatsResult;
+    const METHOD: &'static str = "diag/fileStats";
+}

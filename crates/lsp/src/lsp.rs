@@ -1,4 +1,4 @@
-use crate::handler::handlers::LangServerHandler;
+use crate::handler::context::Context;
 use crate::handler::types::DocumentRangeMessage;
 use lsp_server::{Connection, Message, Notification, Request, RequestId, Response, ResponseError};
 use lsp_types::notification::{
@@ -10,11 +10,10 @@ use lsp_types::request::{
     SemanticTokensRangeRequest, SignatureHelpRequest,
 };
 use lsp_types::{PublishDiagnosticsParams, Url};
+use rayon::ThreadPoolBuilder;
 use serde_json::Value;
 use std::error::Error;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use tokio::runtime::Builder;
 
 pub(crate) type LangServerResult = Result<Value, ResponseError>;
 
@@ -47,44 +46,31 @@ pub fn lsp_loop(
         .unwrap_or_default();
 
     info!("Config: {:#?}", params);
-    let handler = Arc::new(LangServerHandler::new(params, root));
-
-    let rt = Builder::new_multi_thread()
-        .thread_name_fn(|| {
-            static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
-            let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
-            format!("lsp-asm-worker-{}", id)
-        })
+    let context = Arc::new(Context::new(params, root));
+    let thread_pool = ThreadPoolBuilder::new()
+        .thread_name(|id| format!("lsp-asm-worker-{id}"))
         .build()?;
 
-    debug!("runtime: {:#?}", rt);
-
-    rt.block_on(async move {
-        for msg in &connection.receiver {
-            let connection = connection.clone();
-            let handler = handler.clone();
-            match msg {
-                Message::Request(req)
-                    if connection.clone().handle_shutdown(&req).unwrap_or(false) =>
-                {
-                    return
-                }
-
-                m => tokio::spawn(async move {
-                    process_message(connection.clone(), handler.clone(), m).await
-                }),
-            };
-        }
-    });
+    for msg in &connection.receiver {
+        match msg {
+            Message::Request(req) if connection.clone().handle_shutdown(&req).unwrap_or(false) => {
+                drop(thread_pool);
+                return Ok(());
+            }
+            m => {
+                let connection = connection.clone();
+                let context = context.clone();
+                thread_pool.spawn(move || process_message(connection.clone(), context.clone(), m));
+            }
+        };
+    }
 
     Ok(())
 }
 
-async fn process_message(
-    connection: Arc<Connection>,
-    handler: Arc<LangServerHandler>,
-    msg: Message,
-) {
+fn process_message(connection: Arc<Connection>, context: Arc<Context>, msg: Message) {
+    use crate::handler::handlers;
+
     match msg {
         Message::Request(request) => {
             let req_id = request.id.clone();
@@ -92,64 +78,70 @@ async fn process_message(
             let result = match request.method.as_str() {
                 "textDocument/completion" => {
                     let (_, data) = get_message::<Completion>(request).unwrap();
-                    make_result(handler.completion(data.text_document_position.into()).await)
+                    make_result(handlers::completion(
+                        context,
+                        data.text_document_position.into(),
+                    ))
                 }
                 "textDocument/definition" => {
                     let (_, data) = get_message::<GotoDefinition>(request).unwrap();
-                    make_result(handler.goto_definition(data.into()).await)
+                    make_result(handlers::goto_definition(context, data.into()))
                 }
                 "textDocument/references" => {
                     let (_, data) = get_message::<References>(request).unwrap();
-                    make_result(handler.find_references(data.into()).await)
+                    make_result(handlers::find_references(context, data.into()))
                 }
                 "textDocument/hover" => {
                     let (_, data) = get_message::<HoverRequest>(request).unwrap();
-                    make_result(handler.hover(data.into()).await)
+                    make_result(handlers::hover(context, data.into()))
                 }
                 "textDocument/documentSymbol" => {
                     let (_, data) = get_message::<DocumentSymbolRequest>(request).unwrap();
-                    make_result(handler.document_symbols(data.text_document.uri).await)
+                    make_result(handlers::document_symbols(context, data.text_document.uri))
                 }
                 "textDocument/documentHighlight" => {
                     let (_, data) = get_message::<DocumentHighlightRequest>(request).unwrap();
-                    make_result(handler.document_highlight(data.into()).await)
+                    make_result(handlers::document_highlight(context, data.into()))
                 }
                 "textDocument/semanticTokens/full" => {
                     let (_, data) = get_message::<SemanticTokensFullRequest>(request).unwrap();
                     let msg = DocumentRangeMessage::new(data.text_document.uri, None);
-                    make_result(handler.get_semantic_tokens(msg).await)
+                    make_result(handlers::get_semantic_tokens(context, msg))
                 }
                 "textDocument/semanticTokens/range" => {
                     let (_, data) = get_message::<SemanticTokensRangeRequest>(request).unwrap();
                     let msg =
                         DocumentRangeMessage::new(data.text_document.uri, Some(data.range.into()));
-                    make_result(handler.get_semantic_tokens(msg).await)
+                    make_result(handlers::get_semantic_tokens(context, msg))
                 }
                 "textDocument/codeLens" => {
                     let (_, data) = get_message::<CodeLensRequest>(request).unwrap();
-                    make_result(handler.code_lens(data.text_document.uri).await)
+                    make_result(handlers::code_lens(context, data.text_document.uri))
                 }
                 "textDocument/signatureHelp" => {
                     let (_, data) = get_message::<SignatureHelpRequest>(request).unwrap();
-                    make_result(
-                        handler
-                            .signature_help(&data.text_document_position_params.into())
-                            .await,
-                    )
+                    make_result(handlers::signature_help(
+                        context,
+                        &data.text_document_position_params.into(),
+                    ))
                 }
                 "textDocument/formatting" => {
                     let (_, data) = get_message::<Formatting>(request).unwrap();
-                    make_result(handler.format(data.text_document.uri).await)
+                    make_result(handlers::format(context, data.text_document.uri))
                 }
                 "asm/syntaxTree" => {
                     let (_, data) =
                         get_message::<crate::handler::ext::SyntaxTree>(request).unwrap();
-                    make_result(handler.syntax_tree(data.text_document.uri).await)
+                    make_result(handlers::syntax_tree(context, data.text_document.uri))
                 }
                 "asm/runAnalysis" => {
                     let (_, data) =
                         get_message::<crate::handler::ext::RunAnalysis>(request).unwrap();
-                    make_result(handler.analysis(data.into()).await)
+                    make_result(handlers::analysis(context, data.into()))
+                }
+                "diag/fileStats" => {
+                    let (_, data) = get_message::<crate::handler::ext::FileStats>(request).unwrap();
+                    make_result(handlers::file_stats(context, data))
                 }
                 _ => panic!("Unknown method: {:?}", request.method),
             };
@@ -169,21 +161,20 @@ async fn process_message(
                 "textDocument/didOpen" => {
                     let data = get_notification::<DidOpenTextDocument>(notification).unwrap();
                     let data = data.text_document;
-                    let _ = handler
-                        .open_file(
-                            &data.language_id,
-                            data.uri.clone(),
-                            &data.text,
-                            data.version as _,
-                        )
-                        .await;
-                    handle_diagnostics(connection.clone(), handler.clone(), data.uri);
+                    let _ = handlers::open_file(
+                        context.clone(),
+                        &data.language_id,
+                        data.uri.clone(),
+                        &data.text,
+                        data.version as _,
+                    );
+                    handle_diagnostics(connection, context, data.uri);
                     Ok(())
                 }
                 "textDocument/didChange" => {
                     let data = get_notification::<DidChangeTextDocument>(notification).unwrap();
 
-                    if let Err(e) = handler.update_file(data).await {
+                    if let Err(e) = handlers::update_file(context, data) {
                         if let Some(params) = e.data {
                             let _ = connection.sender.send(Message::Notification(Notification {
                                 method: String::from("textDocument/resync"),
@@ -196,12 +187,12 @@ async fn process_message(
                 }
                 "textDocument/didSave" => {
                     let data = get_notification::<DidSaveTextDocument>(notification).unwrap();
-                    handle_diagnostics(connection.clone(), handler.clone(), data.text_document.uri);
+                    handle_diagnostics(connection, context, data.text_document.uri);
                     Ok(())
                 }
                 "textDocument/didClose" => {
                     let data = get_notification::<DidCloseTextDocument>(notification).unwrap();
-                    handler.close_file(data.text_document.uri).await
+                    handlers::close_file(context, data.text_document.uri)
                 }
                 "$/cancelRequest" => {
                     let data = get_notification::<Cancel>(notification).unwrap();
@@ -218,34 +209,32 @@ async fn process_message(
     }
 }
 
-fn handle_diagnostics(connection: Arc<Connection>, handler: Arc<LangServerHandler>, uri: Url) {
-    if !handler.config().diagnostics.enabled {
+fn handle_diagnostics(connection: Arc<Connection>, context: Arc<Context>, uri: Url) {
+    use crate::handler::handlers;
+
+    if !context.config().diagnostics.enabled {
         return;
     }
     info!("Handling diagnostics for file: {}", uri);
 
-    tokio::spawn(async move {
-        let diagnostics = handler
-            .get_diagnostics(&uri)
-            .await
-            .unwrap_or_default()
-            .into_iter()
-            .map(|e| e.into())
-            .collect();
+    let diagnostics = handlers::get_diagnostics(context, &uri)
+        .unwrap_or_default()
+        .into_iter()
+        .map(|e| e.into())
+        .collect();
 
-        let params = PublishDiagnosticsParams {
-            uri,
-            diagnostics,
-            version: None,
-        };
+    let params = PublishDiagnosticsParams {
+        uri,
+        diagnostics,
+        version: None,
+    };
 
-        let diagnotics = Message::Notification(Notification {
-            method: String::from("textDocument/publishDiagnostics"),
-            params: serde_json::to_value(params).unwrap_or_default(),
-        });
-
-        let _ = connection.sender.send(diagnotics);
+    let diagnotics = Message::Notification(Notification {
+        method: String::from("textDocument/publishDiagnostics"),
+        params: serde_json::to_value(params).unwrap_or_default(),
     });
+
+    let _ = connection.sender.send(diagnotics);
 }
 
 fn make_result<T>(result: Result<T, ResponseError>) -> LangServerResult

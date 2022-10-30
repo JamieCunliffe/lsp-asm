@@ -42,7 +42,7 @@ fn run_command(cmd: &str, env_vars: &HashMap<&str, &str>) -> Result<(), DynError
     let output = if cfg!(target_os = "windows") {
         Command::new("powershell")
             .envs(env_vars)
-            .args(&[cmd])
+            .args([cmd])
             .output()
             .expect("failed to execute process")
     } else {

@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
 
     let capabilities = get_server_capabilities();
 
-    let server_capabilities = serde_json::to_value(&capabilities).unwrap();
+    let server_capabilities = serde_json::to_value(capabilities).unwrap();
     let initialization_params = connection.initialize(server_capabilities)?;
     let initialization_params = serde_json::from_value(initialization_params)?;
     lsp_asm::lsp::lsp_loop(connection, initialization_params)?;
