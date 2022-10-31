@@ -27,7 +27,7 @@ use crate::{util, LSPWorld};
 #[given(regex = r#"I have the "(.*)" documentation"#)]
 async fn check_doc(_state: &mut LSPWorld, arch: String) {
     let arch = Architecture::from(arch.as_str());
-    let data = std::fs::read_to_string(format!("./features/known-defs/{}.json", &arch)).unwrap();
+    let data = std::fs::read_to_string(format!("./features/known-defs/{arch}.json")).unwrap();
     let data = serde_json::from_str(data.as_str()).unwrap();
     documentation::poison_cache(&arch, data);
 }
@@ -298,7 +298,7 @@ fn expect_response(state: &mut LSPWorld, step: &Step) {
             }
             LSPCommand::SignatureHelp => serde_json::to_value(util::make_signature_help(rows)),
             &LSPCommand::Rename => serde_json::to_value(util::make_workspace_edit(rows)),
-            cmd => panic!("Unknown cmd: {:#?}", cmd),
+            cmd => panic!("Unknown cmd: {cmd:#?}"),
         }
     } else {
         panic!("No response found");

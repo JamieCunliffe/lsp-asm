@@ -24,7 +24,7 @@ pub(crate) fn parse_config(rows: &[Vec<String>]) -> LSPConfig {
         match key {
             "architecture" => config.architecture = Architecture::from(value),
             "codelens::loc_enabled" => config.codelens.loc_enabled = value.parse::<bool>().unwrap(),
-            x => panic!("Unknown configuration parameter: {}", x),
+            key => panic!("Unknown configuration parameter: {key}"),
         }
     }
     config
@@ -66,7 +66,7 @@ pub(crate) fn make_doc_symbol(table: &[Vec<String>]) -> Vec<DocumentSymbol> {
             detail: None,
             kind: match row.get(2).unwrap().as_str() {
                 "function" => SymbolKind::FUNCTION,
-                x => panic!("Unknown kind: {}", x),
+                kind => panic!("Unknown kind: {kind}"),
             },
             tags: None,
             deprecated: None,
@@ -104,7 +104,7 @@ pub(crate) fn make_doc_highlight(table: &[Vec<String>]) -> Vec<DocumentHighlight
             range: PositionString::from_string(row.get(0).unwrap().into()).into(),
             kind: match row.get(1).unwrap().as_str() {
                 "text" => Some(DocumentHighlightKind::TEXT),
-                x => panic!("Unknown kind: {}", x),
+                kind => panic!("Unknown kind: {kind}"),
             },
         })
         .collect()
@@ -129,7 +129,7 @@ pub(crate) fn make_semantic(table: &[Vec<String>]) -> Vec<SemanticToken> {
                 "fp-register" => semantic::FP_REGISTER_INDEX,
                 "metadata" => semantic::METADATA_INDEX,
                 "label" => semantic::LABEL_INDEX,
-                x => panic!("Unknown token type: {}", x),
+                ty => panic!("Unknown token type: {ty}"),
             },
             token_modifiers_bitset: u32::from_str_radix(row.get(4).unwrap(), 2).unwrap(),
         })
@@ -166,7 +166,7 @@ pub(crate) fn make_completion(table: &[Vec<String>]) -> CompletionList {
                 "mnemonic" => CompletionKind::Mnemonic,
                 "label" => CompletionKind::Label,
                 "register" => CompletionKind::Register,
-                x => panic!("Unknown completion kind: {}", x),
+                kind => panic!("Unknown completion kind: {kind}"),
             },
         })
         .map(|i| i.into())
@@ -272,7 +272,7 @@ pub(crate) fn file_to_uri(file: &str) -> Url {
         if path.exists() {
             Url::from_file_path(path).unwrap()
         } else {
-            Url::parse(&format!("file://{}", file)).unwrap()
+            Url::parse(&format!("file://{file}")).unwrap()
         }
     })
 }

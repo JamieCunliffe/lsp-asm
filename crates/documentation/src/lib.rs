@@ -60,7 +60,7 @@ pub struct Instruction {
 impl Display for Instruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(header) = self.header.clone() {
-            writeln!(f, "# {}\n", header)?;
+            writeln!(f, "# {header}\n")?;
         }
 
         writeln!(f, "{}", self.description)?;
@@ -74,7 +74,7 @@ impl Display for Instruction {
 {}"#,
                 self.asm_template
                     .iter()
-                    .map(|t| format!("{}", t))
+                    .map(|t| format!("{t}"))
                     .collect_vec()
                     .join("\n")
             )?;
@@ -92,7 +92,7 @@ impl Display for InstructionTemplate {
             self.display_asm,
             self.items
                 .iter()
-                .map(|item| format!("{}", item))
+                .map(|item| format!("{item}"))
                 .collect_vec()
                 .join("\n")
         )
@@ -138,7 +138,7 @@ pub fn load_documentation(arch: &Architecture) -> Result<Arc<DocumentationMap>, 
     let path = base
         .data_local_dir()
         .join("lsp-asm")
-        .join(format!("{}.json", arch));
+        .join(format!("{arch}.json"));
 
     let file = File::open(path)?;
     let reader = BufReader::new(file);

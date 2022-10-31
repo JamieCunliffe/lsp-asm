@@ -452,7 +452,7 @@ pub(crate) async fn get_instructions() -> Result<Vec<Instruction>, Box<dyn Error
     )) {
         data
     } else {
-        println!("Downloading XML reference from {}", A64_ISA);
+        println!("Downloading XML reference from {A64_ISA}");
         reqwest::get(A64_ISA).await?.bytes().await?.to_vec()
     };
 

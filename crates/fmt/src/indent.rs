@@ -20,7 +20,7 @@ pub(crate) fn perform_pass(root: SyntaxNode, options: &FormatOptions) -> SyntaxN
         .filter_map(|child| {
             if let Some(ws) = child.prev_token() {
                 let text = ws.text().trim_end_matches(|c| c == '\t' || c == ' ');
-                let new_text = format!("{}{}", text, indentation);
+                let new_text = format!("{text}{indentation}");
 
                 if new_text == ws.text() {
                     None

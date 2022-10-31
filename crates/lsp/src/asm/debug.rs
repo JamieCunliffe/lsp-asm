@@ -59,7 +59,7 @@ impl DebugMap {
         let line = line - 1;
         let file = self.get_filename(file_id)?;
         Some(DocumentLocation {
-            uri: Url::parse(format!("file://{}", file).as_str()).ok()?,
+            uri: Url::parse(format!("file://{file}").as_str()).ok()?,
             range: DocumentRange {
                 start: DocumentPosition { line, column: 0 },
                 end: DocumentPosition { line, column: 0 },

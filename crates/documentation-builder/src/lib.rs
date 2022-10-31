@@ -16,7 +16,7 @@ pub async fn build_aarch64_instructions() -> Result<(), Box<dyn Error + Sync + S
 
     let mut entries = match aarch64::get_instructions().await {
         Ok(e) => e,
-        Err(e) => panic!("Process aarch64 failed: {}", e),
+        Err(e) => panic!("Process aarch64 failed: {e}"),
     };
     write_entries(&Architecture::AArch64, &mut entries)?;
 
@@ -42,7 +42,7 @@ fn write_entries(
     info!("Converting vector into hashmap");
     let instructions = make_hash_map(instructions);
 
-    path.push(format!("{}.json", arch));
+    path.push(format!("{arch}.json"));
     info!("Attempting to write json file to: {:#?}", path);
     let mut file = File::create(path)?;
 

@@ -10,7 +10,7 @@ pub(super) fn run_mca(
     arch: &Architecture,
     config: &AnalysisConfig,
 ) -> Result<String, Box<dyn Error>> {
-    info!("Running MCA with config: {:#?}", config);
+    info!("Running MCA with config: {config:#?}");
     let mut command = Command::new("llvm-mca");
     let command = &mut command;
 
@@ -23,7 +23,7 @@ pub(super) fn run_mca(
         .stderr(Stdio::piped());
 
     if let Some(cpu) = config.default_cpus.get(arch) {
-        command.arg(format!("-mcpu={}", cpu));
+        command.arg(format!("-mcpu={cpu}"));
     } else if !arch.is_host() {
         // MCA defaults the cpu to be the host cpu, if we are running for a
         // different architecture, then we need to pass generic through.

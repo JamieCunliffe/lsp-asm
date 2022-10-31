@@ -47,7 +47,7 @@ impl Registers for DocRegisters {
 pub const DOC_REGISTERS: DocRegisters = DocRegisters {};
 
 pub fn to_documentation_name(kind: &RegisterKind, size: &RegisterSize) -> String {
-    format!("<{kind}_{size}>", kind = kind, size = size)
+    format!("<{kind}_{size}>")
 }
 
 pub static DOCUMENTATION_REGISTERS: phf::Map<UniCase<&'static str>, i8> = phf::phf_map! {

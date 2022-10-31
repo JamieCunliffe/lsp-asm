@@ -107,8 +107,8 @@ impl TryInto<Box<dyn Assembler>> for CompileCommand {
         } else if cmd.contains("gcc") || cmd.contains("g++") {
             Ok(Box::new(crate::diagnostics::gcc::Gcc { command: self }))
         } else {
-            warn!("`{}` is not a known assembler", cmd);
-            Err(format!("`{}` is not a known assembler", cmd))
+            warn!("`{cmd}` is not a known assembler");
+            Err(format!("`{cmd}` is not a known assembler"))
         }
     }
 }

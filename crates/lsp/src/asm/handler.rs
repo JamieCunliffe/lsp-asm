@@ -534,10 +534,7 @@ impl AssemblyLanguageServerProtocol {
         let options = get_format_options(workspace_root);
         let formatted = fmt::run(self.parser.tree(), &options);
         let position = self.parser.position();
-        let diff = super::diff::diff(
-            &format!("{}", self.parser.tree()),
-            &format!("{}", formatted),
-        );
+        let diff = super::diff::diff(&format!("{}", self.parser.tree()), &format!("{formatted}"));
 
         let ret = diff
             .into_iter()

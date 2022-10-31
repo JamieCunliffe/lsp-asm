@@ -28,7 +28,7 @@ pub(crate) fn perform_pass(root: SyntaxNode, options: &FormatOptions) -> SyntaxN
                 ) {
                     Some((
                         Position::Replace(ws),
-                        create_token(SyntaxKind::WHITESPACE, &format!("\n{}", indentation)),
+                        create_token(SyntaxKind::WHITESPACE, &format!("\n{indentation}")),
                     ))
                 } else {
                     None

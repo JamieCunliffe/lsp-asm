@@ -16,8 +16,8 @@ pub fn get_numeric_hover(value: &NumericToken) -> Option<Vec<String>> {
     let value = value.value();
     Some(vec![
         "# Number".to_string(),
-        format!("Decimal: {}", value),
-        format!("Hex: {:#X}", value),
+        format!("Decimal: {value}"),
+        format!("Hex: {value:#X}"),
     ])
 }
 
@@ -26,7 +26,7 @@ pub fn get_label_hover(label: &LabelToken) -> Option<Vec<String>> {
 
     if let Some((sym, lang)) = label.demangle() {
         symbols.push(String::from("# Demangled Symbol"));
-        symbols.push(format!("**{}**: `{}`", lang, sym));
+        symbols.push(format!("**{lang}**: `{sym}`"));
     }
 
     Some(symbols)
@@ -54,13 +54,13 @@ pub fn get_hover_mnemonic(
         let instruction =
             documentation::templates::instruction_from_template(instructions, template)?;
 
-        Some(vec![format!("{}", instruction)])
+        Some(vec![format!("{instruction}")])
     } else {
         // Couldn't resolve which instruction we are on so print them all.
         Some(
             instructions
                 .iter()
-                .map(|i| format!("{}", i))
+                .map(|i| format!("{i}"))
                 .interleave_shortest(iter::repeat(String::from("---")))
                 .collect(),
         )
@@ -70,9 +70,8 @@ pub fn get_hover_mnemonic(
 pub fn get_alias_hover(token: &SyntaxToken, alias: &Alias) -> Option<Vec<String>> {
     let register = alias.get_register_for_alias(token.text())?;
     Some(vec![format!(
-        "`{}` is an alias to register `{}`",
+        "`{}` is an alias to register `{register}`",
         token.text(),
-        register
     )])
 }
 

@@ -76,7 +76,7 @@ mod tests {
         let register = "<gp_64>";
         let expected = (0..=30)
             .map(|x| CompletionItem {
-                text: format!("x{}", x),
+                text: format!("x{x}"),
                 details: "".into(),
                 documentation: None,
                 kind: CompletionKind::Register,
@@ -112,7 +112,7 @@ mod tests {
         let register = "<gp|sp_64>";
         let expected = (0..=30)
             .map(|x| CompletionItem {
-                text: format!("x{}", x),
+                text: format!("x{x}"),
                 details: "".into(),
                 documentation: None,
                 kind: CompletionKind::Register,

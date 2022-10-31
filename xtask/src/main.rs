@@ -11,8 +11,8 @@ type DynError = Box<dyn std::error::Error + Sync + Send>;
 
 fn main() {
     pretty_env_logger::init();
-    if let Err(e) = try_main() {
-        eprintln!("{}", e);
+    if let Err(err) = try_main() {
+        eprintln!("{err}");
         std::process::exit(-1);
     }
 }
@@ -59,14 +59,14 @@ fn run_command(cmd: &str, env_vars: &HashMap<&str, &str>) -> Result<(), DynError
     if output.status.success() {
         Ok(())
     } else {
-        panic!("Command failed ({})- todo handle better", cmd);
+        panic!("Command failed ({cmd})- todo handle better");
     }
 }
 
 fn build(env_vars: &HashMap<&str, &str>) -> Result<(), DynError> {
     let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
     run_command(
-        format!("{} build --all --exclude xtask --color always", cargo).as_str(),
+        format!("{cargo} build --all --exclude xtask --color always").as_str(),
         env_vars,
     )?;
 
@@ -75,7 +75,7 @@ fn build(env_vars: &HashMap<&str, &str>) -> Result<(), DynError> {
 
 fn clean(env_vars: &HashMap<&str, &str>) -> Result<(), DynError> {
     let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
-    run_command(format!("{} clean", cargo).as_str(), env_vars)
+    run_command(format!("{cargo} clean").as_str(), env_vars)
 }
 
 fn test(generate_coverage: bool) -> Result<(), DynError> {
@@ -96,7 +96,7 @@ fn test(generate_coverage: bool) -> Result<(), DynError> {
 
     let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
     build(&env)?;
-    run_command(format!("{} test --color always", cargo).as_str(), &env)?;
+    run_command(format!("{cargo} test --color always").as_str(), &env)?;
     if generate_coverage {
         run_command(
             r#"grcov . -s . --binary-path ./coverage/debug/ -t html --branch --ignore-not-existing -o ./coverage/debug/coverage/ --ignore "xtask/*""#,

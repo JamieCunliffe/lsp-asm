@@ -31,7 +31,7 @@ pub fn open_file(
         "assembly" => {
             AssemblyLanguageServerProtocol::new(context.clone(), text, url.clone(), version)
         }
-        _ => panic!("Unknown language: {}", lang_id),
+        _ => panic!("Unknown language: {lang_id}"),
     };
 
     context.actors.write().insert(url, RwLock::new(actor));

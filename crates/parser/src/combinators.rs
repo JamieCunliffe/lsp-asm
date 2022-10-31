@@ -105,10 +105,10 @@ pub(crate) fn parse<'a>(
     let result = many0(parse_next)(data);
     let (remaining, _) = match result {
         Ok(a) => a,
-        Err(e) => panic!("Failed to parse due to error: {:#?}", e),
+        Err(e) => panic!("Failed to parse due to error: {e:#?}"),
     };
 
-    debug!("Parsed assembly with data remaining: {:#?}", remaining);
+    debug!("Parsed assembly with data remaining: {remaining:#?}");
 
     ParsedData {
         root: remaining.finish(),
