@@ -49,19 +49,19 @@ pub fn update_file(
         })
         .collect();
 
-    if context
-        .actors
-        .read()
-        .get(&uri)
-        .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
-        .write()
-        .update(context.clone(), msg.text_document.version as _, changes)
-    {
-        Ok(())
-    } else {
-        warn!("Out of order document updates, request full sync");
-        Err(lsp_error_map(ErrorCode::InvalidVersion(uri)))
-    }
+    let new_actors = {
+        let actors = context.actors.read();
+        let mut actor = actors
+            .get(&uri)
+            .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+            .write();
+
+        actor.update(context.clone(), msg.text_document.version as _, changes)?
+    };
+
+    context.add_actors(new_actors);
+
+    Ok(())
 }
 
 pub fn close_file(context: Arc<Context>, url: Url) -> Result<(), ResponseError> {

@@ -41,7 +41,7 @@ impl AssemblyLanguageServerProtocol {
     pub fn new(context: Arc<Context>, data: &str, uri: Url, version: u32) -> Self {
         let (parser, includes) = Parser::from(uri.clone(), data, context.config());
 
-        handle_includes(includes, context, &uri);
+        context.add_actors(handle_includes(includes, context.clone(), &uri));
 
         Self {
             parser,
@@ -55,13 +55,13 @@ impl AssemblyLanguageServerProtocol {
         context: Arc<Context>,
         version: u32,
         changes: Vec<DocumentChange>,
-    ) -> bool {
+    ) -> Result<Vec<(Url, RwLock<Self>)>, ResponseError> {
         if self.version >= version {
             error!(
                 "Invalid update requested version {} to {}",
                 self.version, version
             );
-            return false;
+            return Err(lsp_error_map(ErrorCode::InvalidVersion(self.uri.clone())));
         }
 
         let mut contents = self.parser.reconstruct_file();
@@ -71,11 +71,9 @@ impl AssemblyLanguageServerProtocol {
         self.version = version;
         let (parser, includes) =
             Parser::from(self.uri.clone(), contents.as_str(), context.config());
-
-        handle_includes(includes, context, &self.uri);
-
         self.parser = parser;
-        true
+
+        Ok(handle_includes(includes, context, &self.uri))
     }
 
     pub fn parser(&self) -> &Parser {
@@ -618,26 +616,30 @@ impl AssemblyLanguageServerProtocol {
     }
 }
 
-fn handle_includes(includes: Vec<ParsedInclude>, context: Arc<Context>, uri: &Url) {
-    for include in includes {
-        let (parser, sub_includes) = split_parsed_include(include);
+fn handle_includes(
+    includes: Vec<ParsedInclude>,
+    context: Arc<Context>,
+    uri: &Url,
+) -> Vec<(Url, RwLock<AssemblyLanguageServerProtocol>)> {
+    includes
+        .into_iter()
+        .flat_map(|include| {
+            let (parser, sub_includes) = split_parsed_include(include);
 
-        let include_uri = parser.uri().clone();
-        handle_includes(sub_includes, context.clone(), &include_uri);
+            let include_uri = parser.uri().clone();
+            let inner = handle_includes(sub_includes, context.clone(), &include_uri);
+            context.add_include(uri.clone().to_string(), include_uri.to_string());
 
-        context.add_include(uri.clone().to_string(), include_uri.to_string());
-        context
-            .actors
-            .write()
-            .entry(include_uri.clone())
-            .or_insert_with(|| {
+            inner.into_iter().chain(std::iter::once((
+                include_uri.clone(),
                 RwLock::new(AssemblyLanguageServerProtocol {
                     parser,
                     uri: include_uri,
                     version: 0,
-                })
-            });
-    }
+                }),
+            )))
+        })
+        .collect_vec()
 }
 
 fn get_format_options(workspace_root: &str) -> FormatOptions {
@@ -1209,50 +1211,58 @@ end:
             0,
         );
 
-        assert!(lsp.update(
-            ctx.clone(),
-            5,
-            vec![DocumentChange {
-                text: String::from("// test"),
-                range: Some(DocumentRange {
-                    start: DocumentPosition { line: 0, column: 0 },
-                    end: DocumentPosition { line: 0, column: 0 },
-                }),
-            }],
-        ));
-        assert!(!lsp.update(
-            ctx.clone(),
-            5,
-            vec![DocumentChange {
-                text: String::from("// te"),
-                range: Some(DocumentRange {
-                    start: DocumentPosition { line: 0, column: 0 },
-                    end: DocumentPosition { line: 0, column: 0 },
-                }),
-            }],
-        ));
-        assert!(!lsp.update(
-            ctx.clone(),
-            3,
-            vec![DocumentChange {
-                text: String::from("// te"),
-                range: Some(DocumentRange {
-                    start: DocumentPosition { line: 0, column: 0 },
-                    end: DocumentPosition { line: 0, column: 0 },
-                }),
-            }],
-        ));
+        assert!(lsp
+            .update(
+                ctx.clone(),
+                5,
+                vec![DocumentChange {
+                    text: String::from("// test"),
+                    range: Some(DocumentRange {
+                        start: DocumentPosition { line: 0, column: 0 },
+                        end: DocumentPosition { line: 0, column: 0 },
+                    }),
+                }],
+            )
+            .is_ok());
+        assert!(lsp
+            .update(
+                ctx.clone(),
+                5,
+                vec![DocumentChange {
+                    text: String::from("// te"),
+                    range: Some(DocumentRange {
+                        start: DocumentPosition { line: 0, column: 0 },
+                        end: DocumentPosition { line: 0, column: 0 },
+                    }),
+                }],
+            )
+            .is_err());
+        assert!(lsp
+            .update(
+                ctx.clone(),
+                3,
+                vec![DocumentChange {
+                    text: String::from("// te"),
+                    range: Some(DocumentRange {
+                        start: DocumentPosition { line: 0, column: 0 },
+                        end: DocumentPosition { line: 0, column: 0 },
+                    }),
+                }],
+            )
+            .is_err());
 
-        assert!(lsp.update(
-            ctx,
-            6,
-            vec![DocumentChange {
-                text: String::from("// test more"),
-                range: Some(DocumentRange {
-                    start: DocumentPosition { line: 0, column: 0 },
-                    end: DocumentPosition { line: 0, column: 0 },
-                }),
-            }],
-        ));
+        assert!(lsp
+            .update(
+                ctx,
+                6,
+                vec![DocumentChange {
+                    text: String::from("// test more"),
+                    range: Some(DocumentRange {
+                        start: DocumentPosition { line: 0, column: 0 },
+                        end: DocumentPosition { line: 0, column: 0 },
+                    }),
+                }],
+            )
+            .is_ok());
     }
 }

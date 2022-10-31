@@ -51,6 +51,15 @@ impl Context {
         self.file_graph.write().insert(&parent, &[&child]);
     }
 
+    pub fn add_actors(&self, new_actors: Vec<(Url, RwLock<AssemblyLanguageServerProtocol>)>) {
+        if !new_actors.is_empty() {
+            let mut actors = self.actors.write();
+            for (url, actor) in new_actors {
+                actors.entry(url).or_insert(actor);
+            }
+        }
+    }
+
     pub(crate) fn related_parsers<I, T, F>(&self, include_self: bool, uri: Url, f: F) -> Vec<T>
     where
         F: Fn(&Parser) -> I,
