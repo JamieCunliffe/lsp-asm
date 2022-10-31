@@ -6,7 +6,7 @@ use lsp_types::notification::{
 };
 use lsp_types::request::{
     CodeLensRequest, Completion, DocumentHighlightRequest, DocumentSymbolRequest, Formatting,
-    GotoDefinition, HoverRequest, References, SemanticTokensFullRequest,
+    GotoDefinition, HoverRequest, References, Rename, SemanticTokensFullRequest,
     SemanticTokensRangeRequest, SignatureHelpRequest,
 };
 use lsp_types::{PublishDiagnosticsParams, Url};
@@ -129,6 +129,10 @@ fn process_message(connection: Arc<Connection>, context: Arc<Context>, msg: Mess
                 "textDocument/formatting" => {
                     let (_, data) = get_message::<Formatting>(request).unwrap();
                     make_result(handlers::format(context, data.text_document.uri))
+                }
+                "textDocument/rename" => {
+                    let (_, data) = get_message::<Rename>(request).unwrap();
+                    make_result(handlers::rename(context, data.into()))
                 }
                 "asm/syntaxTree" => {
                     let (_, data) =

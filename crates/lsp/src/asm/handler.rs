@@ -23,12 +23,12 @@ use lsp_server::ResponseError;
 use lsp_types::{
     CodeLens, Command, CompletionList, DocumentHighlightKind, DocumentSymbol,
     DocumentSymbolResponse, HoverContents, Location, MarkupContent, Range, SemanticToken,
-    SemanticTokens, SemanticTokensResult, SignatureHelp, SymbolKind, TextEdit, Url,
+    SemanticTokens, SemanticTokensResult, SignatureHelp, SymbolKind, TextEdit, Url, WorkspaceEdit,
 };
 use parking_lot::RwLock;
 use parser::ParsedInclude;
 use rowan::TextRange;
-use syntax::ast::{self, find_kind_index, find_parent, SyntaxKind};
+use syntax::ast::{self, find_kind_index, find_parent, SyntaxKind, SyntaxToken};
 use syntax::utils::token_is_local_label;
 
 pub struct AssemblyLanguageServerProtocol {
@@ -587,6 +587,86 @@ impl AssemblyLanguageServerProtocol {
             &context.config().analysis,
         )
         .map_err(|e| lsp_error_map(ErrorCode::MCAFailed(e.to_string())))
+    }
+
+    pub fn rename(
+        &self,
+        context: Arc<Context>,
+        rename: crate::handler::types::RenameMessage,
+    ) -> Result<Option<WorkspaceEdit>, ResponseError> {
+        let token = self
+            .parser
+            .token_at_point(&rename.location.position)
+            .ok_or_else(|| lsp_error_map(ErrorCode::TokenNotFound))?;
+
+        if matches!(token.kind(), SyntaxKind::REGISTER) {
+            return Err(lsp_error_map(ErrorCode::InvalidToken(String::from(
+                "Rename on a register is unsuported",
+            ))));
+        }
+
+        let make_rename = |parser: &Parser, token: &SyntaxToken| {
+            if matches!(token.kind(), SyntaxKind::REGISTER) {
+                return None;
+            }
+
+            let new_text = if matches!(token.kind(), SyntaxKind::LABEL) {
+                format!("{}:", rename.new_name)
+            } else {
+                rename.new_name.clone()
+            };
+
+            let range = parser.position().range_for_token(token);
+            Some((parser.uri().clone(), range, new_text))
+        };
+
+        let range = references::get_search_range(&self.parser, &token, None);
+        let references = if matches!(token.kind(), SyntaxKind::REGISTER_ALIAS) {
+            references::find_references_alias_exact(self.parser(), &token, range)
+        } else {
+            references::find_references(&self.parser, &token, range, true)
+        }
+        .filter_map(|t| make_rename(&self.parser, &t));
+
+        let included_files = if token_is_local_label(&token) {
+            None
+        } else {
+            let handle_related = |parser: &Parser| {
+                let range = parser.tree().text_range();
+                if matches!(token.kind(), SyntaxKind::REGISTER_ALIAS) {
+                    references::find_references_alias_exact(parser, &token, range)
+                } else {
+                    references::find_references(parser, &token, range, true)
+                }
+                .filter_map(|t| make_rename(parser, &t))
+                .collect_vec()
+            };
+
+            let related = context.related_parsers(false, self.uri.clone(), |parser| {
+                handle_related(parser).into_iter()
+            });
+
+            Some(related)
+        };
+
+        let changes = references
+            .chain(included_files.into_iter().flatten())
+            .filter_map(|(url, range, new_text)| {
+                Some((
+                    url,
+                    TextEdit {
+                        range: range?.into(),
+                        new_text,
+                    },
+                ))
+            })
+            .into_group_map();
+
+        Ok(Some(WorkspaceEdit {
+            changes: Some(changes),
+            document_changes: None,
+            change_annotations: None,
+        }))
     }
 
     fn apply_change(&self, contents: &mut String, change: DocumentChange) {

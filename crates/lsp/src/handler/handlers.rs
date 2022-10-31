@@ -10,10 +10,14 @@ use crate::diagnostics::{Error, UrlPath};
 use super::context::Context;
 use super::error::{lsp_error_map, ErrorCode};
 use super::ext::{FileStatsParams, FileStatsResult};
-use super::types::{DocumentChange, DocumentRangeMessage, FindReferencesMessage, LocationMessage};
+use super::types::{
+    DocumentChange, DocumentRangeMessage, FindReferencesMessage, LocationMessage, RenameMessage,
+};
 
 use lsp_server::ResponseError;
-use lsp_types::{CompletionList, DidChangeTextDocumentParams, SignatureHelp, TextEdit, Url};
+use lsp_types::{
+    CompletionList, DidChangeTextDocumentParams, SignatureHelp, TextEdit, Url, WorkspaceEdit,
+};
 
 pub fn open_file(
     context: Arc<Context>,
@@ -220,6 +224,19 @@ pub fn format(context: Arc<Context>, url: Url) -> Result<Option<Vec<TextEdit>>, 
         .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
         .read()
         .format(context.clone(), &context.root)
+}
+
+pub fn rename(
+    context: Arc<Context>,
+    rename: RenameMessage,
+) -> Result<Option<WorkspaceEdit>, ResponseError> {
+    context
+        .actors
+        .read()
+        .get(&rename.location.url)
+        .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+        .read()
+        .rename(context.clone(), rename)
 }
 
 pub fn syntax_tree(context: Arc<Context>, url: Url) -> Result<String, ResponseError> {

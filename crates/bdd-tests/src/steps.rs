@@ -7,13 +7,14 @@ use lsp_asm::handler::ext::{SyntaxTree, SyntaxTreeParams};
 use lsp_types::notification::DidChangeTextDocument;
 use lsp_types::request::{
     CodeLensRequest, Completion, DocumentHighlightRequest, DocumentSymbolRequest, GotoDefinition,
-    HoverRequest, References, SemanticTokensRangeRequest, SignatureHelpRequest,
+    HoverRequest, References, Rename, SemanticTokensRangeRequest, SignatureHelpRequest,
 };
 use lsp_types::{
     CodeLensParams, CompletionParams, DidChangeTextDocumentParams, DocumentHighlightParams,
     DocumentSymbolParams, GotoDefinitionParams, HoverParams, MarkupContent, ReferenceParams,
-    SemanticTokens, SemanticTokensRangeParams, SemanticTokensResult, SignatureHelpParams,
-    TextDocumentContentChangeEvent, TextDocumentPositionParams, VersionedTextDocumentIdentifier,
+    RenameParams, SemanticTokens, SemanticTokensRangeParams, SemanticTokensResult,
+    SignatureHelpParams, TextDocumentContentChangeEvent, TextDocumentPositionParams,
+    VersionedTextDocumentIdentifier,
 };
 use pretty_assertions::assert_eq;
 
@@ -241,6 +242,14 @@ async fn run_command(
                     work_done_progress_params: Default::default(),
                 })
         }
+        LSPCommand::Rename => {
+            let new_name = additional.trim_start_matches("with the new name: ");
+            state.lsp.send_request::<Rename>(RenameParams {
+                new_name: new_name.to_string(),
+                work_done_progress_params: Default::default(),
+                text_document_position: doc_position_params(),
+            })
+        }
         LSPCommand::NoCommand => panic!("Unknown command"),
     };
 
@@ -288,6 +297,7 @@ fn expect_response(state: &mut LSPWorld, step: &Step) {
                 serde_json::to_value(sort_completions(util::make_completion(rows)))
             }
             LSPCommand::SignatureHelp => serde_json::to_value(util::make_signature_help(rows)),
+            &LSPCommand::Rename => serde_json::to_value(util::make_workspace_edit(rows)),
             cmd => panic!("Unknown cmd: {:#?}", cmd),
         }
     } else {
@@ -296,6 +306,12 @@ fn expect_response(state: &mut LSPWorld, step: &Step) {
     .unwrap();
 
     assert_eq!(actual, expected);
+}
+
+#[then(regex = r#"I expect the error "(.*)""#)]
+fn expect_lsp_error(state: &mut LSPWorld, error: String) {
+    let actual = state.lsp.wait_for_error_for_id(state.last_id);
+    assert_eq!(error, actual.message);
 }
 
 #[then(regex = r#"I expect the following errors for "(.*)""#)]

@@ -10,6 +10,7 @@ pub(crate) enum ErrorCode {
     InvalidVersion(Url),
     MCAFailed(String),
     MissingParentNode,
+    InvalidToken(String),
 }
 
 #[derive(Serialize)]
@@ -52,6 +53,11 @@ pub(crate) fn lsp_error_map(error: ErrorCode) -> ResponseError {
         ErrorCode::MissingParentNode => ResponseError {
             code: 8,
             message: String::from("No parent node attached"),
+            data: None,
+        },
+        ErrorCode::InvalidToken(message) => ResponseError {
+            code: 9,
+            message,
             data: None,
         },
     }

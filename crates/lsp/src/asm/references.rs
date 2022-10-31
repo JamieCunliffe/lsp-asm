@@ -52,3 +52,16 @@ pub fn find_references<'a>(
         _ => Box::new(references),
     }
 }
+
+pub fn find_references_alias_exact<'a>(
+    parser: &'a Parser,
+    token: &'a SyntaxToken,
+    range: TextRange,
+) -> Box<dyn Iterator<Item = SyntaxToken> + 'a> {
+    Box::new(
+        parser
+            .tokens_in_range(range)
+            .filter(move |t| matches!(t.kind(), SyntaxKind::REGISTER_ALIAS))
+            .filter(move |t| t.text() == token.text()),
+    )
+}

@@ -2423,6 +2423,7 @@ dependencies = [
  "base",
  "cucumber",
  "documentation",
+ "itertools",
  "lsp-asm",
  "lsp-server",
  "lsp-types",

@@ -146,3 +146,17 @@ impl From<CompletionItem> for lsp_types::CompletionItem {
         }
     }
 }
+
+pub struct RenameMessage {
+    pub new_name: String,
+    pub location: LocationMessage,
+}
+
+impl From<lsp_types::RenameParams> for RenameMessage {
+    fn from(lsp: lsp_types::RenameParams) -> Self {
+        Self {
+            new_name: lsp.new_name,
+            location: lsp.text_document_position.into(),
+        }
+    }
+}

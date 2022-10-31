@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use lsp_asm::config::LSPConfig;
 use lsp_asm::handler::ext::{FileStatsParams, FileStatsResult};
-use lsp_server::{Connection, Message, Notification, Request};
+use lsp_server::{Connection, Message, Notification, Request, ResponseError};
 use lsp_types::notification::{
     DidCloseTextDocument, DidOpenTextDocument, Exit, Initialized, PublishDiagnostics,
 };
@@ -178,6 +178,34 @@ impl LSPServer {
                 {
                     match resp {
                         Message::Response(resp) => return resp.result.as_ref().unwrap().clone(),
+                        _ => unreachable!(),
+                    }
+                }
+            }
+            if Instant::now() - start > Duration::from_secs(5) {
+                panic!(
+                    r#"Time out waiting for message id: {id} from {}
+Messages held: {:#?}"#,
+                    Location::caller(),
+                    self.receved_messages.read()
+                );
+            }
+        }
+    }
+
+    #[track_caller]
+    pub fn wait_for_error_for_id(&self, id: i32) -> ResponseError {
+        assert!(self.init);
+        let start = Instant::now();
+        loop {
+            {
+                let messages = self.receved_messages.read();
+                if let Some(resp) = messages
+                    .iter()
+                    .find(|m| matches!(m, Message::Response(resp) if resp.id == id.into()))
+                {
+                    match resp {
+                        Message::Response(resp) => return resp.error.as_ref().unwrap().clone(),
                         _ => unreachable!(),
                     }
                 }

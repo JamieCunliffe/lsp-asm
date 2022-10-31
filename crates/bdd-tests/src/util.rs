@@ -1,5 +1,6 @@
 #![allow(deprecated)]
 use base::Architecture;
+use itertools::Itertools;
 use lsp_asm::config::LSPConfig;
 use lsp_asm::diagnostics::Error;
 use lsp_asm::handler::semantic;
@@ -7,7 +8,7 @@ use lsp_asm::types::{CompletionItem, CompletionKind, DocumentLocation, DocumentR
 use lsp_types::{
     CodeLens, Command, CompletionList, DocumentHighlight, DocumentHighlightKind, DocumentSymbol,
     Documentation, Location, ParameterInformation, ParameterLabel, PublishDiagnosticsParams,
-    SemanticToken, SignatureHelp, SignatureInformation, SymbolKind, Url,
+    SemanticToken, SignatureHelp, SignatureInformation, SymbolKind, TextEdit, Url, WorkspaceEdit,
 };
 use std::collections::HashMap;
 use std::path::Path;
@@ -274,4 +275,28 @@ pub(crate) fn file_to_uri(file: &str) -> Url {
             Url::parse(&format!("file://{}", file)).unwrap()
         }
     })
+}
+
+pub(crate) fn make_workspace_edit(table: &[Vec<String>]) -> WorkspaceEdit {
+    let changes = table
+        .iter()
+        .skip(1)
+        .map(|cols| {
+            let edit = TextEdit {
+                range: DocumentRange {
+                    start: PositionString::from_string(cols.get(0).unwrap().into()).into(),
+                    end: PositionString::from_string(cols.get(1).unwrap().into()).into(),
+                }
+                .into(),
+                new_text: cols.get(3).unwrap().to_string(),
+            };
+            (file_to_uri(cols.get(2).unwrap()), edit)
+        })
+        .into_group_map();
+
+    WorkspaceEdit {
+        changes: Some(changes),
+        document_changes: None,
+        change_annotations: None,
+    }
 }

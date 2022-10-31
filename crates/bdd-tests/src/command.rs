@@ -12,6 +12,7 @@ pub enum LSPCommand {
     SyntaxTree,
     Completion,
     SignatureHelp,
+    Rename,
     NoCommand,
 }
 
@@ -30,6 +31,7 @@ impl FromStr for LSPCommand {
             "syntax tree" => Ok(Self::SyntaxTree),
             "completion" => Ok(Self::Completion),
             "signature help" => Ok(Self::SignatureHelp),
+            "rename" => Ok(Self::Rename),
             _ => Err(String::from("Unknown Command")),
         }
     }

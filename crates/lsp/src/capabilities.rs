@@ -49,6 +49,7 @@ pub fn get_server_capabilities() -> ServerCapabilities {
             }),
         }),
         document_formatting_provider: Some(OneOf::Left(true)),
+        rename_provider: Some(OneOf::Left(true)),
         ..Default::default()
     }
 }
