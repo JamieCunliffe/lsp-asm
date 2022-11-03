@@ -1,3 +1,4 @@
+mod align_first_operand;
 mod bracket_space;
 mod comma_space;
 mod indent;
@@ -40,6 +41,8 @@ pub struct FormatOptions {
     pub space_before_comma: bool,
     pub newline_after_label: bool,
 
+    pub align_first_operand: bool,
+
     pub disabled_passes: DisabledPasses,
 }
 
@@ -53,6 +56,7 @@ impl Default for FormatOptions {
             space_before_comma: false,
             space_after_comma: true,
             newline_after_label: true,
+            align_first_operand: false,
             tab_kind: Default::default(),
             disabled_passes: Default::default(),
         }
@@ -74,6 +78,7 @@ pub struct DisabledPasses {
     bracket_space: bool,
     comma_space: bool,
     label_newline: bool,
+    align_first_operand: bool,
     indent: bool,
 }
 
@@ -91,6 +96,7 @@ type EnabledFn = fn(&DisabledPasses) -> bool;
 /// All the passes. Sorted in the order they should be performed.
 const ALL_PASSES: &[(EnabledFn, Formatter)] = &[
     add_pass!(bracket_space),
+    add_pass!(align_first_operand),
     add_pass!(comma_space),
     add_pass!(label_newline),
     add_pass!(indent),
