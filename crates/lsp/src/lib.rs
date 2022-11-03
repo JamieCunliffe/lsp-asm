@@ -9,4 +9,5 @@ pub mod diagnostics;
 pub mod file_util;
 pub mod handler;
 pub mod lsp;
+mod threadpool;
 pub mod types;

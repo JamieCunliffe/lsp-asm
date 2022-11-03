@@ -1,5 +1,6 @@
 use crate::handler::context::Context;
 use crate::handler::types::DocumentRangeMessage;
+use crate::threadpool::ThreadPool;
 use lsp_server::{Connection, Message, Notification, Request, RequestId, Response, ResponseError};
 use lsp_types::notification::{
     Cancel, DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, DidSaveTextDocument,
@@ -10,12 +11,24 @@ use lsp_types::request::{
     SemanticTokensRangeRequest, SignatureHelpRequest,
 };
 use lsp_types::{PublishDiagnosticsParams, Url};
-use rayon::ThreadPoolBuilder;
 use serde_json::Value;
 use std::error::Error;
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 pub(crate) type LangServerResult = Result<Value, ResponseError>;
+
+pub enum Task {
+    ProcessMessage(Arc<Connection>, Arc<Context>, Message),
+}
+
+impl crate::threadpool::Task for Task {
+    fn process(self) {
+        match self {
+            Task::ProcessMessage(con, ctx, m) => process_message(con, ctx, m),
+        }
+    }
+}
 
 pub fn lsp_loop(
     connection: Arc<Connection>,
@@ -47,21 +60,25 @@ pub fn lsp_loop(
 
     info!("Config: {:#?}", params);
     let context = Arc::new(Context::new(params, root));
-    let thread_pool = ThreadPoolBuilder::new()
-        .thread_name(|id| format!("lsp-asm-worker-{id}"))
-        .panic_handler(|e| error!("Panic: {:#?}", e))
-        .build()?;
+
+    let num_threads = std::thread::available_parallelism()
+        .map(|t| <NonZeroUsize as Into<usize>>::into(t) / 2)
+        .unwrap_or(1)
+        .max(1);
+    info!("Running with {num_threads} threads for message processing");
+
+    let pool = ThreadPool::new(num_threads);
 
     for msg in &connection.receiver {
         match msg {
             Message::Request(req) if connection.clone().handle_shutdown(&req).unwrap_or(false) => {
-                drop(thread_pool);
+                drop(pool);
                 return Ok(());
             }
             m => {
                 let connection = connection.clone();
                 let context = context.clone();
-                thread_pool.spawn(move || process_message(connection.clone(), context.clone(), m));
+                pool.add_task(Task::ProcessMessage(connection.clone(), context.clone(), m));
             }
         };
     }
