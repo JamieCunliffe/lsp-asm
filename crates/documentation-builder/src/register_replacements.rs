@@ -71,7 +71,10 @@ pub(crate) const REGISTER_REPLACEMENTS: &[(&str, &RegisterSize, &RegisterKind)] 
         "<Wt2>", "<Wa>", "<Wd>", "<Wm>", "<Wn>", "<Ws>", "<Wt>",
     ];
     (RegisterSize::Any, RegisterKind::GENERAL_PURPOSE) => [
-        "<R><m>",  "<R><n>"
+        "<R><m>",  "<R><n>", "<R><t>", "<R><dn>", "<R><d>"
+    ];
+    (RegisterSize::Any, RegisterKind::GP_OR_SP) => [
+        "<R><n|SP>"
     ];
     (RegisterSize::Bits64, RegisterKind::GENERAL_PURPOSE) => [
         "<X(s+1)>", "<X(t+1)>", "<Xdn>", "<Xt1>", "<Xt2>", "<Xa>", "<Xd>",
