@@ -8,6 +8,11 @@ mod x86_64;
 macro_rules! assert_listing(
     ($src:expr, $expect:expr) => (
         assert_listing!($src, $expect, Default::default());
+
+        // Run multiple times with different architectures as the default to ensure
+        // that the detection is working correctly.
+        assert_listing!($src, $expect, base::Architecture::AArch64);
+        assert_listing!($src, $expect, base::Architecture::X86_64);
     );
     ($src:expr, $expect:expr, $arch:expr) => (
         let config = $crate::config::LSPConfig {

@@ -249,7 +249,7 @@ impl Parser {
                 Regex::new(r#"lsp-asm-architecture: (.*) ?"#).unwrap(),
                 Regex::new(r#"^\s*\.arch (.*)"#).unwrap(),
                 Regex::new(r#".*:[\t ]+file format elf64-(.*)"#).unwrap(),
-                Regex::new(r#".*:[\t ]+file format Mach-O (.*)"#).unwrap(),
+                Regex::new(r#".*:[\t ]+file format (?i)mach-o (.*)"#).unwrap(),
             ]
         });
 

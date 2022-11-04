@@ -211,3 +211,78 @@ Disassembly of section .text:
 "#
     );
 }
+
+#[test]
+fn test_objdump_osx() {
+    assert_listing!(
+        r#"
+a.out:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+0000000100003fa4 <_main>:
+100003fa4: ff 43 00 d1 	sub	sp, sp, #16"#,
+        r##"ROOT@0..138
+  WHITESPACE@0..1 "\n"
+  METADATA@1..32 "a.out:\tfile format ma ..."
+  WHITESPACE@32..34 "\n\n"
+  METADATA@34..71 "Disassembly of sectio ..."
+  WHITESPACE@71..73 "\n\n"
+  LABEL@73..138
+    METADATA@73..89 "0000000100003fa4"
+    WHITESPACE@89..90 " "
+    LABEL@90..98 "<_main>:"
+    WHITESPACE@98..99 "\n"
+    INSTRUCTION@99..138
+      METADATA@99..108 "100003fa4"
+      METADATA@108..109 ":"
+      WHITESPACE@109..110 " "
+      METADATA@110..122 "ff 43 00 d1 "
+      WHITESPACE@122..123 "\t"
+      MNEMONIC@123..126 "sub"
+      WHITESPACE@126..127 "\t"
+      REGISTER@127..129 "sp"
+      COMMA@129..130 ","
+      WHITESPACE@130..131 " "
+      REGISTER@131..133 "sp"
+      COMMA@133..134 ","
+      WHITESPACE@134..135 " "
+      IMMEDIATE@135..136 "#"
+      NUMBER@136..138 "16"
+"##
+    );
+}
+
+#[test]
+fn test_llvm_objdump() {
+    assert_listing!(
+        r##"
+target/release/test:	file format elf64-x86-64
+
+Disassembly of section .init:
+
+0000000000055000 <_init>:
+   55000: f3 0f 1e fa                  	endbr64
+"##,
+        r##"ROOT@0..153
+  WHITESPACE@0..1 "\n"
+  METADATA@1..46 "target/release/test:\t ..."
+  WHITESPACE@46..48 "\n\n"
+  METADATA@48..77 "Disassembly of sectio ..."
+  WHITESPACE@77..79 "\n\n"
+  LABEL@79..153
+    METADATA@79..95 "0000000000055000"
+    WHITESPACE@95..96 " "
+    LABEL@96..104 "<_init>:"
+    WHITESPACE@104..108 "\n   "
+    INSTRUCTION@108..152
+      METADATA@108..113 "55000"
+      METADATA@113..114 ":"
+      WHITESPACE@114..115 " "
+      METADATA@115..144 "f3 0f 1e fa           ..."
+      WHITESPACE@144..145 "\t"
+      MNEMONIC@145..152 "endbr64"
+    WHITESPACE@152..153 "\n"
+"##
+    );
+}
