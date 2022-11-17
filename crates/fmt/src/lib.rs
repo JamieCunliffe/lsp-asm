@@ -72,35 +72,38 @@ impl FormatOptions {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize)]
-#[serde(default)]
-pub struct DisabledPasses {
-    bracket_space: bool,
-    comma_space: bool,
-    label_newline: bool,
-    align_first_operand: bool,
-    indent: bool,
-}
+macro_rules! define_passes {
+    ($($name:ident),*) => {
+        #[derive(Clone, Debug, Default, Deserialize)]
+        #[serde(default)]
+        pub struct DisabledPasses {
+            $(
+                $name: bool
+            ),*
+        }
 
-macro_rules! add_pass {
-    ($name:ident) => {
-        (
-            |enabled: &DisabledPasses| enabled.$name == false,
-            $name::perform_pass,
-        )
+        const ALL_PASSES: &[(EnabledFn, Formatter)] = &[
+            $(
+                (
+                    |enabled: &DisabledPasses| enabled.$name == false,
+                    $name::perform_pass,
+                )
+            ),*
+        ];
     };
 }
+
 type Formatter = fn(root: SyntaxNode, options: &FormatOptions) -> SyntaxNode;
 type EnabledFn = fn(&DisabledPasses) -> bool;
 
-/// All the passes. Sorted in the order they should be performed.
-const ALL_PASSES: &[(EnabledFn, Formatter)] = &[
-    add_pass!(bracket_space),
-    add_pass!(align_first_operand),
-    add_pass!(comma_space),
-    add_pass!(label_newline),
-    add_pass!(indent),
-];
+// All the passes. Sorted in the order they should be performed.
+define_passes!(
+    bracket_space,
+    align_first_operand,
+    comma_space,
+    label_newline,
+    indent
+);
 
 #[cfg(test)]
 mod tests {
