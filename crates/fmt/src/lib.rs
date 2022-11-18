@@ -1,8 +1,3 @@
-mod align_first_operand;
-mod bracket_space;
-mod comma_space;
-mod indent;
-mod label_newline;
 #[cfg(test)]
 mod test_util;
 
@@ -43,6 +38,9 @@ pub struct FormatOptions {
 
     pub align_first_operand: bool,
 
+    pub align_register_alias: bool,
+    pub align_const_defs: bool,
+
     pub disabled_passes: DisabledPasses,
 }
 
@@ -57,6 +55,8 @@ impl Default for FormatOptions {
             space_after_comma: true,
             newline_after_label: true,
             align_first_operand: false,
+            align_register_alias: true,
+            align_const_defs: true,
             tab_kind: Default::default(),
             disabled_passes: Default::default(),
         }
@@ -74,6 +74,10 @@ impl FormatOptions {
 
 macro_rules! define_passes {
     ($($name:ident),*) => {
+        $(
+            mod $name;
+        )*
+
         #[derive(Clone, Debug, Default, Deserialize)]
         #[serde(default)]
         pub struct DisabledPasses {
@@ -102,6 +106,7 @@ define_passes!(
     align_first_operand,
     comma_space,
     label_newline,
+    const_def_align,
     indent
 );
 
