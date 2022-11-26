@@ -1,8 +1,8 @@
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
 
+use base::rwlock::RwLock;
 use itertools::Itertools;
-use parking_lot::RwLock;
 
 use crate::asm::handler::AssemblyLanguageServerProtocol;
 use crate::diagnostics::{Error, UrlPath};

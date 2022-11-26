@@ -37,7 +37,6 @@ phf = { version = "0.10.1", features = ["macros"] }
 phf_macros = { version = "0.10.0", features = ["unicase"] }
 unicase = "2.6.0"
 dissimilar = "1.0.4"
-parking_lot = "0.12.1"
 petgraph = "0.6.2"
 crossbeam-channel = "0.5.6"
 

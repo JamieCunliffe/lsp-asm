@@ -2,6 +2,7 @@
 extern crate log;
 
 pub mod register;
+pub mod rwlock;
 pub use architecture::*;
 pub use filetype::*;
 

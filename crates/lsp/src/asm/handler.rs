@@ -13,8 +13,10 @@ use crate::handler::error::{lsp_error_map, ErrorCode};
 use crate::handler::semantic::semantic_delta_transform;
 use crate::handler::types::DocumentChange;
 use crate::types::{DocumentPosition, DocumentRange};
+
 use arch::registers::registers_for_architecture;
 use base::register::RegisterKind;
+use base::rwlock::RwLock;
 use documentation::access::access_type;
 use documentation::OperandAccessType;
 use fmt::FormatOptions;
@@ -25,7 +27,6 @@ use lsp_types::{
     DocumentSymbolResponse, HoverContents, Location, MarkupContent, Range, SemanticToken,
     SemanticTokens, SemanticTokensResult, SignatureHelp, SymbolKind, TextEdit, Url, WorkspaceEdit,
 };
-use parking_lot::RwLock;
 use parser::ParsedInclude;
 use rowan::TextRange;
 use syntax::ast::{self, find_kind_index, find_parent, SyntaxKind, SyntaxToken};

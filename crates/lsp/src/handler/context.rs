@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
+use base::rwlock::RwLock;
 use lsp_types::Url;
-use parking_lot::RwLock;
 
 use crate::asm::handler::AssemblyLanguageServerProtocol;
 use crate::asm::parser::Parser;
