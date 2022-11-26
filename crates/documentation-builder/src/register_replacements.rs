@@ -67,8 +67,8 @@ pub(crate) const REGISTER_REPLACEMENTS: &[(&str, &RegisterSize, &RegisterKind)] 
         "<Pdn>", "<Pd>", "<Pg>", "<Pm>", "<Pn>", "<Pt>"
     ];
     (RegisterSize::Bits32, RegisterKind::GENERAL_PURPOSE) => [
-        "<W(s+1)>", "<W(t+1)>", "<Wd|WSP>", "<Wn|WSP>", "<Wdn>", "<Wt1>",
-        "<Wt2>", "<Wa>", "<Wd>", "<Wm>", "<Wn>", "<Ws>", "<Wt>",
+        "<W(s+1)>", "<W(t+1)>", "<Wdn>", "<Wt1>", "<Wt2>", "<Wa>", "<Wd>",
+        "<Wm>", "<Wn>", "<Ws>", "<Wt>",
     ];
     (RegisterSize::Any, RegisterKind::GENERAL_PURPOSE) => [
         "<R><m>",  "<R><n>", "<R><t>", "<R><dn>", "<R><d>"
@@ -82,6 +82,9 @@ pub(crate) const REGISTER_REPLACEMENTS: &[(&str, &RegisterSize, &RegisterKind)] 
     ];
     (RegisterSize::Bits64, RegisterKind::GP_OR_SP) => [
         "<Xd|SP>", "<Xm|SP>", "<Xn|SP>", "<Xt|SP>"
+    ];
+    (RegisterSize::Bits32, RegisterKind::GP_OR_SP) => [
+        "<Wd|WSP>", "<Wn|WSP>"
     ];
     (RegisterSize::Bits8, RegisterKind::FLOATING_POINT) => [
         "<Bt>"

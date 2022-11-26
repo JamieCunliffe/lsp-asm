@@ -59,6 +59,7 @@ pub static DOCUMENTATION_REGISTERS: phf::Map<UniCase<&'static str>, i8> = phf::p
     UniCase::ascii("<gp_32>") => 0,
     UniCase::ascii("<gp_64>") => 0,
     UniCase::ascii("<gp_a>") => 0,
+    UniCase::ascii("<gp|sp_32>") => 0,
     UniCase::ascii("<gp|sp_64>") => 0,
     UniCase::ascii("<gp|sp_a>") => 0,
     UniCase::ascii("<pred_v>") => 0,
