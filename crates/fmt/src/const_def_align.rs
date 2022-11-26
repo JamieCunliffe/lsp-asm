@@ -109,7 +109,7 @@ fn handle_name(
 
     let num_spaces = max - token.text().len();
     let spaces = " ".repeat(num_spaces + 1 + (max_mnemonic - mnemonic_len));
-    let maybe_ws = token.next_token()?;
+    let maybe_ws = token.next_sibling_or_token()?.into_token()?;
 
     if maybe_ws.text() != spaces && matches!(maybe_ws.kind(), SyntaxKind::WHITESPACE) {
         Some((
@@ -139,7 +139,7 @@ fn handle_expr(node: &SyntaxNode) -> Option<(Position, SyntaxToken)> {
 fn handle_register(node: &SyntaxNode) -> Option<(Position, SyntaxToken)> {
     let register = find_kind_index(node, 0, SyntaxKind::REGISTER).and_then(|t| t.into_token())?;
     let spaces = " ";
-    let maybe_ws = register.prev_token()?;
+    let maybe_ws = register.prev_sibling_or_token()?.into_token()?;
 
     if maybe_ws.text() != spaces && matches!(maybe_ws.kind(), SyntaxKind::WHITESPACE) {
         Some((

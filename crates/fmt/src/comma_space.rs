@@ -34,7 +34,8 @@ pub(crate) fn perform_pass(root: SyntaxNode, options: &FormatOptions) -> SyntaxN
 
 fn perform_after(child: SyntaxToken) -> Option<(Position, SyntaxToken)> {
     if let Some(ws) = child
-        .next_token()
+        .next_sibling_or_token()?
+        .into_token()
         .filter(|t| matches!(t.kind(), SyntaxKind::WHITESPACE))
     {
         if ws.text() == " " {
@@ -55,7 +56,8 @@ fn perform_after(child: SyntaxToken) -> Option<(Position, SyntaxToken)> {
 
 fn perform_before(child: SyntaxToken) -> Option<(Position, SyntaxToken)> {
     if let Some(ws) = child
-        .prev_token()
+        .prev_sibling_or_token()?
+        .into_token()
         .filter(|t| matches!(t.kind(), SyntaxKind::WHITESPACE))
     {
         if ws.text() == " " {
@@ -76,14 +78,16 @@ fn perform_before(child: SyntaxToken) -> Option<(Position, SyntaxToken)> {
 
 fn remove_after(child: SyntaxToken) -> Option<(Position, SyntaxToken)> {
     child
-        .next_token()
+        .next_sibling_or_token()?
+        .into_token()
         .filter(|t| matches!(t.kind(), SyntaxKind::WHITESPACE))
         .map(|ws| (Position::Replace(ws), create_token(SyntaxKind::ROOT, "")))
 }
 
 fn remove_before(child: SyntaxToken) -> Option<(Position, SyntaxToken)> {
     child
-        .prev_token()
+        .prev_sibling_or_token()?
+        .into_token()
         .filter(|t| matches!(t.kind(), SyntaxKind::WHITESPACE))
         .map(|ws| (Position::Replace(ws), create_token(SyntaxKind::ROOT, "")))
 }
@@ -117,5 +121,19 @@ mod tests {
         };
         crate::format_test!("ADD x1 , x1, x3" => "ADD x1,x1,x3", &opts, perform_pass);
         crate::format_test!("ADD x1 ,x1    ,x3" => "ADD x1,x1,x3", &opts, perform_pass);
+    }
+
+    #[test]
+    fn test_incomplete_trailing_comma() {
+        let opts = FormatOptions {
+            space_after_comma: true,
+            ..Default::default()
+        };
+        crate::format_test!(
+"ADD x1, x1,
+main:"
+=>
+"ADD x1, x1,
+main:", &opts, perform_pass);
     }
 }

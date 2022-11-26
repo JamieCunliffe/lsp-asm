@@ -49,7 +49,7 @@ pub(crate) fn perform_pass(root: SyntaxNode, options: &FormatOptions) -> SyntaxN
 
 fn insert_spaces(child: SyntaxToken) -> Option<(Position, SyntaxToken)> {
     let position = if is_opening(child.kind()) {
-        if let Some(token) = child.next_token() {
+        if let Some(token) = child.next_sibling_or_token()?.into_token() {
             if matches!(token.kind(), SyntaxKind::WHITESPACE) {
                 if token.text() == " " {
                     None
@@ -62,7 +62,7 @@ fn insert_spaces(child: SyntaxToken) -> Option<(Position, SyntaxToken)> {
         } else {
             None
         }
-    } else if let Some(token) = child.prev_token() {
+    } else if let Some(token) = child.prev_sibling_or_token()?.into_token() {
         if matches!(token.kind(), SyntaxKind::WHITESPACE) {
             if token.text() == " " {
                 None
@@ -81,12 +81,12 @@ fn insert_spaces(child: SyntaxToken) -> Option<(Position, SyntaxToken)> {
 
 fn remove_spaces(child: SyntaxToken) -> Option<(Position, SyntaxToken)> {
     if is_opening(child.kind()) {
-        if let Some(token) = child.next_token() {
+        if let Some(token) = child.next_sibling_or_token()?.into_token() {
             if matches!(token.kind(), SyntaxKind::WHITESPACE) {
                 return Some((Position::Replace(token), create_token(SyntaxKind::ROOT, "")));
             }
         }
-    } else if let Some(token) = child.prev_token() {
+    } else if let Some(token) = child.prev_sibling_or_token()?.into_token() {
         if matches!(token.kind(), SyntaxKind::WHITESPACE) {
             return Some((Position::Replace(token), create_token(SyntaxKind::ROOT, "")));
         }
@@ -150,6 +150,39 @@ mod tests {
         crate::format_test!("invalid [" => "invalid [", &opts, perform_pass);
         crate::format_test!("invalid {" => "invalid {", &opts, perform_pass);
         crate::format_test!("invalid (" => "invalid (", &opts, perform_pass);
+    }
+
+    #[test]
+    fn test_transform_early_ins_next_line() {
+        let opts = FormatOptions {
+            space_after_bracket: true,
+            space_after_curly_bracket: true,
+            space_after_square_bracket: true,
+            ..Default::default()
+        };
+        crate::format_test!("
+invalid [
+next:"
+=>
+"
+invalid [
+next:", &opts, perform_pass);
+
+        crate::format_test!("
+invalid {
+next:"
+=>
+"
+invalid {
+next:", &opts, perform_pass);
+
+        crate::format_test!("
+invalid (
+next:"
+=>
+"
+invalid (
+next:", &opts, perform_pass);
     }
 
     #[test]

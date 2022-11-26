@@ -33,7 +33,7 @@ pub(crate) fn perform_pass(root: SyntaxNode, options: &FormatOptions) -> SyntaxN
                 find_kind_index(node, 0, SyntaxKind::MNEMONIC).and_then(|t| t.into_token())?;
             let num_spaces = max - token.text().len();
             let spaces = " ".repeat(num_spaces + 1);
-            let maybe_ws = token.next_token()?;
+            let maybe_ws = token.next_sibling_or_token()?.into_token()?;
             if maybe_ws.text() != spaces && matches!(maybe_ws.kind(), SyntaxKind::WHITESPACE) {
                 Some((
                     Position::Replace(maybe_ws),
@@ -141,5 +141,25 @@ aaa x1
 aaaa x1
 aaaaaa x1
 "#, &options, perform_pass);
+    }
+
+    #[test]
+    fn test_local_with_ins() {
+        let opts = FormatOptions {
+            align_first_operand: true,
+            ..Default::default()
+        };
+
+        crate::format_test!(
+r#"
+    ret
+main:
+"#
+=>
+r#"
+    ret
+main:
+"#,
+        &opts, perform_pass);
     }
 }
