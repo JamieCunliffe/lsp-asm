@@ -34,6 +34,7 @@ pub struct FormatOptions {
     pub space_after_square_bracket: bool,
     pub space_after_comma: bool,
     pub space_before_comma: bool,
+    pub space_around_operators: bool,
     pub newline_after_label: bool,
 
     pub align_first_operand: bool,
@@ -53,6 +54,7 @@ impl Default for FormatOptions {
             space_after_square_bracket: false,
             space_before_comma: false,
             space_after_comma: true,
+            space_around_operators: true,
             newline_after_label: true,
             align_first_operand: false,
             align_register_alias: true,
@@ -105,6 +107,7 @@ define_passes!(
     bracket_space,
     align_first_operand,
     comma_space,
+    space_around_operators,
     label_newline,
     const_def_align,
     indent
