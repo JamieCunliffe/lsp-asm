@@ -6,6 +6,6 @@ edition = "2021"
 
 [dependencies]
 pretty_env_logger = "0.4.0"
-clap = { version = "3.2.5", features = ["derive"] }
-tokio = { version = "1.19.2", default-features = false, features = ["rt-multi-thread", "sync"]}
+clap = { version = "4.0.27", features = ["derive"] }
+tokio = { version = "1.22.0", default-features = false, features = ["rt-multi-thread", "sync"] }
 documentation-builder = { path = "../crates/documentation-builder" }

@@ -1,8 +1,6 @@
-use std::convert::Infallible;
 use std::str::FromStr;
 
-use async_trait::async_trait;
-use cucumber::{World, WorldInit};
+use cucumber::World;
 
 use crate::command::LSPCommand;
 use crate::file::FileUrl;
@@ -22,21 +20,12 @@ async fn main() {
     LSPWorld::run("./features").await;
 }
 
-#[derive(WorldInit)]
+#[derive(cucumber::World)]
 pub struct LSPWorld {
     lsp: LSPServer,
     last_id: i32,
     last_cmd: LSPCommand,
     last_file: FileUrl,
-}
-
-#[async_trait(?Send)]
-impl World for LSPWorld {
-    type Error = Infallible;
-
-    async fn new() -> Result<Self, Self::Error> {
-        Ok(Default::default())
-    }
 }
 
 impl core::fmt::Debug for LSPWorld {

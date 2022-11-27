@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 base = { path = "../base" }
 parser = { path = "../parser" }
-itertools = "0.10.3"
-phf = { version = "0.10.1", features = ["macros"] }
-phf_macros = { version = "0.10.0", features = ["unicase"] }
+itertools = "0.10.5"
+phf = { version = "0.11.1", features = ["macros"] }
+phf_macros = { version = "0.11.1", features = ["unicase"] }
 unicase = "2.6.0"
