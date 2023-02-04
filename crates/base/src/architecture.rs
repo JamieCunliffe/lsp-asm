@@ -1,6 +1,8 @@
 use std::fmt::Display;
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+use macros::VariantsIter;
+
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, VariantsIter)]
 pub enum Architecture {
     AArch64,
     X86_64,

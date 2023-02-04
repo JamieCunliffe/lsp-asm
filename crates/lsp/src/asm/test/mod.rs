@@ -11,8 +11,9 @@ macro_rules! assert_listing(
 
         // Run multiple times with different architectures as the default to ensure
         // that the detection is working correctly.
-        assert_listing!($src, $expect, base::Architecture::AArch64);
-        assert_listing!($src, $expect, base::Architecture::X86_64);
+        for arch in base::Architecture::iter() {
+            assert_listing!($src, $expect, *arch);
+        }
     );
     ($src:expr, $expect:expr, $arch:expr) => (
         let config = $crate::config::LSPConfig {

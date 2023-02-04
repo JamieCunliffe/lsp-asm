@@ -80,6 +80,7 @@ version = "0.1.0"
 dependencies = [
  "bitflags",
  "log",
+ "macros",
  "once_cell",
  "regex",
  "serde",
@@ -1104,6 +1105,14 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "url",
+]
+
+[[package]]
+name = "macros"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
 ]
 
 [[package]]
