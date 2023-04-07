@@ -13,14 +13,6 @@ Feature: Completion of registers
       | label | details | kind     |
       | x0    |         | register |
       | x1    |         | register |
-      | x2    |         | register |
-      | x3    |         | register |
-      | x4    |         | register |
-      | x5    |         | register |
-      | x6    |         | register |
-      | x7    |         | register |
-      | x8    |         | register |
-      | x9    |         | register |
       | x10   |         | register |
       | x11   |         | register |
       | x12   |         | register |
@@ -31,6 +23,7 @@ Feature: Completion of registers
       | x17   |         | register |
       | x18   |         | register |
       | x19   |         | register |
+      | x2    |         | register |
       | x20   |         | register |
       | x21   |         | register |
       | x22   |         | register |
@@ -41,7 +34,14 @@ Feature: Completion of registers
       | x27   |         | register |
       | x28   |         | register |
       | x29   |         | register |
+      | x3    |         | register |
       | x30   |         | register |
+      | x4    |         | register |
+      | x5    |         | register |
+      | x6    |         | register |
+      | x7    |         | register |
+      | x8    |         | register |
+      | x9    |         | register |
       | xzr   |         | register |
 
   Scenario: Complete register inside brackets
@@ -59,14 +59,6 @@ Feature: Completion of registers
       | sp    |         | register |
       | x0    |         | register |
       | x1    |         | register |
-      | x2    |         | register |
-      | x3    |         | register |
-      | x4    |         | register |
-      | x5    |         | register |
-      | x6    |         | register |
-      | x7    |         | register |
-      | x8    |         | register |
-      | x9    |         | register |
       | x10   |         | register |
       | x11   |         | register |
       | x12   |         | register |
@@ -77,6 +69,7 @@ Feature: Completion of registers
       | x17   |         | register |
       | x18   |         | register |
       | x19   |         | register |
+      | x2    |         | register |
       | x20   |         | register |
       | x21   |         | register |
       | x22   |         | register |
@@ -87,5 +80,12 @@ Feature: Completion of registers
       | x27   |         | register |
       | x28   |         | register |
       | x29   |         | register |
+      | x3    |         | register |
       | x30   |         | register |
+      | x4    |         | register |
+      | x5    |         | register |
+      | x6    |         | register |
+      | x7    |         | register |
+      | x8    |         | register |
+      | x9    |         | register |
       | xzr   |         | register |

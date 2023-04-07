@@ -490,12 +490,9 @@ impl AssemblyLanguageServerProtocol {
         _context: Arc<Context>,
         location: DocumentPosition,
     ) -> Result<CompletionList, ResponseError> {
-        let docs = match documentation::load_documentation(self.parser.architecture()) {
-            Err(_) => return Ok(Default::default()),
-            Ok(docs) => docs,
-        };
+        let docs = documentation::load_documentation(self.parser.architecture());
 
-        let items = completion::handle_completion(&self.parser, &location, docs)
+        let items = completion::handle_completion(&self.parser, &location, docs.ok())
             .unwrap_or_default()
             .into_iter()
             .map(|i| i.into())

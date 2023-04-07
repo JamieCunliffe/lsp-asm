@@ -18,18 +18,18 @@ Feature: Completion of mnemonic
       | LD1W  | LD1W ...                                    | mnemonic | LD1W 18            |
       | LD1W  | LD1W ...                                    | mnemonic | LD1W 27            |
       | LD1W  | LD1W ...                                    | mnemonic | LD1W 9             |
-      | STP   | STP  <St1>, <St2>, [<Xn%PIPE%SP>], #<imm>   | mnemonic | STP V1 Description |
-      | STP   | STP  <Dt1>, <Dt2>, [<Xn%PIPE%SP>], #<imm>   | mnemonic | STP V1 Description |
-      | STP   | STP  <Qt1>, <Qt2>, [<Xn%PIPE%SP>], #<imm>   | mnemonic | STP V1 Description |
-      | STP   | STP  <St1>, <St2>, [<Xn%PIPE%SP>, #<imm>]!  | mnemonic | STP V1 Description |
       | STP   | STP  <Dt1>, <Dt2>, [<Xn%PIPE%SP>, #<imm>]!  | mnemonic | STP V1 Description |
-      | STP   | STP  <Qt1>, <Qt2>, [<Xn%PIPE%SP>, #<imm>]!  | mnemonic | STP V1 Description |
-      | STP   | STP  <St1>, <St2>, [<Xn%PIPE%SP>{, #<imm>}] | mnemonic | STP V1 Description |
+      | STP   | STP  <Dt1>, <Dt2>, [<Xn%PIPE%SP>], #<imm>   | mnemonic | STP V1 Description |
       | STP   | STP  <Dt1>, <Dt2>, [<Xn%PIPE%SP>{, #<imm>}] | mnemonic | STP V1 Description |
+      | STP   | STP  <Qt1>, <Qt2>, [<Xn%PIPE%SP>, #<imm>]!  | mnemonic | STP V1 Description |
+      | STP   | STP  <Qt1>, <Qt2>, [<Xn%PIPE%SP>], #<imm>   | mnemonic | STP V1 Description |
       | STP   | STP  <Qt1>, <Qt2>, [<Xn%PIPE%SP>{, #<imm>}] | mnemonic | STP V1 Description |
-      | STP   | STP  <Wt1>, <Wt2>, [<Xn%PIPE%SP>], #<imm>   | mnemonic | STP V2 Description |
-      | STP   | STP  <Xt1>, <Xt2>, [<Xn%PIPE%SP>], #<imm>   | mnemonic | STP V2 Description |
+      | STP   | STP  <St1>, <St2>, [<Xn%PIPE%SP>, #<imm>]!  | mnemonic | STP V1 Description |
+      | STP   | STP  <St1>, <St2>, [<Xn%PIPE%SP>], #<imm>   | mnemonic | STP V1 Description |
+      | STP   | STP  <St1>, <St2>, [<Xn%PIPE%SP>{, #<imm>}] | mnemonic | STP V1 Description |
       | STP   | STP  <Wt1>, <Wt2>, [<Xn%PIPE%SP>, #<imm>]!  | mnemonic | STP V2 Description |
-      | STP   | STP  <Xt1>, <Xt2>, [<Xn%PIPE%SP>, #<imm>]!  | mnemonic | STP V2 Description |
+      | STP   | STP  <Wt1>, <Wt2>, [<Xn%PIPE%SP>], #<imm>   | mnemonic | STP V2 Description |
       | STP   | STP  <Wt1>, <Wt2>, [<Xn%PIPE%SP>{, #<imm>}] | mnemonic | STP V2 Description |
+      | STP   | STP  <Xt1>, <Xt2>, [<Xn%PIPE%SP>, #<imm>]!  | mnemonic | STP V2 Description |
+      | STP   | STP  <Xt1>, <Xt2>, [<Xn%PIPE%SP>], #<imm>   | mnemonic | STP V2 Description |
       | STP   | STP  <Xt1>, <Xt2>, [<Xn%PIPE%SP>{, #<imm>}] | mnemonic | STP V2 Description |

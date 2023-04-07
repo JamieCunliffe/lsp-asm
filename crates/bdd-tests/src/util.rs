@@ -166,6 +166,7 @@ pub(crate) fn make_completion(table: &[Vec<String>]) -> CompletionList {
                 "mnemonic" => CompletionKind::Mnemonic,
                 "label" => CompletionKind::Label,
                 "register" => CompletionKind::Register,
+                "text" => CompletionKind::Text,
                 kind => panic!("Unknown completion kind: {kind}"),
             },
         })
@@ -176,17 +177,6 @@ pub(crate) fn make_completion(table: &[Vec<String>]) -> CompletionList {
         is_incomplete: true,
         items,
     }
-}
-
-pub(crate) fn sort_completions(mut list: CompletionList) -> CompletionList {
-    let items = &mut list.items;
-    items.sort_by(|a, b| {
-        let a = (&a.label, a.detail.as_ref().unwrap());
-        let b = (&b.label, b.detail.as_ref().unwrap());
-        a.cmp(&b)
-    });
-
-    list
 }
 
 pub(crate) fn make_signature_help(table: &[Vec<String>]) -> SignatureHelp {

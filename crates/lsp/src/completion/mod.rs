@@ -13,6 +13,7 @@ use syntax::ast::{find_parent, SyntaxElement, SyntaxKind, SyntaxToken};
 use crate::asm::parser::Parser;
 use crate::types::{CompletionItem, DocumentPosition};
 
+mod internal_directives;
 mod label;
 mod mnemonic;
 mod registers;
@@ -21,11 +22,23 @@ mod value_list;
 pub fn handle_completion(
     parser: &Parser,
     position: &DocumentPosition,
-    docs: Arc<DocumentationMap>,
+    docs: Option<Arc<DocumentationMap>>,
 ) -> Option<Vec<CompletionItem>> {
     let location = parser.position().point_for_position(position)?;
     let token = parser.tree().token_at_offset(location).left_biased()?;
+
+    if token.text().contains("lsp-asm")
+        || token
+            .prev_token()
+            .map(|t| t.text().contains("lsp-asm"))
+            .unwrap_or(false)
+    {
+        return internal_directives::handle(token);
+    }
+
+    let docs = docs?;
     let registers = registers_for_architecture(parser.architecture());
+    let context = CompletionContext::new(parser, token.clone(), docs.clone());
 
     let mut items = match token.kind() {
         SyntaxKind::MNEMONIC => mnemonic::handle_mnemonic(docs),
@@ -39,13 +52,12 @@ pub fn handle_completion(
         }
         _ => {
             let completion_kinds = find_documentation_token_for_instruction(
-                docs.clone(),
+                docs,
                 &token,
                 registers,
                 parser.alias(),
                 *parser.architecture(),
             )?;
-            let context = CompletionContext::new(parser, token, docs);
 
             completion_kinds
                 .iter()

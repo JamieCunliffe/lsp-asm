@@ -21,7 +21,7 @@ use pretty_assertions::assert_eq;
 use crate::command::LSPCommand;
 use crate::file::FileUrl;
 use crate::position::PositionString;
-use crate::util::{parse_config, sort_completions};
+use crate::util::parse_config;
 use crate::{util, LSPWorld};
 
 #[given(regex = r#"I have the "(.*)" documentation"#)]
@@ -293,9 +293,7 @@ fn expect_response(state: &mut LSPWorld, step: &Step) {
             }
             LSPCommand::DocumentSymbols => serde_json::to_value(util::make_doc_symbol(rows)),
             LSPCommand::Codelens => serde_json::to_value(util::make_codelens(rows)),
-            LSPCommand::Completion => {
-                serde_json::to_value(sort_completions(util::make_completion(rows)))
-            }
+            LSPCommand::Completion => serde_json::to_value(util::make_completion(rows)),
             LSPCommand::SignatureHelp => serde_json::to_value(util::make_signature_help(rows)),
             &LSPCommand::Rename => serde_json::to_value(util::make_workspace_edit(rows)),
             cmd => panic!("Unknown cmd: {cmd:#?}"),

@@ -92,7 +92,7 @@ fn process_message(connection: Arc<Connection>, context: Arc<Context>, msg: Mess
     match msg {
         Message::Request(request) => {
             let req_id = request.id.clone();
-            info!("Handling request: {:#?}, id: {}", request, &req_id);
+            debug!("Handling request: {:#?}, id: {}", request, &req_id);
             let result = match request.method.as_str() {
                 "textDocument/completion" => {
                     let (_, data) = get_message::<Completion>(request).unwrap();

@@ -144,6 +144,7 @@
                   :action-handlers (ht ("lsp-asm.loc" #'lsp-asm--open-loc))
                   :environment-fn (lambda ()
                                     '(("RUST_LOG" . lsp-asm-log-level)))
+                  :completion-in-comments? t
                   :server-id 'lsp-asm))
 
 (defun lsp-asm--set-tokens()
