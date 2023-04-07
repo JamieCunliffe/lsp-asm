@@ -723,8 +723,8 @@ fn handle_includes(
 fn get_format_options(workspace_root: &str) -> FormatOptions {
     let mut path = PathBuf::from(workspace_root);
     path.push(".asmfmt.toml");
-    if let Ok(data) = std::fs::read(path) {
-        toml::from_slice(&data).unwrap_or_default()
+    if let Ok(data) = std::fs::read_to_string(path) {
+        toml::from_str(&data).unwrap_or_default()
     } else {
         Default::default()
     }

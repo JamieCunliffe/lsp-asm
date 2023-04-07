@@ -12,7 +12,7 @@ bitflags! {
         const PREDICATE       = 0b00010000;
         const SP              = 0b00100000;
 
-        const GP_OR_SP = RegisterKind::GENERAL_PURPOSE.bits | RegisterKind::SP.bits;
+        const GP_OR_SP = RegisterKind::GENERAL_PURPOSE.bits() | RegisterKind::SP.bits();
     }
 }
 

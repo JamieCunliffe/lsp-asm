@@ -6,9 +6,9 @@ edition = "2021"
 [dependencies]
 base = { path = "../base" }
 syntax = { path = "../syntax" }
-nom = "7.1.1"
-rowan = "0.15.10"
-either = "1.8.0"
+nom = "7.1.3"
+rowan = "0.15.11"
+either = "1.8.1"
 log = "0.4.17"
 phf = "0.11.1"
 unicase = "2.6.0"

@@ -8,8 +8,8 @@ base = { path = "../base" }
 syntax = { path = "../syntax" }
 parser = { path = "../parser" }
 arch = { path = "../arch" }
-rowan = "0.15.10"
-serde = { version = "1.0.147", features = ["derive"] }
+rowan = "0.15.11"
+serde = { version = "1.0.159", features = ["derive"] }
 
 [dev-dependencies]
 pretty_assertions = "1.3.0"
