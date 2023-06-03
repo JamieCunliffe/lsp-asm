@@ -122,6 +122,7 @@ dependencies = [
  "log",
  "macros",
  "once_cell",
+ "pretty_assertions",
  "regex",
  "serde",
  "tokio",

@@ -140,7 +140,7 @@ fn determine_instruction_template_with_label() {
 fn determine_instruction_template_with_label_objdump() {
     let line = r#"0000000000000000 <a>:
 000000000: 00 	bl test <a+0x4>"#;
-    let (op, alias) = util::parse_asm(line, base::FileType::ObjDump);
+    let (op, alias) = util::parse_asm(line, base::FileType::ObjDump(Default::default()));
     let op = op.first_child().unwrap();
 
     let instructions = vec![util::make_label_instruction()];

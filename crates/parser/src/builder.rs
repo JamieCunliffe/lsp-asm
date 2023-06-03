@@ -99,7 +99,7 @@ impl<'c> Builder<'c> {
 
     pub(super) fn change_node_kind(&self, new_kind: SyntaxKind) {
         let index = self.parent.borrow().len() - 1;
-        if let Some(mut i) = self.parent.borrow_mut().get_mut(index) {
+        if let Some(i) = self.parent.borrow_mut().get_mut(index) {
             i.1 = new_kind
         }
     }

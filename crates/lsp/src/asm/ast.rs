@@ -40,7 +40,7 @@ impl<'st, 'ft> LabelToken<'st, 'ft> {
 
         match self.file_type {
             FileType::Assembly => text,
-            FileType::ObjDump => text.trim_start_matches('<').trim_end_matches('>'),
+            FileType::ObjDump(_) => text.trim_start_matches('<').trim_end_matches('>'),
         }
     }
 

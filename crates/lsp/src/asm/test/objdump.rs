@@ -286,3 +286,79 @@ Disassembly of section .init:
 "##
     );
 }
+
+#[test]
+fn test_objdump_no_insr() {
+    assert_listing!(
+        r##"
+
+target/release/test:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000010002ad84 <__ZN4core3ptr100drop_in_place$LT$core..option..Option$LT$lsp_types..completion..CompletionClientCapabilities$GT$$GT$17h599609cf084734b7E>:
+10002ad84:     	ldr	x8, [x0]
+10002ad88:     	cmp	x8, #2
+10002ad8c:     	b.ne	0x10002ad94 <__ZN4core3ptr100drop_in_place$LT$core..option..Option$LT$lsp_types..completion..CompletionClientCapabilities$GT$$GT$17h599609cf084734b7E+0x10>
+10002ad90:     	ret"##,
+        r##"ROOT@0..497
+  WHITESPACE@0..2 "\n\n"
+  METADATA@2..47 "target/release/test:\t ..."
+  WHITESPACE@47..49 "\n\n"
+  METADATA@49..86 "Disassembly of sectio ..."
+  WHITESPACE@86..88 "\n\n"
+  LABEL@88..497
+    METADATA@88..104 "000000010002ad84"
+    WHITESPACE@104..105 " "
+    LABEL@105..244 "<__ZN4core3ptr100drop ..."
+    WHITESPACE@244..245 "\n"
+    INSTRUCTION@245..273
+      METADATA@245..254 "10002ad84"
+      METADATA@254..255 ":"
+      WHITESPACE@255..261 "     \t"
+      MNEMONIC@261..264 "ldr"
+      WHITESPACE@264..265 "\t"
+      REGISTER@265..267 "x8"
+      COMMA@267..268 ","
+      WHITESPACE@268..269 " "
+      BRACKETS@269..273
+        L_SQ@269..270 "["
+        REGISTER@270..272 "x0"
+        R_SQ@272..273 "]"
+    WHITESPACE@273..274 "\n"
+    INSTRUCTION@274..300
+      METADATA@274..283 "10002ad88"
+      METADATA@283..284 ":"
+      WHITESPACE@284..290 "     \t"
+      MNEMONIC@290..293 "cmp"
+      WHITESPACE@293..294 "\t"
+      REGISTER@294..296 "x8"
+      COMMA@296..297 ","
+      WHITESPACE@297..298 " "
+      IMMEDIATE@298..299 "#"
+      NUMBER@299..300 "2"
+    WHITESPACE@300..301 "\n"
+    INSTRUCTION@301..477
+      METADATA@301..310 "10002ad8c"
+      METADATA@310..311 ":"
+      WHITESPACE@311..317 "     \t"
+      MNEMONIC@317..321 "b.ne"
+      WHITESPACE@321..322 "\t"
+      NUMBER@322..333 "0x10002ad94"
+      WHITESPACE@333..334 " "
+      METADATA@334..477
+        BRACKETS@334..477
+          L_ANGLE@334..335 "<"
+          TOKEN@335..471 "__ZN4core3ptr100drop_ ..."
+          OPERATOR@471..472 "+"
+          NUMBER@472..476 "0x10"
+          R_ANGLE@476..477 ">"
+    WHITESPACE@477..478 "\n"
+    INSTRUCTION@478..497
+      METADATA@478..487 "10002ad90"
+      METADATA@487..488 ":"
+      WHITESPACE@488..494 "     \t"
+      MNEMONIC@494..497 "ret"
+"##
+    );
+}

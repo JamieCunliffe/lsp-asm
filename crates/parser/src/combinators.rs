@@ -3,7 +3,7 @@ use crate::{LoadFileFn, ParsedData};
 use super::builder::Builder;
 use super::config::ParserConfig;
 
-use base::{Architecture, FileType};
+use base::{Architecture, FileType, ObjDumpOptions};
 use nom::bytes::complete::{tag, take_while};
 use nom::character::is_hex_digit;
 use nom::error::ErrorKind;
@@ -77,7 +77,7 @@ macro_rules! process_comment(
             return parse_comment($e);
         }
 
-        if matches!($e.extra().config.file_type, FileType::ObjDump) && $e.as_str().starts_with(';') {
+        if matches!($e.extra().config.file_type, FileType::ObjDump(_)) && $e.as_str().starts_with(';') {
             return parse_comment($e);
         }
 
@@ -99,7 +99,7 @@ pub(crate) fn parse<'a>(
     data.start_node(SyntaxKind::ROOT);
     let data = match config.file_type {
         FileType::Assembly => data,
-        FileType::ObjDump => parse_objdump_header(data).unwrap().0,
+        FileType::ObjDump(_) => parse_objdump_header(data).unwrap().0,
     };
 
     let result = many0(parse_next)(data);
@@ -126,7 +126,10 @@ fn parse_objdump_header(expr: Span) -> nom::IResult<Span, ()> {
     Ok((remaining, ()))
 }
 
-fn parse_objdump_line_start(expr: Span) -> nom::IResult<Span, ()> {
+fn parse_objdump_line_start<'a>(
+    expr: Span<'a>,
+    options: &ObjDumpOptions,
+) -> nom::IResult<Span<'a>, ()> {
     let (remaining, _) = skip_whitespace(expr, true)?;
     let (remaining, offset) = take_while(is_hex)(remaining)?;
 
@@ -139,12 +142,15 @@ fn parse_objdump_line_start(expr: Span) -> nom::IResult<Span, ()> {
 
         let (remaining, _) = skip_whitespace(remaining, false)?;
 
-        let (remaining, encoding) = take_while(|a| is_hex(a) || a == ' ')(remaining)?;
-        remaining.token(SyntaxKind::METADATA, encoding.as_str());
+        if options.show_raw_insn {
+            let (remaining, encoding) = take_while(|a| is_hex(a) || a == ' ')(remaining)?;
+            remaining.token(SyntaxKind::METADATA, encoding.as_str());
 
-        let (remaining, _) = skip_whitespace(remaining, false)?;
-
-        remaining
+            let (remaining, _) = skip_whitespace(remaining, false)?;
+            remaining
+        } else {
+            remaining
+        }
     } else {
         let (remaining, _) = skip_whitespace(remaining, false)?;
         remaining
@@ -179,7 +185,7 @@ fn parse_next(expr: Span) -> NomResultElement {
         '\n' => skip_whitespace(expr, true),
         '\t' => skip_whitespace(expr, true),
         // '\0' => nom::lib::std::result::Result::Err(nom::Err::Error((expr, ErrorKind::Many0))),
-        'D' if expr.config().file_type == FileType::ObjDump
+        'D' if matches!(expr.config().file_type, FileType::ObjDump(_))
             && expr.as_str().starts_with("Disassembly of section ") =>
         {
             let (remaining, token) = take_while(|a| a != '\n')(expr)?;
@@ -218,9 +224,11 @@ fn parse_next(expr: Span) -> NomResultElement {
 
 fn process_line(expr: Span) -> NomResultElement {
     process_comment!(expr, false);
+    let config = &expr.extra().config;
+
     // Check to see if we need to end any nodes before processing this one
     let kind = {
-        let kind = pre_process_next(expr.as_str(), expr.extra().config);
+        let kind = pre_process_next(expr.as_str(), config);
 
         if matches!(kind, SyntaxKind::LOCAL_LABEL | SyntaxKind::LABEL)
             && expr.current_indent_is_kind(SyntaxKind::LOCAL_LABEL)
@@ -235,9 +243,10 @@ fn process_line(expr: Span) -> NomResultElement {
         kind
     };
     expr.start_node(kind);
-    let expr = match expr.config().file_type {
+
+    let expr = match &config.file_type {
         FileType::Assembly => expr,
-        FileType::ObjDump => parse_objdump_line_start(expr)?.0,
+        FileType::ObjDump(opts) => parse_objdump_line_start(expr, opts)?.0,
     };
     let (expr, _) = skip_whitespace(expr, false)?;
     let (expr, token) = take_while(|a: char| !a.is_whitespace())(expr)?;
@@ -283,7 +292,7 @@ fn process_line(expr: Span) -> NomResultElement {
 fn pre_process_next(line: &str, config: &ParserConfig) -> SyntaxKind {
     let token = match config.file_type {
         FileType::Assembly => line.trim_start_matches(|a| a == ' ' || a == '\t'),
-        FileType::ObjDump => {
+        FileType::ObjDump(_) => {
             let remaining = line.trim_start_matches(|a| a == ' ');
             let remaining = remaining.trim_start_matches(|a| is_hex(a) || a == ' ');
 
@@ -654,7 +663,7 @@ fn get_action(c: char, config: &ParserConfig) -> Option<ProcessFunction> {
         '{' => Some(|expr| parse_brackets(expr, (SyntaxKind::L_CURLY, SyntaxKind::R_CURLY))),
         '"' => Some(parse_string),
         '@' => Some(handle_at_relocation),
-        '<' if config.file_type == FileType::ObjDump => Some(objdump_angle_brackets),
+        '<' if matches!(config.file_type, FileType::ObjDump(_)) => Some(objdump_angle_brackets),
         '#' if config.architecture == Architecture::AArch64 => {
             Some(|expr| process_token(expr, '#', SyntaxKind::IMMEDIATE))
         }
@@ -667,7 +676,7 @@ fn get_action(c: char, config: &ParserConfig) -> Option<ProcessFunction> {
 fn is_special_char(c: char, config: &ParserConfig) -> bool {
     match c {
         ' ' | ',' | '\n' | '\t' | '+' | '-' | '(' | '[' | '{' | '"' | '@' => true,
-        '<' if config.file_type == FileType::ObjDump => true,
+        '<' if matches!(config.file_type, FileType::ObjDump(_)) => true,
         '#' | ':' if config.architecture == Architecture::AArch64 => true,
         _ => false,
     }
@@ -703,7 +712,7 @@ mod test {
         let mut lines = data.split('\n');
         let config = ParserConfig {
             architecture: Architecture::X86_64,
-            file_type: FileType::ObjDump,
+            file_type: FileType::ObjDump(Default::default()),
             registers: None,
             ..Default::default()
         };
