@@ -131,28 +131,35 @@ fn parse_objdump_line_start<'a>(
     options: &ObjDumpOptions,
 ) -> nom::IResult<Span<'a>, ()> {
     let (remaining, _) = skip_whitespace(expr, true)?;
-    let (remaining, offset) = take_while(is_hex)(remaining)?;
 
-    remaining.token(SyntaxKind::METADATA, offset.as_str());
+    let remaining = if options.show_leading_addr {
+        let (remaining, offset) = take_while(is_hex)(remaining)?;
+        remaining.token(SyntaxKind::METADATA, offset.as_str());
 
-    // If the next char is a : then we will be parsing the instruction encoding
-    let remaining = if remaining.as_str().starts_with(':') {
-        let (remaining, colon) = take_while(|a| a == ':')(remaining)?;
-        remaining.token(SyntaxKind::METADATA, colon.as_str());
-
-        let (remaining, _) = skip_whitespace(remaining, false)?;
-
-        if options.show_raw_insn {
-            let (remaining, encoding) = take_while(|a| is_hex(a) || a == ' ')(remaining)?;
-            remaining.token(SyntaxKind::METADATA, encoding.as_str());
-
-            let (remaining, _) = skip_whitespace(remaining, false)?;
+        if remaining.as_str().starts_with(':') {
+            let (remaining, colon) = take_while(|a| a == ':')(remaining)?;
+            remaining.token(SyntaxKind::METADATA, colon.as_str());
             remaining
         } else {
             remaining
         }
     } else {
+        remaining
+    };
+
+    let (remaining, _) = skip_whitespace(remaining, false)?;
+
+    let remaining = if options.show_raw_insn {
+        let (remaining, encoding) = take_while(|a| is_hex(a) || a == ' ')(remaining)?;
+
+        // If this is going to be a label node then there is no encoding on the line.
+        if !encoding.is_empty() {
+            remaining.token(SyntaxKind::METADATA, encoding.as_str());
+        }
+
         let (remaining, _) = skip_whitespace(remaining, false)?;
+        remaining
+    } else {
         remaining
     };
 

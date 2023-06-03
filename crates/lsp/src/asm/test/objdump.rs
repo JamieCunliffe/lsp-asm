@@ -362,3 +362,45 @@ Disassembly of section __TEXT,__text:
 "##
     );
 }
+
+#[test]
+fn objdump_no_leading_addr() {
+    assert_listing!(
+        r#"
+lsp-asm:	file format mach-o 64-bit x86-64
+
+Disassembly of section __TEXT,__text:
+
+<__ZN146_$LT$alloc..boxed..Box$LT$dyn$u20$core..error..Error$u2b$core..marker..Sync$u2b$core..marker..Send$GT$$u20$as$u20$core..convert..From$LT$E$GT$$GT$4from17h2f705b76ff6935a5E>:
+ 55                                    	pushq	%rbp
+ 48 89 e5                              	movq	%rsp, %rbp
+"#,
+        r#"ROOT@0..372
+  WHITESPACE@0..1 "\n"
+  METADATA@1..42 "lsp-asm:\tfile format  ..."
+  WHITESPACE@42..44 "\n\n"
+  METADATA@44..81 "Disassembly of sectio ..."
+  WHITESPACE@81..83 "\n\n"
+  LABEL@83..372
+    LABEL@83..264 "<__ZN146_$LT$alloc..b ..."
+    WHITESPACE@264..266 "\n "
+    INSTRUCTION@266..315
+      METADATA@266..304 "55                    ..."
+      WHITESPACE@304..305 "\t"
+      MNEMONIC@305..310 "pushq"
+      WHITESPACE@310..311 "\t"
+      REGISTER@311..315 "%rbp"
+    WHITESPACE@315..317 "\n "
+    INSTRUCTION@317..371
+      METADATA@317..355 "48 89 e5              ..."
+      WHITESPACE@355..356 "\t"
+      MNEMONIC@356..360 "movq"
+      WHITESPACE@360..361 "\t"
+      REGISTER@361..365 "%rsp"
+      COMMA@365..366 ","
+      WHITESPACE@366..367 " "
+      REGISTER@367..371 "%rbp"
+    WHITESPACE@371..372 "\n"
+"#
+    );
+}

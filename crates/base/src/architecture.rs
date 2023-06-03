@@ -14,7 +14,7 @@ impl From<&str> for Architecture {
     fn from(arch: &str) -> Self {
         debug!("Architecture::from: {:?}", arch);
         match arch.to_lowercase().as_str() {
-            "x86_64" | "x86-64" => Architecture::X86_64,
+            "x86_64" | "x86-64" | "64-bit x86-64" => Architecture::X86_64,
             "aarch64" | "littleaarch64" | "armv8-a" | "arm64" => Architecture::AArch64,
             _ => Architecture::Unknown,
         }

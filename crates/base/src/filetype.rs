@@ -44,12 +44,16 @@ impl FileType {
 pub struct ObjDumpOptions {
     /// false if the objdump was created with --no-show-raw-insn
     pub show_raw_insn: bool,
+
+    /// false if the objdump was created with --no-leading-addr
+    pub show_leading_addr: bool,
 }
 
 impl Default for ObjDumpOptions {
     fn default() -> Self {
         Self {
             show_raw_insn: true,
+            show_leading_addr: true,
         }
     }
 }
@@ -73,8 +77,12 @@ impl ObjDumpOptions {
         }
 
         let show_raw_insn = regex_detect!(r#"^([0-9a-fA-F]*:)? *\t"#);
+        let show_leading_addr = regex_detect!(r#"^<.*>:"#);
 
-        Self { show_raw_insn }
+        Self {
+            show_raw_insn,
+            show_leading_addr,
+        }
     }
 }
 
@@ -111,7 +119,48 @@ Disassembly of section __TEXT,__text:
         assert_eq!(
             ObjDumpOptions::from_contents(input),
             ObjDumpOptions {
-                show_raw_insn: false
+                show_raw_insn: false,
+                show_leading_addr: true,
+            }
+        );
+    }
+
+    #[test]
+    fn no_leading_addr() {
+        let input = r#"
+lsp-asm:	file format mach-o 64-bit x86-64
+
+Disassembly of section __TEXT,__text:
+
+<__ZN146_$LT$alloc..boxed..Box$LT$dyn$u20$core..error..Error$u2b$core..marker..Sync$u2b$core..marker..Send$GT$$u20$as$u20$core..convert..From$LT$E$GT$$GT$4from17h2f705b76ff6935a5E>:
+ 55                                    	pushq	%rbp
+ 48 89 e5                              	movq	%rsp, %rbp
+"#;
+        assert_eq!(
+            ObjDumpOptions::from_contents(input),
+            ObjDumpOptions {
+                show_raw_insn: true,
+                show_leading_addr: false,
+            }
+        );
+    }
+
+    #[test]
+    fn no_leading_addr_no_raw_insn() {
+        let input = r#"
+target/release/lsp-asm:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+<__ZN10serde_json5value2de11visit_array17h04347d4cf4f8f0e5E>:
+               	sub	sp, sp, #128
+               	stp	x20, x19, [sp, #96]"#;
+
+        assert_eq!(
+            ObjDumpOptions::from_contents(input),
+            ObjDumpOptions {
+                show_raw_insn: false,
+                show_leading_addr: false,
             }
         );
     }
