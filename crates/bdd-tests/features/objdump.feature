@@ -6,6 +6,7 @@ Feature: Testing objdump functions
     Then I expect the following response
       | start |   end |
       | 42:17 | 42:40 |
+      | 52:32 | 52:36 |
 
   Scenario: Find references without declaration
     Given an initialized lsp

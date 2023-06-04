@@ -229,6 +229,7 @@ impl AssemblyLanguageServerProtocol {
             | SyntaxKind::DIRECTIVE
             | SyntaxKind::BRACKETS
             | SyntaxKind::METADATA
+            | SyntaxKind::OBJDUMP_OFFSET
             | SyntaxKind::CONST_DEF
             | SyntaxKind::EXPR
             | SyntaxKind::NAME
@@ -334,7 +335,9 @@ impl AssemblyLanguageServerProtocol {
                     _ if syntax::ast::find_parent(&token, SyntaxKind::METADATA).is_some() => {
                         Some(crate::handler::semantic::METADATA_INDEX)
                     }
-                    SyntaxKind::METADATA => Some(crate::handler::semantic::METADATA_INDEX),
+                    SyntaxKind::METADATA | SyntaxKind::OBJDUMP_OFFSET => {
+                        Some(crate::handler::semantic::METADATA_INDEX)
+                    }
                     SyntaxKind::MNEMONIC => match token.parent()?.kind() {
                         SyntaxKind::INSTRUCTION => Some(crate::handler::semantic::OPCODE_INDEX),
                         SyntaxKind::DIRECTIVE | SyntaxKind::ALIAS | SyntaxKind::CONST_DEF => {

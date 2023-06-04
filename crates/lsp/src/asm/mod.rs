@@ -6,6 +6,7 @@ mod diff;
 pub mod handler;
 pub(crate) mod hovers;
 mod llvm_mca;
+mod objdump_util;
 pub mod parser;
 mod references;
 mod signature;

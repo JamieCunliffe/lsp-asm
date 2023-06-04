@@ -24,12 +24,12 @@ Disassembly of section .text:
   METADATA@39..68 "Disassembly of sectio ..."
   WHITESPACE@68..70 "\n\n"
   LABEL@70..391
-    METADATA@70..86 "00000000002015a0"
+    OBJDUMP_OFFSET@70..86 "00000000002015a0"
     WHITESPACE@86..87 " "
     LABEL@87..96 "<_start>:"
     WHITESPACE@96..99 "\n  "
     INSTRUCTION@99..136
-      METADATA@99..105 "2015a0"
+      OBJDUMP_OFFSET@99..105 "2015a0"
       METADATA@105..106 ":"
       WHITESPACE@106..107 "\t"
       METADATA@107..128 "f3 0f 1e fa          "
@@ -37,7 +37,7 @@ Disassembly of section .text:
       MNEMONIC@129..136 "endbr64"
     WHITESPACE@136..139 "\n  "
     INSTRUCTION@139..185
-      METADATA@139..145 "2015a4"
+      OBJDUMP_OFFSET@139..145 "2015a4"
       METADATA@145..146 ":"
       WHITESPACE@146..147 "\t"
       METADATA@147..168 "31 ed                "
@@ -49,7 +49,7 @@ Disassembly of section .text:
       TOKEN@181..185 "%ebp"
     WHITESPACE@185..188 "\n  "
     INSTRUCTION@188..233
-      METADATA@188..194 "2015a6"
+      OBJDUMP_OFFSET@188..194 "2015a6"
       METADATA@194..195 ":"
       WHITESPACE@195..196 "\t"
       METADATA@196..217 "49 89 d1             "
@@ -61,7 +61,7 @@ Disassembly of section .text:
       TOKEN@230..233 "%r9"
     WHITESPACE@233..236 "\n  "
     INSTRUCTION@236..277
-      METADATA@236..242 "2015a9"
+      OBJDUMP_OFFSET@236..242 "2015a9"
       METADATA@242..243 ":"
       WHITESPACE@243..244 "\t"
       METADATA@244..265 "5e                   "
@@ -71,7 +71,7 @@ Disassembly of section .text:
       REGISTER@273..277 "%rsi"
     WHITESPACE@277..280 "\n  "
     INSTRUCTION@280..326
-      METADATA@280..286 "2015aa"
+      OBJDUMP_OFFSET@280..286 "2015aa"
       METADATA@286..287 ":"
       WHITESPACE@287..288 "\t"
       METADATA@288..309 "48 89 e2             "
@@ -83,7 +83,7 @@ Disassembly of section .text:
       REGISTER@322..326 "%rdx"
     WHITESPACE@326..329 "\n  "
     INSTRUCTION@329..390
-      METADATA@329..335 "2015ad"
+      OBJDUMP_OFFSET@329..335 "2015ad"
       METADATA@335..336 ":"
       WHITESPACE@336..337 "\t"
       METADATA@337..358 "48 83 e4 f0          "
@@ -115,7 +115,7 @@ Disassembly of section .text:
   METADATA@48..77 "Disassembly of sectio ..."
   WHITESPACE@77..79 "\n\n"
   INSTRUCTION@79..184
-    METADATA@79..88 "10000102c"
+    OBJDUMP_OFFSET@79..88 "10000102c"
     METADATA@88..89 ":"
     WHITESPACE@89..90 " "
     METADATA@90..102 "9d 03 00 94 "
@@ -150,7 +150,7 @@ Disassembly of section .text:
   METADATA@46..75 "Disassembly of sectio ..."
   WHITESPACE@75..79 "\n\n  "
   INSTRUCTION@79..131
-    METADATA@79..85 "210640"
+    OBJDUMP_OFFSET@79..85 "210640"
     METADATA@85..86 ":"
     WHITESPACE@86..87 "\t"
     METADATA@87..96 "b4000040 "
@@ -192,12 +192,12 @@ Disassembly of section .text:
   METADATA@46..75 "Disassembly of sectio ..."
   WHITESPACE@75..77 "\n\n"
   LABEL@77..153
-    METADATA@77..93 "00000000002105e8"
+    OBJDUMP_OFFSET@77..93 "00000000002105e8"
     WHITESPACE@93..94 " "
     LABEL@94..103 "<_start>:"
     WHITESPACE@103..106 "\n  "
     DIRECTIVE@106..152
-      METADATA@106..112 "210cac"
+      OBJDUMP_OFFSET@106..112 "210cac"
       METADATA@112..113 ":"
       WHITESPACE@113..114 "\t"
       METADATA@114..123 "00000000 "
@@ -229,12 +229,12 @@ Disassembly of section __TEXT,__text:
   METADATA@34..71 "Disassembly of sectio ..."
   WHITESPACE@71..73 "\n\n"
   LABEL@73..138
-    METADATA@73..89 "0000000100003fa4"
+    OBJDUMP_OFFSET@73..89 "0000000100003fa4"
     WHITESPACE@89..90 " "
     LABEL@90..98 "<_main>:"
     WHITESPACE@98..99 "\n"
     INSTRUCTION@99..138
-      METADATA@99..108 "100003fa4"
+      OBJDUMP_OFFSET@99..108 "100003fa4"
       METADATA@108..109 ":"
       WHITESPACE@109..110 " "
       METADATA@110..122 "ff 43 00 d1 "
@@ -271,12 +271,12 @@ Disassembly of section .init:
   METADATA@48..77 "Disassembly of sectio ..."
   WHITESPACE@77..79 "\n\n"
   LABEL@79..153
-    METADATA@79..95 "0000000000055000"
+    OBJDUMP_OFFSET@79..95 "0000000000055000"
     WHITESPACE@95..96 " "
     LABEL@96..104 "<_init>:"
     WHITESPACE@104..108 "\n   "
     INSTRUCTION@108..152
-      METADATA@108..113 "55000"
+      OBJDUMP_OFFSET@108..113 "55000"
       METADATA@113..114 ":"
       WHITESPACE@114..115 " "
       METADATA@115..144 "f3 0f 1e fa           ..."
@@ -308,12 +308,12 @@ Disassembly of section __TEXT,__text:
   METADATA@49..86 "Disassembly of sectio ..."
   WHITESPACE@86..88 "\n\n"
   LABEL@88..497
-    METADATA@88..104 "000000010002ad84"
+    OBJDUMP_OFFSET@88..104 "000000010002ad84"
     WHITESPACE@104..105 " "
     LABEL@105..244 "<__ZN4core3ptr100drop ..."
     WHITESPACE@244..245 "\n"
     INSTRUCTION@245..273
-      METADATA@245..254 "10002ad84"
+      OBJDUMP_OFFSET@245..254 "10002ad84"
       METADATA@254..255 ":"
       WHITESPACE@255..261 "     \t"
       MNEMONIC@261..264 "ldr"
@@ -327,7 +327,7 @@ Disassembly of section __TEXT,__text:
         R_SQ@272..273 "]"
     WHITESPACE@273..274 "\n"
     INSTRUCTION@274..300
-      METADATA@274..283 "10002ad88"
+      OBJDUMP_OFFSET@274..283 "10002ad88"
       METADATA@283..284 ":"
       WHITESPACE@284..290 "     \t"
       MNEMONIC@290..293 "cmp"
@@ -339,7 +339,7 @@ Disassembly of section __TEXT,__text:
       NUMBER@299..300 "2"
     WHITESPACE@300..301 "\n"
     INSTRUCTION@301..477
-      METADATA@301..310 "10002ad8c"
+      OBJDUMP_OFFSET@301..310 "10002ad8c"
       METADATA@310..311 ":"
       WHITESPACE@311..317 "     \t"
       MNEMONIC@317..321 "b.ne"
@@ -355,7 +355,7 @@ Disassembly of section __TEXT,__text:
           R_ANGLE@476..477 ">"
     WHITESPACE@477..478 "\n"
     INSTRUCTION@478..497
-      METADATA@478..487 "10002ad90"
+      OBJDUMP_OFFSET@478..487 "10002ad90"
       METADATA@487..488 ":"
       WHITESPACE@488..494 "     \t"
       MNEMONIC@494..497 "ret"

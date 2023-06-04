@@ -134,7 +134,7 @@ fn parse_objdump_line_start<'a>(
 
     let remaining = if options.show_leading_addr {
         let (remaining, offset) = take_while(is_hex)(remaining)?;
-        remaining.token(SyntaxKind::METADATA, offset.as_str());
+        remaining.token(SyntaxKind::OBJDUMP_OFFSET, offset.as_str());
 
         if remaining.as_str().starts_with(':') {
             let (remaining, colon) = take_while(|a| a == ':')(remaining)?;

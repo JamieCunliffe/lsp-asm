@@ -105,6 +105,7 @@ fn check_template(
                 c.kind(),
                 SyntaxKind::WHITESPACE
                     | SyntaxKind::METADATA
+                    | SyntaxKind::OBJDUMP_OFFSET
                     | SyntaxKind::COMMENT
                     | SyntaxKind::RELOCATION
             ) && find_parent_elem(c, SyntaxKind::METADATA).is_none()

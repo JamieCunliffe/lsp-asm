@@ -117,6 +117,10 @@ impl Parser {
         &self.id
     }
 
+    pub fn file_type(&self) -> &FileType {
+        &self.config.file_type
+    }
+
     pub(super) fn reconstruct_file(&self) -> String {
         let mut buffer: Vec<u8> = Vec::with_capacity(self.tree().text_range().end().into());
         for token in self.tree().descendants_with_tokens() {
@@ -234,6 +238,7 @@ impl Parser {
             | SyntaxKind::DIRECTIVE
             | SyntaxKind::BRACKETS
             | SyntaxKind::METADATA
+            | SyntaxKind::OBJDUMP_OFFSET
             | SyntaxKind::EXPR
             | SyntaxKind::CONST_DEF
             | SyntaxKind::ROOT => None,

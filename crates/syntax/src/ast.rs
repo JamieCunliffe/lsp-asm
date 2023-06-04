@@ -41,6 +41,7 @@ pub enum SyntaxKind {
     CONST_DEF,
 
     METADATA,
+    OBJDUMP_OFFSET,
     // ROOT should be the last element
     ROOT,
 }

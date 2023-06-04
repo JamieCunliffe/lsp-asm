@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use itertools::Itertools;
 use lsp_types::{Location, Url};
+use parser::parse_number;
 use syntax::ast::{find_kind_index, find_parent, SyntaxKind, SyntaxNode, SyntaxToken};
 use syntax::utils::token_is_local_label;
 
@@ -10,6 +11,7 @@ use crate::handler::context::Context;
 use crate::handler::error::{lsp_error_map, ErrorCode};
 
 use super::ast::LabelToken;
+use super::objdump_util;
 use super::parser::Parser;
 
 pub(super) fn get_definition_token<'p, F, I>(
@@ -52,12 +54,17 @@ pub(super) fn goto_definition_label(
     parser: &Parser,
     token: &SyntaxToken,
 ) -> Result<Vec<Location>, lsp_server::ResponseError> {
-    get_definition_token(context, parser, token, |parser, token| {
-        Some(lsp_types::Location::new(
-            parser.uri().clone(),
-            parser.position().range_for_token(token)?.into(),
-        ))
-    })
+    match parser.file_type() {
+        base::FileType::Assembly => {
+            get_definition_token(context, parser, token, |parser, token| {
+                Some(lsp_types::Location::new(
+                    parser.uri().clone(),
+                    parser.position().range_for_token(token)?.into(),
+                ))
+            })
+        }
+        base::FileType::ObjDump(_) => handle_definition_objdump(parser, token),
+    }
 }
 
 pub(super) fn goto_definition_loc(
@@ -157,4 +164,46 @@ pub(crate) fn goto_definition_reg_alias(
     let def = context.related_parsers(true, parser.uri().clone(), handle_node);
 
     Ok(def)
+}
+
+fn handle_definition_objdump(
+    parser: &Parser,
+    token: &SyntaxToken,
+) -> Result<Vec<Location>, lsp_server::ResponseError> {
+    let text = token.text();
+
+    let mut labels = parser
+        .tree()
+        .descendants_with_tokens()
+        .filter_map(|d| d.into_token())
+        .filter(|token| token.kind() == SyntaxKind::LABEL)
+        .filter(move |label| {
+            parser
+                .token::<LabelToken>(label)
+                .map(|name| name.name() == text)
+                .unwrap_or(false)
+        })
+        .collect_vec();
+
+    let mut offsets = labels
+        .iter()
+        .filter_map(|label| {
+            let offset = parse_number(token.next_token()?.next_token()?.text()).ok()?;
+            let instruction =
+                objdump_util::find_instruction_at_relative_offset(&label.parent()?, offset);
+            find_kind_index(&instruction?, 0, SyntaxKind::MNEMONIC)?.into_token()
+        })
+        .collect::<Vec<_>>();
+
+    labels.append(&mut offsets);
+
+    Ok(labels
+        .iter()
+        .filter_map(|token| {
+            Some(lsp_types::Location::new(
+                parser.uri().clone(),
+                parser.position().range_for_token(token)?.into(),
+            ))
+        })
+        .collect_vec())
 }
