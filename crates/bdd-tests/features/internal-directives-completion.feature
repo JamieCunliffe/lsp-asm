@@ -21,9 +21,9 @@ Feature: Completion of internal directives
       | architecture | UNKNOWN |
     When I open the temporary file "t1"
       """
-      // lsp-asm-architecture: 
+      lsp-asm-architecture: 
       """
-    When I run "completion" on the file "t1" at position "1:25"
+    When I run "completion" on the file "t1" at position "1:22"
     Then I expect the following response
       | label   | details | kind |
       | aarch64 |         | text |

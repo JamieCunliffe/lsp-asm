@@ -251,7 +251,7 @@ impl Parser {
 
         static ARCH_DETECTION: Lazy<[Regex; 4]> = Lazy::new(|| {
             [
-                Regex::new(r#"lsp-asm-architecture: (.*) ?"#).unwrap(),
+                Regex::new(r#"lsp-asm-architecture: (.+) ?"#).unwrap(),
                 Regex::new(r#"^\s*\.arch (.*)"#).unwrap(),
                 Regex::new(r#".*:[\t ]+file format elf64-(.*)"#).unwrap(),
                 Regex::new(r#".*:[\t ]+file format (?i)mach-o (.*)"#).unwrap(),
@@ -264,7 +264,7 @@ impl Parser {
             .find_map_first(|captures| {
                 captures
                     .get(1)
-                    .map(|arch| Architecture::from(arch.as_str()))
+                    .map(|arch| Architecture::from(arch.as_str().trim()))
             })
             .unwrap_or(config.architecture);
 
