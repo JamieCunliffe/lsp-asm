@@ -5,7 +5,7 @@ authors = ["Jamie Cunliffe <Jamie.Cunliffe@outlook.com>"]
 edition = "2021"
 
 [dependencies]
-pretty_env_logger = "0.4.0"
-clap = { version = "4.2.1", features = ["derive"] }
-tokio = { version = "1.27.0", default-features = false, features = ["rt-multi-thread", "sync"] }
+pretty_env_logger = "0.5.0"
+clap = { version = "4.3.19", features = ["derive"] }
+tokio = { version = "1.29.1", default-features = false, features = ["rt-multi-thread", "sync"] }
 documentation-builder = { path = "../crates/documentation-builder" }

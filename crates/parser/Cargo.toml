@@ -8,10 +8,10 @@ base = { path = "../base" }
 syntax = { path = "../syntax" }
 nom = "7.1.3"
 rowan = "0.15.11"
-either = "1.8.1"
-log = "0.4.17"
-phf = "0.11.1"
+either = "1.9.0"
+log = "0.4.19"
+phf = "0.11.2"
 unicase = "2.6.0"
 
 [dev-dependencies]
-pretty_assertions = "1.3.0"
+pretty_assertions = "1.4.0"

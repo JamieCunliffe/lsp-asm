@@ -6,4 +6,4 @@ edition = "2021"
 [dependencies]
 base = { path = "../base" }
 rowan = "0.15.11"
-itertools = "0.10.5"
+itertools = "0.11.0"

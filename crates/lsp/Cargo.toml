@@ -16,31 +16,31 @@ documentation = { path = "../documentation" }
 arch = { path = "../arch" }
 fmt = { path = "../fmt" }
 codeactions = { path = "../codeactions" }
-log = "0.4.17"
-pretty_env_logger = "0.4.0"
-regex = "1.7.3"
-either = "1.8.1"
-lsp-server = "0.7.0"
+log = "0.4.19"
+pretty_env_logger = "0.5.0"
+regex = "1.9.1"
+either = "1.9.0"
+lsp-server = "0.7.2"
 lsp-types = { version = "0.94.0", features = ["proposed"] }
-serde_json = "1.0.95"
-serde = { version = "1.0.159", features = ["derive"] }
-toml = { version = "0.7.3", default-features = false, features = ["parse"] }
+serde_json = "1.0.104"
+serde = { version = "1.0.178", features = ["derive"] }
+toml = { version = "0.7.6", default-features = false, features = ["parse"] }
 rowan = "0.15.11"
-itertools = "0.10.5"
+itertools = "0.11.0"
 rayon = "1.7.0"
-once_cell = "1.17.1"
+once_cell = "1.18.0"
 byte-unit = { version = "4.0.19", default-features = false, features = ["std", "serde"] }
 shellwords = "1.1.0"
-uuid = { version = "1.3.0", features = ["v4"] }
-rustc-demangle = "0.1.22"
-cpp_demangle = "0.4.0"
-phf = { version = "0.11.1", features = ["macros"] }
-phf_macros = { version = "0.11.1", features = ["unicase"] }
+uuid = { version = "1.4.1", features = ["v4"] }
+rustc-demangle = "0.1.23"
+cpp_demangle = "0.4.2"
+phf = { version = "0.11.2", features = ["macros"] }
+phf_macros = { version = "0.11.2", features = ["unicase"] }
 unicase = "2.6.0"
-dissimilar = "1.0.6"
+dissimilar = "1.0.7"
 petgraph = "0.6.3"
-crossbeam-channel = "0.5.7"
-mimalloc = { version = "0.1.36", default-features = false }
+crossbeam-channel = "0.5.8"
+mimalloc = { version = "0.1.37", default-features = false }
 
 [dev-dependencies]
-pretty_assertions = "1.3.0"
+pretty_assertions = "1.4.0"
