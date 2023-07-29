@@ -15,6 +15,7 @@ parser = { path = "../parser" }
 documentation = { path = "../documentation" }
 arch = { path = "../arch" }
 fmt = { path = "../fmt" }
+codeactions = { path = "../codeactions" }
 log = "0.4.17"
 pretty_env_logger = "0.4.0"
 regex = "1.7.3"

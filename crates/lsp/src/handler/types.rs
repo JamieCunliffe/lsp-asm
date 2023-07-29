@@ -1,6 +1,7 @@
 use crate::types::{CompletionItem, DocumentLocation, DocumentPosition, DocumentRange};
 use lsp_types::{
-    CompletionItemKind, Documentation, MarkupContent, TextDocumentPositionParams, Url,
+    CodeActionParams, CompletionItemKind, Documentation, MarkupContent, TextDocumentPositionParams,
+    Url,
 };
 
 impl From<lsp_types::TextDocumentPositionParams> for DocumentPosition {
@@ -157,6 +158,19 @@ impl From<lsp_types::RenameParams> for RenameMessage {
         Self {
             new_name: lsp.new_name,
             location: lsp.text_document_position.into(),
+        }
+    }
+}
+
+pub struct CodeActionMessage {
+    pub url: Url,
+    pub range: DocumentRange,
+}
+impl From<CodeActionParams> for CodeActionMessage {
+    fn from(p: CodeActionParams) -> Self {
+        Self {
+            url: p.text_document.uri,
+            range: p.range.into(),
         }
     }
 }

@@ -23,9 +23,11 @@ use fmt::FormatOptions;
 use itertools::*;
 use lsp_server::ResponseError;
 use lsp_types::{
-    CodeLens, Command, CompletionList, DocumentHighlightKind, DocumentSymbol,
-    DocumentSymbolResponse, HoverContents, Location, MarkupContent, Range, SemanticToken,
-    SemanticTokens, SemanticTokensResult, SignatureHelp, SymbolKind, TextEdit, Url, WorkspaceEdit,
+    AnnotatedTextEdit, CodeActionOrCommand, CodeLens, Command, CompletionList,
+    DocumentHighlightKind, DocumentSymbol, DocumentSymbolResponse, HoverContents, Location,
+    MarkupContent, OneOf, OptionalVersionedTextDocumentIdentifier, Range, SemanticToken,
+    SemanticTokens, SemanticTokensResult, SignatureHelp, SymbolKind, TextDocumentEdit, TextEdit,
+    Url, WorkspaceEdit,
 };
 use parser::ParsedInclude;
 use rowan::TextRange;
@@ -245,6 +247,81 @@ impl AssemblyLanguageServerProtocol {
             }),
             range: None,
         }))
+    }
+
+    pub fn code_actions(
+        &self,
+        _context: Arc<Context>,
+        range: DocumentRange,
+    ) -> Result<Vec<lsp_types::CodeActionOrCommand>, lsp_server::ResponseError> {
+        let pos = self.parser.position();
+        let start = pos
+            .point_for_position(&range.start)
+            .ok_or_else(|| lsp_error_map(ErrorCode::InvalidPosition))?;
+        let end = pos
+            .point_for_position(&range.end)
+            .ok_or_else(|| lsp_error_map(ErrorCode::InvalidPosition))?;
+
+        let actions =
+            codeactions::code_actions(*self.parser.architecture(), self.parser.tree(), start, end);
+
+        Ok(actions
+            .into_iter()
+            .filter_map(|action| {
+                Some(CodeActionOrCommand::CodeAction(lsp_types::CodeAction {
+                    title: action.name,
+                    kind: None,
+                    diagnostics: None,
+                    edit: Some(WorkspaceEdit {
+                        changes: None,
+                        document_changes: Some(lsp_types::DocumentChanges::Edits(vec![
+                            TextDocumentEdit {
+                                text_document: OptionalVersionedTextDocumentIdentifier {
+                                    uri: self.uri.clone(),
+                                    version: None,
+                                },
+                                edits: action
+                                    .edit
+                                    .into_iter()
+                                    .map(
+                                        |edit| -> Result<
+                                            OneOf<TextEdit, AnnotatedTextEdit>,
+                                            lsp_server::ResponseError,
+                                        > {
+                                            Ok(OneOf::Left(lsp_types::TextEdit {
+                                                range: Range::new(
+                                                    pos.get_position_for_size(&edit.start)
+                                                        .ok_or_else(|| {
+                                                            lsp_error_map(
+                                                                ErrorCode::InvalidPosition,
+                                                            )
+                                                        })?
+                                                        .into(),
+                                                    pos.get_position_for_size(&edit.end)
+                                                        .ok_or_else(|| {
+                                                            lsp_error_map(
+                                                                ErrorCode::InvalidPosition,
+                                                            )
+                                                        })?
+                                                        .into(),
+                                                ),
+                                                new_text: edit.text,
+                                            }))
+                                        },
+                                    )
+                                    .try_collect()
+                                    .ok()?,
+                            },
+                        ])),
+                        change_annotations: None,
+                    }),
+                    command: None,
+                    is_preferred: None,
+                    disabled: None,
+                    data: None,
+                }))
+            })
+            .collect())
     }
 
     pub fn document_highlight(

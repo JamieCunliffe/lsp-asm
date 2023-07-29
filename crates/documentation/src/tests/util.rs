@@ -9,7 +9,7 @@ use crate::Instruction;
 
 pub(super) fn parse_asm(data: &str, file_type: FileType) -> (SyntaxNode, Alias) {
     let config = ParserConfig {
-        comment_start: String::from("//"),
+        comment_start: String::from(base::Architecture::AArch64.default_comment_start()),
         architecture: base::Architecture::AArch64,
         file_type,
         registers: Some(&AARCH64_REGISTERS),

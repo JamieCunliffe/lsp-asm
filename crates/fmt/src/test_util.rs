@@ -16,7 +16,7 @@ pub fn parse_asm(data: &str) -> (SyntaxNode, syntax::alias::Alias) {
     use parser::{config::ParserConfig, ParsedData, ParsedInclude};
 
     let config = ParserConfig {
-        comment_start: String::from("//"),
+        comment_start: String::from(base::Architecture::AArch64.default_comment_start()),
         architecture: base::Architecture::AArch64,
         file_type: base::FileType::Assembly,
         registers: Some(&AARCH64_REGISTERS),

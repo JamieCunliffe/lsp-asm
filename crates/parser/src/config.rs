@@ -27,7 +27,7 @@ impl PartialEq for ParserConfig {
 impl Default for ParserConfig {
     fn default() -> Self {
         ParserConfig {
-            comment_start: "#".to_string(),
+            comment_start: Architecture::Unknown.default_comment_start().to_string(),
             architecture: Architecture::Unknown,
             file_type: Default::default(),
             registers: None,

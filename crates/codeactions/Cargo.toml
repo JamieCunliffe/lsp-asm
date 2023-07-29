@@ -1,0 +1,17 @@
+[package]
+name = "codeactions"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+base = { path = "../base" }
+syntax = { path = "../syntax" }
+parser = { path = "../parser" }
+arch = { path = "../arch" }
+rowan = "0.15.11"
+regex = "1.7.3"
+once_cell = "1.17.1"
+log = "0.4.17"
+
+[dev-dependencies]
+pretty_assertions = "1.3.0"

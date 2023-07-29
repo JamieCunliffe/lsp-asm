@@ -6,9 +6,10 @@ use lsp_asm::diagnostics::Error;
 use lsp_asm::handler::semantic;
 use lsp_asm::types::{CompletionItem, CompletionKind, DocumentLocation, DocumentRange};
 use lsp_types::{
-    CodeLens, Command, CompletionList, DocumentHighlight, DocumentHighlightKind, DocumentSymbol,
-    Documentation, Location, ParameterInformation, ParameterLabel, PublishDiagnosticsParams,
-    SemanticToken, SignatureHelp, SignatureInformation, SymbolKind, TextEdit, Url, WorkspaceEdit,
+    CodeAction, CodeActionOrCommand, CodeLens, Command, CompletionList, DocumentHighlight,
+    DocumentHighlightKind, DocumentSymbol, Documentation, Location, OneOf, ParameterInformation,
+    ParameterLabel, PublishDiagnosticsParams, Range, SemanticToken, SignatureHelp,
+    SignatureInformation, SymbolKind, TextDocumentEdit, TextEdit, Url, WorkspaceEdit,
 };
 use std::collections::HashMap;
 use std::path::Path;
@@ -289,4 +290,40 @@ pub(crate) fn make_workspace_edit(table: &[Vec<String>]) -> WorkspaceEdit {
         document_changes: None,
         change_annotations: None,
     }
+}
+
+pub(crate) fn make_codeaction(rows: &[Vec<String>]) -> Vec<CodeActionOrCommand> {
+    rows.iter()
+        .skip(1)
+        .map(|cols| {
+            CodeActionOrCommand::CodeAction(CodeAction {
+                title: cols.get(1).unwrap().to_string(),
+                kind: None,
+                diagnostics: None,
+                edit: Some(WorkspaceEdit {
+                    changes: None,
+                    document_changes: Some(lsp_types::DocumentChanges::Edits(vec![
+                        TextDocumentEdit {
+                            text_document: lsp_types::OptionalVersionedTextDocumentIdentifier {
+                                uri: file_to_uri(cols.get(0).unwrap()),
+                                version: None,
+                            },
+                            edits: vec![OneOf::Left(TextEdit {
+                                range: Range::new(
+                                    PositionString::from_string(cols.get(2).unwrap().into()).into(),
+                                    PositionString::from_string(cols.get(3).unwrap().into()).into(),
+                                ),
+                                new_text: cols.get(4).unwrap().replace(r#"{\n}"#, "\n"),
+                            })],
+                        },
+                    ])),
+                    change_annotations: None,
+                }),
+                command: None,
+                is_preferred: None,
+                disabled: None,
+                data: None,
+            })
+        })
+        .collect_vec()
 }

@@ -11,7 +11,8 @@ use super::context::Context;
 use super::error::{lsp_error_map, ErrorCode};
 use super::ext::{FileStatsParams, FileStatsResult};
 use super::types::{
-    DocumentChange, DocumentRangeMessage, FindReferencesMessage, LocationMessage, RenameMessage,
+    CodeActionMessage, DocumentChange, DocumentRangeMessage, FindReferencesMessage,
+    LocationMessage, RenameMessage,
 };
 
 use lsp_server::ResponseError;
@@ -119,6 +120,19 @@ pub fn hover(
         .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
         .read()
         .hover(context.clone(), request.position)
+}
+
+pub fn code_action(
+    context: Arc<Context>,
+    request: CodeActionMessage,
+) -> Result<lsp_types::CodeActionResponse, ResponseError> {
+    context
+        .actors
+        .read()
+        .get(&request.url)
+        .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+        .read()
+        .code_actions(context.clone(), request.range)
 }
 
 pub fn document_highlight(

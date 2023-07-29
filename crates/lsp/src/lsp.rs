@@ -6,9 +6,9 @@ use lsp_types::notification::{
     Cancel, DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, DidSaveTextDocument,
 };
 use lsp_types::request::{
-    CodeLensRequest, Completion, DocumentHighlightRequest, DocumentSymbolRequest, Formatting,
-    GotoDefinition, HoverRequest, References, Rename, SemanticTokensFullRequest,
-    SemanticTokensRangeRequest, SignatureHelpRequest,
+    CodeActionRequest, CodeLensRequest, Completion, DocumentHighlightRequest,
+    DocumentSymbolRequest, Formatting, GotoDefinition, HoverRequest, References, Rename,
+    SemanticTokensFullRequest, SemanticTokensRangeRequest, SignatureHelpRequest,
 };
 use lsp_types::{PublishDiagnosticsParams, Url};
 use serde_json::Value;
@@ -112,6 +112,10 @@ fn process_message(connection: Arc<Connection>, context: Arc<Context>, msg: Mess
                 "textDocument/hover" => {
                     let (_, data) = get_message::<HoverRequest>(request).unwrap();
                     make_result(handlers::hover(context, data.into()))
+                }
+                "textDocument/codeAction" => {
+                    let (_, data) = get_message::<CodeActionRequest>(request).unwrap();
+                    make_result(handlers::code_action(context, data.into()))
                 }
                 "textDocument/documentSymbol" => {
                     let (_, data) = get_message::<DocumentSymbolRequest>(request).unwrap();

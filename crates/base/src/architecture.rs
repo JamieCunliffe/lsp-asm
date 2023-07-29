@@ -54,6 +54,14 @@ impl Architecture {
         let host = Architecture::from(std::env::consts::ARCH);
         self != &Architecture::Unknown && self == &host
     }
+
+    pub fn default_comment_start(&self) -> &str {
+        match self {
+            Architecture::AArch64 => "//",
+            Architecture::X86_64 => "#",
+            Architecture::Unknown => "#",
+        }
+    }
 }
 
 impl<'de> serde::de::Deserialize<'de> for Architecture {
