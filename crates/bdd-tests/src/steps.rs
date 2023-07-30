@@ -7,15 +7,15 @@ use lsp_asm::handler::ext::{SyntaxTree, SyntaxTreeParams};
 use lsp_types::notification::DidChangeTextDocument;
 use lsp_types::request::{
     CodeActionRequest, CodeLensRequest, Completion, DocumentHighlightRequest,
-    DocumentSymbolRequest, GotoDefinition, HoverRequest, References, Rename,
+    DocumentSymbolRequest, GotoDefinition, HoverRequest, InlayHintRequest, References, Rename,
     SemanticTokensRangeRequest, SignatureHelpRequest,
 };
 use lsp_types::{
     CodeActionParams, CodeLensParams, CompletionParams, DidChangeTextDocumentParams,
     DocumentHighlightParams, DocumentSymbolParams, GotoDefinitionParams, HoverParams,
-    MarkupContent, ReferenceParams, RenameParams, SemanticTokens, SemanticTokensRangeParams,
-    SemanticTokensResult, SignatureHelpParams, TextDocumentContentChangeEvent,
-    TextDocumentPositionParams, VersionedTextDocumentIdentifier,
+    InlayHintParams, MarkupContent, ReferenceParams, RenameParams, SemanticTokens,
+    SemanticTokensRangeParams, SemanticTokensResult, SignatureHelpParams,
+    TextDocumentContentChangeEvent, TextDocumentPositionParams, VersionedTextDocumentIdentifier,
 };
 use pretty_assertions::assert_eq;
 
@@ -234,6 +234,11 @@ async fn run_command(
                 work_done_progress_params: Default::default(),
                 partial_result_params: Default::default(),
             }),
+        LSPCommand::InlayHints => state.lsp.send_request::<InlayHintRequest>(InlayHintParams {
+            text_document: uri.to_text_document(),
+            range: pos.into(),
+            work_done_progress_params: Default::default(),
+        }),
         LSPCommand::SyntaxTree => state.lsp.send_request::<SyntaxTree>(SyntaxTreeParams {
             text_document: uri.to_text_document(),
         }),
@@ -304,6 +309,7 @@ fn expect_response(state: &mut LSPWorld, step: &Step) {
             LSPCommand::DocumentSymbols => serde_json::to_value(util::make_doc_symbol(rows)),
             LSPCommand::Codelens => serde_json::to_value(util::make_codelens(rows)),
             LSPCommand::CodeAction => serde_json::to_value(util::make_codeaction(rows)),
+            LSPCommand::InlayHints => serde_json::to_value(util::make_inlay_hint(rows)),
             LSPCommand::Completion => serde_json::to_value(util::make_completion(rows)),
             LSPCommand::SignatureHelp => serde_json::to_value(util::make_signature_help(rows)),
             &LSPCommand::Rename => serde_json::to_value(util::make_workspace_edit(rows)),

@@ -7,9 +7,10 @@ use lsp_asm::handler::semantic;
 use lsp_asm::types::{CompletionItem, CompletionKind, DocumentLocation, DocumentRange};
 use lsp_types::{
     CodeAction, CodeActionOrCommand, CodeLens, Command, CompletionList, DocumentHighlight,
-    DocumentHighlightKind, DocumentSymbol, Documentation, Location, OneOf, ParameterInformation,
-    ParameterLabel, PublishDiagnosticsParams, Range, SemanticToken, SignatureHelp,
-    SignatureInformation, SymbolKind, TextDocumentEdit, TextEdit, Url, WorkspaceEdit,
+    DocumentHighlightKind, DocumentSymbol, Documentation, InlayHint, Location, OneOf,
+    ParameterInformation, ParameterLabel, PublishDiagnosticsParams, Range, SemanticToken,
+    SignatureHelp, SignatureInformation, SymbolKind, TextDocumentEdit, TextEdit, Url,
+    WorkspaceEdit,
 };
 use std::collections::HashMap;
 use std::path::Path;
@@ -326,4 +327,20 @@ pub(crate) fn make_codeaction(rows: &[Vec<String>]) -> Vec<CodeActionOrCommand> 
             })
         })
         .collect_vec()
+}
+
+pub(crate) fn make_inlay_hint(rows: &[Vec<String>]) -> Vec<InlayHint> {
+    rows.iter()
+        .skip(1)
+        .map(|cols| InlayHint {
+            position: PositionString::from_string(cols.get(0).unwrap().to_string()).into(),
+            label: lsp_types::InlayHintLabel::String(cols.get(1).unwrap().to_string()),
+            kind: None,
+            text_edits: None,
+            tooltip: None,
+            padding_left: None,
+            padding_right: None,
+            data: None,
+        })
+        .collect()
 }

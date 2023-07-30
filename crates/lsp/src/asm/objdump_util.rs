@@ -14,7 +14,7 @@ pub(crate) fn find_instruction_at_relative_offset(
         .find(|ins| offset_relative_to_label(label, ins) == Some(offset))
 }
 
-fn offset_relative_to_label(label: &SyntaxNode, instruction: &SyntaxNode) -> Option<i128> {
+pub fn offset_relative_to_label(label: &SyntaxNode, instruction: &SyntaxNode) -> Option<i128> {
     let label_offset = i128::from_str_radix(
         find_kind_index(label, 0, SyntaxKind::OBJDUMP_OFFSET)?
             .as_token()?

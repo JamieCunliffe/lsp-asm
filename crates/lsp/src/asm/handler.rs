@@ -6,7 +6,7 @@ use super::ast::{AstNode, LabelNode, LocalLabelNode, RegisterToken};
 use super::llvm_mca::run_mca;
 use super::parser::{split_parsed_include, Parser, PositionInfo};
 use super::{definition, references};
-use crate::asm::{hovers, signature};
+use crate::asm::{hovers, inlay_hints, signature};
 use crate::completion;
 use crate::handler::context::Context;
 use crate::handler::error::{lsp_error_map, ErrorCode};
@@ -24,8 +24,8 @@ use itertools::*;
 use lsp_server::ResponseError;
 use lsp_types::{
     AnnotatedTextEdit, CodeActionOrCommand, CodeLens, Command, CompletionList,
-    DocumentHighlightKind, DocumentSymbol, DocumentSymbolResponse, HoverContents, Location,
-    MarkupContent, OneOf, OptionalVersionedTextDocumentIdentifier, Range, SemanticToken,
+    DocumentHighlightKind, DocumentSymbol, DocumentSymbolResponse, HoverContents, InlayHint,
+    Location, MarkupContent, OneOf, OptionalVersionedTextDocumentIdentifier, Range, SemanticToken,
     SemanticTokens, SemanticTokensResult, SignatureHelp, SymbolKind, TextDocumentEdit, TextEdit,
     Url, WorkspaceEdit,
 };
@@ -148,7 +148,7 @@ impl AssemblyLanguageServerProtocol {
         } else {
             let handle_related = |parser: &Parser| {
                 let id = parser.uri();
-                let range = parser.tree().text_range();
+                let range = parser.text_range();
                 let position = parser.position();
 
                 references::find_references(parser, &token, range, include_decl)
@@ -400,7 +400,7 @@ impl AssemblyLanguageServerProtocol {
                 .ok_or_else(|| lsp_error_map(ErrorCode::InvalidPosition))?;
             TextRange::new(start, end)
         } else {
-            self.parser.tree().text_range()
+            self.parser.text_range()
         };
 
         let position = self.parser.position();
@@ -565,6 +565,27 @@ impl AssemblyLanguageServerProtocol {
         Ok(lens)
     }
 
+    pub fn inlay_hint(
+        &self,
+        _context: Arc<Context>,
+        location: Option<DocumentRange>,
+    ) -> Result<Option<Vec<InlayHint>>, ResponseError> {
+        let parser = self.parser();
+        let position = parser.position();
+        let range =
+            location.map(|range| position.make_range_for_lines(range.start.line, range.end.line));
+
+        if matches!(self.parser().file_type(), base::FileType::ObjDump(opts) if opts.show_leading_addr)
+        {
+            return Ok(Some(inlay_hints::objdump_inlay_hints(
+                parser,
+                range.unwrap_or_else(|| parser.text_range()),
+            )));
+        }
+
+        Ok(None)
+    }
+
     pub fn completion(
         &self,
         _context: Arc<Context>,
@@ -649,7 +670,7 @@ impl AssemblyLanguageServerProtocol {
     ) -> Result<String, ResponseError> {
         let range = range
             .and_then(|r| self.parser.position().range_to_text_range(&r))
-            .unwrap_or_else(|| self.parser.tree().text_range());
+            .unwrap_or_else(|| self.parser.text_range());
 
         let tokens = self.parser.tokens_in_range(range).filter(|t| {
             !(matches!(t.kind(), SyntaxKind::METADATA)
@@ -707,7 +728,7 @@ impl AssemblyLanguageServerProtocol {
             None
         } else {
             let handle_related = |parser: &Parser| {
-                let range = parser.tree().text_range();
+                let range = parser.text_range();
                 if matches!(token.kind(), SyntaxKind::REGISTER_ALIAS) {
                     references::find_references_alias_exact(parser, &token, range)
                 } else {

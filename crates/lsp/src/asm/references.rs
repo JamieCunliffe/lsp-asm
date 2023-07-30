@@ -13,7 +13,7 @@ pub fn get_search_range(parser: &Parser, token: &SyntaxToken, limit: Option<u32>
             .starts_with('.')
             .then(|| find_parent(token, SyntaxKind::LABEL).map(|label| label.text_range()))
             .flatten()
-            .unwrap_or_else(|| parser.tree().text_range())
+            .unwrap_or_else(|| parser.text_range())
     } else if let Some(limit) = limit {
         let position = parser.position().get_position(token).unwrap();
         parser.position().make_range_for_lines(
@@ -21,7 +21,7 @@ pub fn get_search_range(parser: &Parser, token: &SyntaxToken, limit: Option<u32>
             position.line.saturating_add(limit),
         )
     } else {
-        parser.tree().text_range()
+        parser.text_range()
     }
 }
 

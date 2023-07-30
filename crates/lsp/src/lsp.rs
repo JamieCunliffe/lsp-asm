@@ -7,8 +7,8 @@ use lsp_types::notification::{
 };
 use lsp_types::request::{
     CodeActionRequest, CodeLensRequest, Completion, DocumentHighlightRequest,
-    DocumentSymbolRequest, Formatting, GotoDefinition, HoverRequest, References, Rename,
-    SemanticTokensFullRequest, SemanticTokensRangeRequest, SignatureHelpRequest,
+    DocumentSymbolRequest, Formatting, GotoDefinition, HoverRequest, InlayHintRequest, References,
+    Rename, SemanticTokensFullRequest, SemanticTokensRangeRequest, SignatureHelpRequest,
 };
 use lsp_types::{PublishDiagnosticsParams, Url};
 use serde_json::Value;
@@ -139,6 +139,12 @@ fn process_message(connection: Arc<Connection>, context: Arc<Context>, msg: Mess
                 "textDocument/codeLens" => {
                     let (_, data) = get_message::<CodeLensRequest>(request).unwrap();
                     make_result(handlers::code_lens(context, data.text_document.uri))
+                }
+                "textDocument/inlayHint" => {
+                    let (_, data) = get_message::<InlayHintRequest>(request).unwrap();
+                    let msg =
+                        DocumentRangeMessage::new(data.text_document.uri, Some(data.range.into()));
+                    make_result(handlers::inlay_hint(context, msg))
                 }
                 "textDocument/signatureHelp" => {
                     let (_, data) = get_message::<SignatureHelpRequest>(request).unwrap();

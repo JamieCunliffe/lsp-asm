@@ -187,6 +187,19 @@ pub fn code_lens(
         .code_lens(context.clone())
 }
 
+pub fn inlay_hint(
+    context: Arc<Context>,
+    data: DocumentRangeMessage,
+) -> Result<Option<Vec<lsp_types::InlayHint>>, ResponseError> {
+    context
+        .actors
+        .read()
+        .get(&data.url)
+        .ok_or_else(|| lsp_error_map(ErrorCode::FileNotFound))?
+        .read()
+        .inlay_hint(context.clone(), data.range)
+}
+
 pub fn completion(
     context: Arc<Context>,
     location: LocationMessage,

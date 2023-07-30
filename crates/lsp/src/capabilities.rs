@@ -35,6 +35,7 @@ pub fn get_server_capabilities() -> ServerCapabilities {
         code_lens_provider: Some(CodeLensOptions {
             resolve_provider: None,
         }),
+        inlay_hint_provider: Some(OneOf::Left(true)),
         semantic_tokens_provider: Some(SemanticTokensServerCapabilities::SemanticTokensOptions(
             SemanticTokensOptions {
                 work_done_progress_options: WorkDoneProgressOptions {

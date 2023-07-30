@@ -93,6 +93,10 @@ impl Parser {
         SyntaxNode::new_root(self.root.clone())
     }
 
+    pub(crate) fn text_range(&self) -> TextRange {
+        SyntaxNode::new_root(self.root.clone()).text_range()
+    }
+
     pub(crate) fn filesize(&self) -> Byte {
         self.filesize
     }
@@ -334,6 +338,10 @@ impl PositionInfo {
     /// Gets a document position for the given `token`
     pub fn get_position(&self, token: &SyntaxToken) -> Option<DocumentPosition> {
         self.get_position_for_size(&token.text_range().start())
+    }
+
+    pub fn get_end_position(&self, token: &SyntaxToken) -> Option<DocumentPosition> {
+        self.get_position_for_size(&token.text_range().end())
     }
 
     /// Gets a `DocumentRange` for the given `token`

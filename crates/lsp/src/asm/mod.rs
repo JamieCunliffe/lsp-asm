@@ -5,6 +5,7 @@ mod demangle;
 mod diff;
 pub mod handler;
 pub(crate) mod hovers;
+mod inlay_hints;
 mod llvm_mca;
 mod objdump_util;
 pub mod parser;
